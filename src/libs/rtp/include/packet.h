@@ -30,9 +30,16 @@ class packet
     int get_size();
     void reset_size(int length);
 
+    void set_first_of_frame(bool first_packet);
+    bool get_first_of_frame();
+    void set_last_of_frame(bool last_packet);
+
   private:
     uint8_t*    data_ = nullptr;
     int      length_;
+    bool first_of_frame_ = false;
+    bool last_of_frame_ = false;
+
 
 };
 

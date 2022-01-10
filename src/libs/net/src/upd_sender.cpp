@@ -9,15 +9,32 @@
 #include <arpa/inet.h>
 #include <time.h>
 
+
 #include "udp_sender.h"
 #include "util/logger.h"
 #include "util/timer.h"
 
-
+namespace bai = boost::asio::ip;
 namespace seeder { namespace net {
+    
+    // struct impl
+    // {
+    //     boost::asio::io_service io_service_;
+    //     bai::udp::socket socket_;
+
+    //     impl() : io_service_(), socket_(io_service_, bai::udp::endpoint(boost::asio::ip::udp::v4(), 0)) {}
+    // };
+
     udp_sender::udp_sender()
+    : io_service_(), boost_socket_(io_service_, bai::udp::endpoint(bai::udp::v4(), 0))
     {
-        socket_ = socket(AF_INET, SOCK_DGRAM, 0);
+        // boost::asio::ip::udp::endpoint endpoint_1(boost::asio::ip::udp::v4(),0);
+        // boost::asio::ip::address addr = boost::asio::ip::address::from_string("192.168.10.103");
+        // endpoint_1.address(addr);
+        // boost_socket_ = boost::asio::ip::udp::socket(io_service_, endpoint_1);
+
+        //socket_ = socket(AF_INET, SOCK_DGRAM, 0);
+        socket_ = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if(socket_ == -1)
         {
             util::logger->error("Create udp socket client failed!");
@@ -27,11 +44,27 @@ namespace seeder { namespace net {
         // set socketopt, SO_REUSEADDR true, send buffer
         bool bReuseaddr = true;
         setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, (const char*)&bReuseaddr, sizeof(bool));
-        int buffer_size = 4000000;
-        setsockopt(socket_, SOL_SOCKET, SO_SNDBUF, &buffer_size, sizeof(buffer_size));
+        int buffer_size = 60000000;
+        auto ret = setsockopt(socket_, SOL_SOCKET, SO_SNDBUF, &buffer_size, sizeof(buffer_size));
+        setsockopt(socket_, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
+
+        // int32_t get_size;
+        // socklen_t len = sizeof(int);
+        // getsockopt(socket_, SOL_SOCKET, SO_SNDBUF, &get_size, &len);
+
+        // ret = fcntl(socket_, F_SETFL, SOCK_NONBLOCK);
+
+        // int loop = 1;
+        // ret = setsockopt(socket_,IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+
+        // struct timeval timeout;
+        // timeout.tv_sec = 0;
+        // timeout.tv_usec = 60;
+        // ret = setsockopt(socket_, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
 
         delay_.tv_sec = 0;
         delay_.tv_nsec = 4725; // 2us
+
     }
 
     udp_sender::~udp_sender()
@@ -48,19 +81,34 @@ namespace seeder { namespace net {
        */
     int udp_sender::bind_ip(std::string ip, short port)
     {
-        struct sockaddr_in addr;
-        memset(&addr, 0, sizeof(addr));
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = inet_addr(ip.data());
-        addr.sin_port = htons(port);
+        auto addr = inet_addr(ip.data());
+        auto ret = setsockopt(socket_, IPPROTO_IP, IP_MULTICAST_IF, (char*)&addr, sizeof(addr));
 
-        if(bind(socket_, (struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0)
-        {
-            util::logger->error("bind to ip {}:{} failed!", ip, port);
-            return -1;
-        }
+        // struct sockaddr_in addr;
+        // memset(&addr, 0, sizeof(addr));
+        // addr.sin_family = AF_INET;
+        // addr.sin_addr.s_addr = inet_addr(ip.data());
+        // addr.sin_port = htons(port);
 
-        return 1;
+        // if(bind(socket_, (struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0)
+        // {
+        //     util::logger->error("bind to ip {}:{} failed!", ip, port);
+        //     return -1;
+        // }
+
+        // return 1;
+
+
+        // bai::udp::resolver resolver(io_service_);
+        // bai::udp::resolver::query query(bai::udp::v4(), ip, std::to_string(port));
+        // auto endpoint_iter = resolver.resolve(query);
+        // auto end = endpoint_iter.begin();
+
+
+        // boost::asio::ip::udp::endpoint endpoint_1(boost::asio::ip::udp::v4(),20002);
+        // boost::asio::ip::address addr = boost::asio::ip::address::from_string("192.168.10.103");
+        // endpoint_1.address(addr);
+        // boost_socket_.bind(endpoint_1);
     }
 
     /**
@@ -88,7 +136,7 @@ namespace seeder { namespace net {
     }
 
      /**
-       * @brief send the data in builk via linux socket sendto
+       * @brief send the data via linux socket sendto
        * 
        * @param data 
        * @param ip 
@@ -102,28 +150,38 @@ namespace seeder { namespace net {
         addr.sin_addr.s_addr = inet_addr(ip.data());
         addr.sin_port = htons(port);
 
-        // util::timer timer;
         auto start_time = util::timer::now();
         auto result = sendto(socket_, data, length, 0, (struct sockaddr *) &addr, sizeof(struct sockaddr));
-        auto end_time = util::timer::now();
-        packet_count_++;
-        if(end_time - start_time > 60000)
-        {
-            std::cout << "udp sendto time: " << end_time - start_time << "   " << packet_count_ << std::endl;
-        }
-
-        // auto send_time = timer.elapsed();
-        // while(2100 - send_time > 0)
-        // {
-        //     send_time = timer.elapsed();
-        // }
-        //delay_.tv_nsec = delay_.tv_nsec - send_time;
-        //nanosleep(&delay_, NULL);
-        //std::cout << "udp sendto spend time us: " << send_time << "    " << delay_.tv_nsec << std::endl;
         if (result < 0)
         {
             util::logger->error("send to ip {}:{} udp packet failed!", ip, port);
         }
+
+        // packet_count_++;
+        // auto end_time = util::timer::now();
+        // if(end_time - start_time > 60000)
+        // {
+        //     std::cout << "udp sendto time:  " << end_time - start_time << " , packet: " << packet_count_ - last_packet << std::endl;
+        //     last_packet = packet_count_;
+        // }
+    }
+
+    void udp_sender::async_send_to(uint8_t* data, int length, std::string ip, short port)
+    {
+        bai::udp::resolver resolver(io_service_);
+        bai::udp::resolver::query query(bai::udp::v4(), ip, std::to_string(port));
+        auto endpoint_iter = resolver.resolve(query);
+
+        auto start_time = util::timer::now();
+        boost_socket_.send_to(boost::asio::buffer(data, length), *endpoint_iter);
+        auto end_time = util::timer::now();
+        packet_count_++;
+        if(end_time - start_time > 60000)
+        {
+            std::cout << "udp sendto time:  " << end_time - start_time << "  packet: " << packet_count_ - last_packet << std::endl;
+            last_packet = packet_count_ ;  
+        }
+
     }
 
      /**
@@ -147,7 +205,7 @@ namespace seeder { namespace net {
         memset(msg, 0 , sizeof(msg));
         memset(iov, 0, sizeof(iov));
 
-        for(int i = 0; i < size; i++)
+        for(auto i = 0; i < size; i++)
         {
             iov[i].iov_base = data.at(i).data;
             iov[i].iov_len = data.at(i).length;

@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <time.h>
+#include "boost/asio.hpp"
 
 namespace seeder { namespace net {
 
@@ -49,6 +50,8 @@ class udp_sender
        */
       void send_to(uint8_t* data, int length, std::string ip, short port);
 
+      void async_send_to(uint8_t* data, int length, std::string ip, short port);
+
       /**
        * @brief send the data in builk via linux socket sendmmsg
        * 
@@ -62,5 +65,12 @@ class udp_sender
       int socket_;
       timespec delay_;
       int64_t packet_count_ = 0;
+      int64_t last_packet = 0;
+
+      //struct impl;
+      //std::unique_ptr<impl> pimpl_;
+
+      boost::asio::io_service io_service_;
+      boost::asio::ip::udp::socket boost_socket_;
 };
 }} // namespace seeder::net

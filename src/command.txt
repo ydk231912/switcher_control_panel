@@ -1,9 +1,29 @@
+// set date
+sudo date -s "2022-06-30 11:04:05"
+
 // set upd multicast
 sudo route add -net 224.0.0.0 netmask 240.0.0.0 dev enp4s0f1np1
+sudo route del -net 224.0.0.0 netmask 240.0.0.0 dev enp4s0f1np1
 
 // set ptpd slaver
+sudo timedatectl set-ntp false
 sudo ptpd -d 127 -g -i enp4s0f1np1 -C
 
 // ebu list tool
 cd /home/seeder/DEV/EBU_LIST
 sudo docker-compose up
+
+// set send/recieve buffer
+sudo sysctl -w net.core.rmem_max=12582912
+sudo sysctl -w net.core.rmem_default=12582912
+sudo sysctl -w net.core.wmem_max=12582912
+sudo sysctl -w net.core.wmem_default=12582912S
+sudo sysctl -w net.core.netdev_max_backlog=5000
+sudo ifconfig enp4s0f1np1 txqueuelen 10000
+sudo ifconfig enp6s0 txqueuelen 10000 up
+
+net.core.rmem_max=12582912
+net.core.rmem_default=12582912
+net.core.wmem_max=125829120
+net.core.wmem_default=12582912
+net.core.netdev_max_backlog=5000

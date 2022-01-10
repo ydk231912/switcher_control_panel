@@ -115,6 +115,7 @@ namespace seeder::rtp {
         uint8_t* ptr   = data_ + 1;
         uint8_t  payload_type = 96;
         *ptr = (payload_type & 0x7f) | ((marker << 7) & 0x80);
+        set_last_of_frame(true);
     }
 
     void packet::set_sequence_number(uint16_t sequence_number)
@@ -137,5 +138,20 @@ namespace seeder::rtp {
         //*ptr++       = (timestamp >> 8) & 0xff;
         //*ptr++       = (timestamp >> 16) & 0xff;
         //*ptr         = (timestamp >> 24) & 0xff;
+    }
+
+    void packet::set_first_of_frame(bool first_packet)
+    {
+        first_of_frame_ = first_packet;
+    }
+
+    bool packet::get_first_of_frame()
+    {
+        return first_of_frame_;
+    }
+
+    void packet::set_last_of_frame(bool last_packet)
+    {
+        last_of_frame_ = last_packet;
     }
 }

@@ -21,9 +21,9 @@
             <device-id>1</device-id>
             <multicast-ip>239.0.20.28</multicast-ip>
             <multicast-port>20000</multicast-port>
-            <bind-ip>192.168.123.201</bind-ip>
+            <bind-ip>192.168.10.103</bind-ip>
             <bind-port>20001</bind-port>
-            <display-screen>true</display-screen>
+            <display-screen>false</display-screen>
         </channel>
     </channels>
 </configuration>

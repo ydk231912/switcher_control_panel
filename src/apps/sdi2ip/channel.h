@@ -72,6 +72,7 @@ namespace seeder
         int64_t start_time_;
         int64_t packet_drain_interval_;
         int64_t packet_drained_number_ = 0;
+        int64_t frame_number_ = 0;
 
     };
 } // namespace seeder

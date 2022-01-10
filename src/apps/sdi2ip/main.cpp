@@ -32,6 +32,9 @@
 #include <sys/time.h>
 #include <sys/select.h>
 
+#include <net/udp_sender.h>
+#include <rtp/packet.h>
+
 using namespace seeder::util;
 using namespace boost::property_tree;
 
@@ -196,9 +199,29 @@ void test()
     }
 }
 
+void udp_send_test()
+{
+    seeder::rtp::packet p;
+    seeder::net::udp_sender sender;
+    sender.bind_ip("192.168.10.103", 20001);
+
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(23, &mask);
+    if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
+    {
+        std::cout << "bind udp thread to cpu failed" << std::endl;
+    }
+
+    while(1){
+        sender.send_to(p.get_data_ptr(), p.get_data_size(), "192.168.10.101", 20000);
+    }
+}
+
 int main(int argc, char* argv[])
 {
     //test();
+    //udp_send_test();
 
     auto start_time = std::chrono::steady_clock::now();
 

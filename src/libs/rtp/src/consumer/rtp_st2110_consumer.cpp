@@ -64,6 +64,7 @@ namespace seeder::rtp
         }
 
         int packet_count = 0;
+        bool first_of_frame = true;
 
         uint16_t line   = 0;
         uint16_t pgroup = 5; // uyvy422 10bit, 5bytes
@@ -85,6 +86,11 @@ namespace seeder::rtp
             uint8_t* headers;
 
             std::shared_ptr<rtp::packet> rtp_packet = std::make_shared<rtp::packet>();
+            if(first_of_frame)
+            {
+                rtp_packet->set_first_of_frame(first_of_frame);
+                first_of_frame = false;
+            }
             uint8_t* ptr = rtp_packet->get_payload_ptr();
             left = rtp_packet->get_payload_size();
 
