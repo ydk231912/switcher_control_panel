@@ -1,1 +1,12 @@
-
+*.dir
+*.vcxproj
+*.vcxproj.filters
+*.tlog
+*.sln
+.settings
+.vscode
+.vs
+build
+pcap
+dist
+CMakeFiles
