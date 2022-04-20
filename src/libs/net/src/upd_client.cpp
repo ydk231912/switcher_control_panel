@@ -12,8 +12,12 @@ namespace seeder { namespace net {
     : io_service_()
     , socket_(io_service_, ip::udp::endpoint(ip::udp::v4(), 0))
     {
-        ip::udp::endpoint ep(ip::address::from_string("192.168.123.40"), 20000);
-        socket_.bind(ep);
+        socket_.set_option(ip::udp::socket::reuse_address(true));
+        ip::udp::endpoint ep(ip::address::from_string("192.168.123.40"), 20001);
+        //ip::udp::endpoint ep(ip::address::from_string("0.0.0.0"), 8878);
+        //ip::udp::endpoint ep(ip::address_v4::any(), 8878);
+        boost::system::error_code ec;
+        socket_.bind(ep, ec);
     }
 
     udp_client::udp_client(std::string ip, std::string port)

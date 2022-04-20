@@ -101,7 +101,7 @@ void run()
         if(frame.video)
         {
             // push to rtp
-            //rtp_.push_frame(frame);
+            rtp_.push_frame(frame);
 
             // push to sdl
             sdl_.push_frame(frame.video);
@@ -151,17 +151,17 @@ int main()
 {
     boost::thread play_thread(&run);
     boost::thread ffmpeg_thread(&ffmpeg_producer);
-    //boost::thread rtp_thread(&rtp_producer);
+    boost::thread rtp_thread(&rtp_producer);
     //boost::thread udp_thread(&udp_consumer);
     boost::thread_group udp_group;
-    for(int i =0; i < 10; i++)
+    for(int i =0; i < 20; i++)
     {
         udp_group.create_thread(&udp_consumer);
     }
     boost::thread sdl_thread(&sdl_display);
     play_thread.join();
     ffmpeg_thread.join();
-    //rtp_thread.join();
+    rtp_thread.join();
     sdl_thread.join();
     udp_group.join_all();
 

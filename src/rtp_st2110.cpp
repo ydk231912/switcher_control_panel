@@ -196,7 +196,7 @@ namespace seeder
             //client_.send_to(rtp_packet->get_data_ptr(), rtp_packet->get_data_size(), "239.0.10.1", 20000);
             // st20_to_png(rtp_packet);
 
-            // push to buffer
+            // push to buffer  
             if(packet_buffer_.size() < packet_capacity_)
             {
                 std::unique_lock<std::mutex> lock(packet_mutex_);
@@ -227,9 +227,9 @@ namespace seeder
     {
         util::frame frame;
         
+        std::unique_lock<std::mutex> lock(frame_mutex_);
         if(frame_buffer_.size() > 0)
         {
-            std::unique_lock<std::mutex> lock(frame_mutex_);
             frame = frame_buffer_[0];
             frame_buffer_.pop_front();
         }
@@ -246,10 +246,9 @@ namespace seeder
     std::shared_ptr<rtp::packet> rtp_st2110::receive_packet()
     {
         std::shared_ptr<rtp::packet> packet = NULL;
-        
+        std::unique_lock<std::mutex> lock(packet_mutex_);
         if(packet_buffer_.size() > 0)
         {
-            std::unique_lock<std::mutex> lock(packet_mutex_);
             packet = packet_buffer_[0];
             packet_buffer_.pop_front();
             std::cout << "rtp_st2110::receive_packet: packet buffer size: " << packet_buffer_.size() << std::endl;

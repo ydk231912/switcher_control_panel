@@ -39,6 +39,11 @@ message("MESSAGE SDL include::${SDL2_INCLUDE_DIRS}")
 include_directories(${SDL2_INCLUDE_DIRS})
 list(APPEND LINKER_LIBS ${SDL2_LIBRARIES})
 
+# DeckLink
+list(APPEND LINKER_LIBS 
+/usr/lib/libDeckLinkAPI.so
+/usr/lib/libDeckLinkPreviewAPI.so)
+
 
 add_subdirectory(libs)
 
@@ -55,8 +60,9 @@ message("message::${LINKER_LIBS}")
 
 target_link_libraries(app 
 rtp
-st2110 
-net 
-util 
+st2110
+net
+util
+decklink
 ${LINKER_LIBS} 
 )
