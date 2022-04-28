@@ -8,6 +8,7 @@
 #include "net/udp_client.h"
 #include "video_play.h"
 #include "sdl_consumer.h"
+#include "util/logger.h"
 
 
 // test udp multicast
@@ -149,6 +150,8 @@ int test_multicast()
 
 int main()
 {
+    util::logger->info("start server!");
+
     boost::thread play_thread(&run);
     boost::thread ffmpeg_thread(&ffmpeg_producer);
     boost::thread rtp_thread(&rtp_producer);
@@ -164,19 +167,6 @@ int main()
     rtp_thread.join();
     sdl_thread.join();
     udp_group.join_all();
-
-    // send udp by multi thread
-    // boost::thread_group udp_group;
-    // for(int i=0; i < 3; i++)
-    // {
-    //     udp_group.create_thread(&udp_consumer);
-    // }
-    // udp_group.join_all();
-
-    //test_net_speed();
-    //test_multicast();
-    //play_.play(filename);
-    //sdl_.play(filename);
 
     return 0;
 }

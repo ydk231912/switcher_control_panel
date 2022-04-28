@@ -1,0 +1,3 @@
+[2022-04-24 16:06:13.210] [multi_sink] [info] Welcome to spdlog!
+[2022-04-24 16:24:18.973] [LoggerName] [info] start server!
+[2022-04-24 17:18:28.110] [LoggerName] [info] start server!

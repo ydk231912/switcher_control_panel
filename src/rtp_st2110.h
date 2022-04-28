@@ -1,8 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <string>
 #include <mutex>
+#include <deque>
 
 extern "C"
 {

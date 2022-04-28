@@ -1,0 +1,2 @@
+add_subdirectory(sdi2st2110)
+add_subdirectory(st21102sdi)

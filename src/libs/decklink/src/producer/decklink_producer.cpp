@@ -12,70 +12,53 @@
 #include <iostream>
 
 #include "producer/decklink_producer.h"
+#include "util/logger.h"
 
-
+using namespace seeder::util;
 namespace seeder::decklink {
+    /**
+     * @brief Construct a new decklink producer::decklink producer object.
+     * initialize deckllink device and start input stream
+     */
     decklink_producer::decklink_producer()
     {
         HRESULT result;
         decklink_index_ = 1;
         pixel_format_ = bmdFormat8BitYUV;
         bmd_mode_ = bmdModeHD1080p50;
+        video_flags_ = 0;
         
         // get the decklink device
         decklink_ = get_decklink(decklink_index_);
         if(decklink_ == nullptr)
         {
-            std::cout << "Failed to get DeckLink." << std::endl;
-            return;
+            logger->error("Failed to get DeckLink device. Make sure that the device ID is valid");
+            throw std::runtime_error("Failed to get DeckLink device.");
         }
 
         // get input interface of the decklink device
         result = decklink_->QueryInterface(IID_IDeckLinkInput, (void**)&input_);
         if(result != S_OK)
         {
-            std::cout << "Failed to get DeckLink input interface." << std::endl;
-            return;
+            logger->error("Failed to get DeckLink input interface.");
+            throw std::runtime_error("Failed to get DeckLink input interface.");
         }
 
         // get decklink input mode
         // result =  input_->GetDisplayMode(bmd_mode_, &display_mode_);
         // if(result != S_OK)
         // {
-        //     std::cout << "Failed to get DeckLink input mode." << std::endl;
-        //     return;
+        //    logger->error("Failed to get DeckLink input mode.");
+        //    throw std::runtime_error("Failed to get DeckLink input mode.");
         // }
 
         // set the capture callback
         result = input_->SetCallback(this);
         if(result != S_OK)
         {
-            std::cout << "Failed to set DeckLink input callback." << std::endl;
-            return;
+            logger->error("Failed to set DeckLink input callback.");
+            throw std::runtime_error("Failed to set DeckLink input callback.");
         }
-
-        // enable input and start streams
-        result = input_->EnableVideoInput(bmd_mode_, pixel_format_, 0);
-        if(result != S_OK)
-        {
-            std::cout << "Failed to enable DeckLink video input." << std::endl;
-            return;
-        }
-
-        // result = input_->EnableAudioInput();
-        // if(result != S_OK)
-        // {
-        //     std::cout << "Enable DeckLink video input failed" << std::endl;
-        //     return;
-        // }
-
-        result = input_->StartStreams();
-        if(result != S_OK)
-        {
-            std::cout << "Failed to start DeckLink input streams." << std::endl;
-            return;
-        }
-
     }
     
     decklink_producer::~decklink_producer()
@@ -96,6 +79,36 @@ namespace seeder::decklink {
 
     }
 
+    /**
+     * @brief start decklink capture
+     * 
+     */
+    void decklink_producer::start()
+    {
+
+        // enable input and start streams
+        HRESULT result = input_->EnableVideoInput(bmd_mode_, pixel_format_, video_flags_);
+        if(result != S_OK)
+        {
+            logger->error("Failed to enable DeckLink video input.");
+            throw std::runtime_error("Failed to enable DeckLink video input.");
+        }
+
+        // result = input_->EnableAudioInput();
+        // if(result != S_OK)
+        // {
+        //  logger->error("Failed to enable DeckLink audio input.");
+        //  throw std::runtime_error("Failed to enable DeckLink audio input.");
+        // }
+
+        result = input_->StartStreams();
+        if(result != S_OK)
+        {
+            logger->error("Failed to start DeckLink input streams.");
+            throw std::runtime_error("Failed to start DeckLink input streams.");
+        }
+    }
+
 
     ULONG decklink_producer::AddRef(void)
     {
@@ -107,19 +120,100 @@ namespace seeder::decklink {
         return 1;
     }
 
+    /**
+     * @brief change display mode and restart input streams
+     * 
+     * @param events 
+     * @param mode 
+     * @param format_flags 
+     * @return HRESULT 
+     */
     HRESULT decklink_producer::VideoInputFormatChanged(BMDVideoInputFormatChangedEvents events, 
                                                         IDeckLinkDisplayMode* mode, 
                                                         BMDDetectedVideoInputFormatFlags format_flags)
     {
+        display_mode_ = mode;
+        input_->StopStreams();
+        input_->EnableVideoInput(mode->GetDisplayMode(), pixel_format_, video_flags_);
+        input_->FlushStreams();
+        input_->StartStreams();
+        
+        return S_OK;
+    }
+
+    /**
+     * @brief handle arrived frame from decklink card. 
+     * push frame into the buffer, if the buffer is full, discard the old frame
+     * 
+     * @param video_frame 
+     * @param audio_frame 
+     * @return HRESULT 
+     */
+    HRESULT decklink_producer::VideoInputFrameArrived(IDeckLinkVideoInputFrame* video, 
+                                                       IDeckLinkAudioInputPacket* audio)
+    {
+        BMDTimeValue in_video_pts = 0LL;
+        auto frame = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+
+        if(video)
+        {
+            frame->format = AV_PIX_FMT_UYVY422;
+            frame->width = video->GetWidth();
+            frame->height = video->GetHeight();
+            frame->interlaced_frame = display_mode_->GetFieldDominance() != bmdProgressiveFrame;
+            frame->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
+            frame->key_frame        = 1;
+
+            void* video_bytes = nullptr;
+            if(video->GetBytes(&video_bytes) && video_bytes)
+            {
+                video->AddRef();
+                frame = std::shared_ptr<AVFrame>(frame.get(), [frame, video](AVFrame* ptr) { video->Release(); });
+
+                frame->data[0]     = reinterpret_cast<uint8_t*>(video_bytes);
+                frame->linesize[0] = video->GetRowBytes();
+
+                BMDTimeValue duration;
+                if (video->GetStreamTime(&in_video_pts, &duration, AV_TIME_BASE)) 
+                {
+                    frame->pts = in_video_pts;
+                }
+            }
+        }
+
+        // push the frame into the buffer, if the buffer is full, discard the oldest frame
+        {
+            std::unique_lock<std::mutex> lock(frame_mutex_);
+            if(frame_buffer_.size() >= frame_capacity_)
+            {
+                auto f = frame_buffer_[0];
+                frame_buffer_.pop_front(); // discard the oldest frame
+            }
+            frame_buffer_.push_back(frame);
+        }
 
         return S_OK;
     }
 
-    HRESULT decklink_producer::VideoInputFrameArrived(IDeckLinkVideoInputFrame* video_frame, 
-                                                       IDeckLinkAudioInputPacket* audio_frame)
+    /**
+     * @brief Get the frame object from the frame_buffer
+     * 
+     * @return std::shared_ptr<AVFrame> 
+     */
+    std::shared_ptr<AVFrame> decklink_producer::get_frame()
     {
+        std::shared_ptr<AVFrame> frame;
+        {
+            std::unique_lock<std::mutex> lock(frame_mutex_);
+            if(frame_buffer_.size() < 1)
+                return last_frame_;
 
-        return S_OK;
+            frame = frame_buffer_[0];
+            frame_buffer_.pop_front();
+            last_frame_ = frame;
+        }
+
+        return frame;
     }
 
     /**
@@ -136,7 +230,6 @@ namespace seeder::decklink {
         HRESULT result;
         if(!decklink_interator)
         {
-            std::cout << "Get decklink failed,requires the DeckLink drivers intalled." << std::endl;
             return nullptr;
         }
 

@@ -5,6 +5,7 @@
 #include <boost/thread/thread.hpp>
 
 #include "rtp_st2110.h"
+#include "util/logger.h"
 
 
 namespace seeder 
@@ -192,11 +193,11 @@ namespace seeder
                 rtp_packet->reset_size(rtp_packet->get_size() - left);
             }
 
-            //// 4 send packet by udp 
+            //// send packet by udp  //for debug test
             //client_.send_to(rtp_packet->get_data_ptr(), rtp_packet->get_data_size(), "239.0.10.1", 20000);
             // st20_to_png(rtp_packet);
 
-            // push to buffer  
+            // 4 push to buffer  
             if(packet_buffer_.size() < packet_capacity_)
             {
                 std::unique_lock<std::mutex> lock(packet_mutex_);
@@ -251,7 +252,8 @@ namespace seeder
         {
             packet = packet_buffer_[0];
             packet_buffer_.pop_front();
-            std::cout << "rtp_st2110::receive_packet: packet buffer size: " << packet_buffer_.size() << std::endl;
+            util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
+            //std::cout << "rtp_st2110::receive_packet: packet buffer size: " + packet_buffer_.size() << std::endl;
         }
 
         return packet;        

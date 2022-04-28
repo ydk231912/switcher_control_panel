@@ -1,5 +1,5 @@
 /**
- * udp client
+ * seeder frame
  *
  */
 #pragma once

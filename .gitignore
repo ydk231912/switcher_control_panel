@@ -5,6 +5,7 @@
 *.sln
 .settings
 .vscode
+.VSCodeCounter
 .vs
 build
 pcap

@@ -11,12 +11,28 @@
 
 #pragma once
 
+#include <mutex>
+#include <memory>
+#include <deque>
+
+extern "C"
+{
+    #include <libavcodec/avcodec.h>
+    #include <libavformat/avformat.h>
+    #include <libswscale/swscale.h>
+    #include <libavutil/imgutils.h>
+}
+
 #include "../interop/DeckLinkAPI.h"
 
 namespace seeder::decklink {
     class decklink_producer : public IDeckLinkInputCallback
     {
       public:
+        /**
+         * @brief Construct a new decklink producer::decklink producer object.
+         * initialize deckllink device and start input stream
+         */
         decklink_producer();
         ~decklink_producer();
 
@@ -24,20 +40,62 @@ namespace seeder::decklink {
         virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID *ppv) { return E_NOINTERFACE; }
         virtual ULONG STDMETHODCALLTYPE AddRef(void);
         virtual ULONG STDMETHODCALLTYPE  Release(void);
+
+        /**
+         * @brief change display mode and restart input streams
+         * 
+         * @param events 
+         * @param mode 
+         * @param format_flags 
+         * @return HRESULT 
+         */
         virtual HRESULT STDMETHODCALLTYPE VideoInputFormatChanged(BMDVideoInputFormatChangedEvents, IDeckLinkDisplayMode*, BMDDetectedVideoInputFormatFlags) override;
+        
+        /**
+         * @brief handle arrived frame from decklink card. 
+         * push frame into the buffer, if the buffer is full, discard the old frame
+         * 
+         * @param video_frame 
+         * @param audio_frame 
+         * @return HRESULT 
+         */
         virtual HRESULT STDMETHODCALLTYPE VideoInputFrameArrived(IDeckLinkVideoInputFrame*, IDeckLinkAudioInputPacket*) override;
 
-        IDeckLink* get_decklink(int);
+        /**
+         * @brief start decklink capture
+         * 
+         */
+        void start();
 
+        /**
+         * @brief Get the frame object from the frame_buffer
+         * 
+         * @return std::shared_ptr<AVFrame> 
+         */
+        std::shared_ptr<AVFrame> get_frame();
+
+        /**
+         * @brief get decklink by selected device index
+         * 
+         * @param decklink_index 
+         * @return IDeckLink* 
+         */
+        IDeckLink* get_decklink(int);
 
       private:
         int decklink_index_;
+        BMDVideoInputFlags video_flags_;
         BMDPixelFormat pixel_format_;
         BMDDisplayMode bmd_mode_;
         IDeckLinkDisplayMode* display_mode_;
         IDeckLink* decklink_;
         IDeckLinkInput*	input_;
 
+        //buffer
+        std::mutex frame_mutex_;
+        std::deque<std::shared_ptr<AVFrame>> frame_buffer_;
+        const size_t frame_capacity_ = 5;
+        std::shared_ptr<AVFrame> last_frame_;
     };
 
 }

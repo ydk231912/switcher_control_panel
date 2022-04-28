@@ -1,12 +1,12 @@
-aux_source_directory(./src SRC_LIST)
+aux_source_directory(./src/consumer SRC_LIST)
 include_directories(./include)
 include_directories(${PROJECT_SOURCE_DIR}/build/include)
 
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build/lib)
-file(COPY ./include/ DESTINATION  ${PROJECT_BINARY_DIR}/include/util)
+file(COPY ./include/ DESTINATION  ${PROJECT_BINARY_DIR}/include/sdl)
 
-add_library(util ${SRC_LIST})
+add_library(sdl ${SRC_LIST})
 
 # FFMPEG
 set(FFMPEG_INCLUDE_PATH /usr/include)
@@ -23,6 +23,6 @@ list(APPEND FFMPEG_LIBS
     ${FFMPEG_LIB_PATH}/libswresample.so
     )
 
-target_link_libraries(util 
-${FFMPEG_LIBS} 
+target_link_libraries(sdl
+${FFMPEG_LIBS}
 )
