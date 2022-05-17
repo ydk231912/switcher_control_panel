@@ -11,3 +11,4 @@ build
 pcap
 dist
 CMakeFiles
+src/apps/sdi2st2110/log

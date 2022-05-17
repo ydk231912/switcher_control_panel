@@ -39,9 +39,17 @@ namespace seeder
         //for every sdi channel, create channel, then start handle
         for(auto channel_config : config_.channels)
         {
-            auto ch = std::make_shared<channel>(channel_config);
-            channel_map_.insert(std::make_pair(channel_config.device_id, ch));
-            ch->start();
+            try
+            {
+                auto ch = std::make_shared<channel>(channel_config);
+                channel_map_.insert(std::make_pair(channel_config.device_id, ch));
+                ch->start();
+            }
+            catch(const std::exception& e)
+            {
+                logger->error("Start Channel {} failed. {}", channel_config.device_id, e.what());
+                continue;
+            }
         }
 
         // TODO: add controller server
