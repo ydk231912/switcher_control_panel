@@ -19,4 +19,10 @@ namespace seeder::util
     extern std::shared_ptr<spdlog::logger> logger;
 
     std::shared_ptr<spdlog::logger> create_logger();
+
+    std::shared_ptr<spdlog::logger> create_logger(std::string console_level,
+                                                  std::string file_leve,
+                                                  std::string log_path,
+                                                  int max_size,
+                                                  int max_files);
 }

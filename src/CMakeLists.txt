@@ -24,7 +24,7 @@ list(APPEND LINKER_LIBS
 
 
 # Boost
-find_package(Boost REQUIRED COMPONENTS filesystem thread timer chrono)
+find_package(Boost REQUIRED COMPONENTS filesystem thread timer chrono iostreams)
 if (NOT Boost_FOUND)
     message("Boost lib can not be found")
 endif()

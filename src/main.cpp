@@ -1,3 +1,13 @@
+/**
+ * @file main.cpp
+ * @author 
+ * @brief for test
+ * @version 
+ * @date 2022-05-17
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
 
 #include <iostream>
 #include <string>
@@ -119,7 +129,7 @@ int test_net_speed()
     auto packet = std::make_shared<rtp::packet>();
     while(true)
     {
-        udp_client_.send_to(packet->get_data_ptr(), packet->get_data_size());
+        udp_client_.send_to(packet->get_data_ptr(), packet->get_data_size(), multicast_address, port);
     }
 
     return 0;

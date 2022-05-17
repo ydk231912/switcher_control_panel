@@ -1,8 +1,8 @@
 /**
  * @file rtp_st2110_consumer.h
- * @author your name (you@domain.com)
+ * @author 
  * @brief recieve sdi frame, encodec to st2110 packet
- * @version 0.1
+ * @version 
  * @date 2022-04-26
  * 
  * @copyright Copyright (c) 2022
@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <exception>
 #include <chrono>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/chrono.hpp>
@@ -17,6 +18,7 @@
 
 #include "consumer/rtp_st2110_consumer.h"
 #include "util/logger.h"
+#include "util/timer.h"
 
 namespace seeder::rtp
 {
@@ -34,12 +36,12 @@ namespace seeder::rtp
      * encode to st2110 udp packet, put the packet into packet buffer
      * 
      */
-    void rtp_st2110_consumer::start()
+    void rtp_st2110_consumer::run()
     {
-        //auto s = boost::posix_time::microsec_clock::local_time();
+        //util::timer timer;
 
         //get frame from buffer
-        util::frame f;
+        util::frame frame;
         {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             if(frame_buffer_.size() < 1)
@@ -48,28 +50,31 @@ namespace seeder::rtp
                 return;
             }
 
-            f = frame_buffer_[0];
+            frame = frame_buffer_[0];
             frame_buffer_.pop_front();
         }
 
-        auto frame = f.video;
-        if (!frame)
+        auto avframe = frame.video;
+        if (!avframe)
             return;
 
-        if (frame->format != AV_PIX_FMT_YUV422P)
-            return; //currently,only YUV422P format is supported
+        if (avframe->format != AV_PIX_FMT_YUV422P && avframe->format != AV_PIX_FMT_UYVY422)
+        {
+            //currently,only YUV422P UYVY422 format is supported
+            util::logger->error("The {} frame format is unsupported!", avframe->format);
+            throw std::runtime_error("The frame format is unsupported!");
+        }
 
-        uint16_t width, height;
         uint16_t line   = 0;
         uint16_t pgroup = 5; // uyvy422 10bit, 5bytes
         uint16_t xinc   = 2;
         uint16_t yinc   = 1;
         uint16_t offset = 0;
-        width = frame->width;
-        height = frame->height;
-        int timestamp   = f.timestamp; // get_timestamp();
+        uint16_t width = avframe->width;
+        height_ = avframe->height;
+        int timestamp   = frame.timestamp; // get_timestamp();
 
-        while(line < height) {
+        while(line < height_) {
             if(line >= 100)
             {
                 int i = line;
@@ -133,7 +138,7 @@ namespace seeder::rtp
                     line += yinc;
 
                 // calculate continuation marker
-                continue_flag = (left > (6 + pgroup) && line < height) ? 0x80 : 0x00;
+                continue_flag = (left > (6 + pgroup) && line < height_) ? 0x80 : 0x00;
                 // write offset and continuation marker in header
                 *ptr++ = ((offset >> 8) & 0x7F) | continue_flag;
                 *ptr++ = offset & 0xFF;
@@ -150,8 +155,7 @@ namespace seeder::rtp
 
             //// 2 write data in playload
             while (true) {
-                uint32_t offs, ln, i, len, pgs, p;
-                uint8_t *yp, *uvp1, *uvp2;
+                uint32_t offs, ln, i, len, pgs;
 
                 // read length and continue flag
                 len = (headers[0] << 8) | headers[1];  // length
@@ -160,22 +164,24 @@ namespace seeder::rtp
                 continue_flag = headers[4] & 0x80;
                 pgs           = len / pgroup; // how many pgroups
                 headers += 6;
-                yp   = frame->data[0] + ln * width + offs;            // y point in frame
-                p     = (ln * width + offs) / xinc;
-                uvp1 = frame->data[1] + p; // uv point in frame
-                uvp2 = frame->data[2] + p;
 
-                switch (frame->format) {
+                switch (avframe->format) {
                     case AV_PIX_FMT_YUV422P:
+                    {
+                        // frame.data[n] 0:Y 1:U 2:V
+                        uint8_t* yp   = avframe->data[0] + ln * width + offs;            // y point in frame
+                        uint32_t temp     = (ln * width + offs) / xinc;
+                        uint8_t* uvp1 = avframe->data[1] + temp; // uv point in frame
+                        uint8_t* uvp2 = avframe->data[2] + temp;
                         // the graph is the Ycbcr 4:2:2 10bit depth, total 5bytes
                         // 0                   1                   2                   3
                         // 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
                         // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                         // | C’B00 (10 bits)   | Y’00 (10 bits)    | C’R00 (10 bits)   | Y’01 (10 bits)   |
                         // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                        // frame.data[n] 0:Y 1:U 2:V
-                        for (i = 0; i < pgs; i++) {
-                            // 8bit yuv to 10bit ycbcr
+                        for (i = 0; i < pgs; i++) 
+                        {
+                            // 8bit yuv to 10bit ycbcr(CbY0CrY1)
                             //      Cb         Y0        Cr         Y1
                             // xxxxxxxx 00++++++ ++00xxxx xxxx00++ ++++++00
                             //     0        1        2        3        4
@@ -190,8 +196,27 @@ namespace seeder::rtp
                             ++yp;
                             ++uvp2;
                         }
-
                         break;
+                    }
+                    case AV_PIX_FMT_UYVY422:
+                    {
+                        //packed YUV 4:2:2, 16bpp, Cb Y0 Cr Y1
+                        uint8_t* datap   = avframe->data[0] + ln * width + offs; 
+                        for (i = 0; i < pgs; i++) 
+                        {
+                            //8bit UYVY(CbY0CrY1) to 10bit ycbcr(CbY0CrY1)
+                            //      Cb         Y0        Cr         Y1
+                            // xxxxxxxx 00++++++ ++00xxxx xxxx00++ ++++++00
+                            //     0        1        2        3        4
+                            *ptr++ = datap[0];
+                            *ptr++ = datap[1] >> 2;
+                            *ptr++ = datap[1] << 6 | datap[2] >> 4;
+                            *ptr++ = datap[2] << 4 | datap[3] >> 6;
+                            *ptr++ = datap[3] << 2;
+                            datap+=4;
+                        }
+                        break;
+                    }
                 }
 
                 if (!continue_flag)
@@ -203,7 +228,7 @@ namespace seeder::rtp
             rtp_packet->set_sequence_number(sequence_number_);
             rtp_packet->set_timestamp(timestamp);
 
-            if (line >= height) { //complete
+            if (line >= height_) { //complete
                 rtp_packet->set_marker(1);
             }
 
@@ -226,17 +251,16 @@ namespace seeder::rtp
             else
             {
                 boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
-                util::logger->info("error: packet discarded! "); // discard
+                util::logger->error("error: packet discarded! "); // discard
             }
         }
 
-        //auto e = boost::posix_time::microsec_clock::local_time();
-        //util::logger->debug("start st2110 consumer send begin:{}", boost::posix_time::to_iso_string(e - s));
+        //util::logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
     }
 
     /**
      * @brief send frame to the rtp st2110 consumer 
-     * when the frame buffer is full, dicard the oldest frame
+     * when the frame buffer is full, dicard the last frame
      * 
      */
     void rtp_st2110_consumer::send_frame(util::frame frame)
@@ -245,7 +269,7 @@ namespace seeder::rtp
         if(frame_buffer_.size() >= frame_capacity_)
         {
             auto f = frame_buffer_[0];
-            frame_buffer_.pop_front(); // discard the oldest frame
+            frame_buffer_.pop_front(); // discard the last frame
         }
         frame_buffer_.push_back(frame);
     }
@@ -267,6 +291,37 @@ namespace seeder::rtp
         }
 
         return packet;
+    }
+
+    /**
+     * @brief Get the packet batch
+     * 
+     * @return std::vector<std::shared_ptr<packet>> 
+     */
+    std::vector<std::shared_ptr<packet>> rtp_st2110_consumer::get_packet_batch()
+    {
+        std::vector<std::shared_ptr<rtp::packet>> packets;
+        int size = 1;
+        if(height_ > 0)
+        {
+            size = int(height_ / chunks_per_frame_); // each frame send chunks_per_frame_ times
+        }
+
+        std::unique_lock<std::mutex> lock(packet_mutex_);
+        if(size > packet_buffer_.size())
+        {
+            size = packet_buffer_.size();
+        }
+    
+        for(int i = 0; i < size; i++)
+        {
+            std::shared_ptr<rtp::packet> p = packet_buffer_[0];
+            packet_buffer_.pop_front();
+            packets.push_back(p);
+            //util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
+        }
+
+        return packets;
     }
 
 }

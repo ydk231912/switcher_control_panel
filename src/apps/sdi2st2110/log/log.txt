@@ -1,0 +1,11 @@
+[2022-04-29 16:13:36.381] [SEEDER ST2110] [error] file logger test 1.................
+[2022-04-29 16:16:28.008] [SEEDER ST2110] [info] file logger test 1.................
+[2022-05-16 17:56:09.168] [SEEDER ST2110] [error] Failed to enable DeckLink video input.
+[2022-05-16 17:56:09.168] [SEEDER ST2110] [error] channel 1 decklink producer error Failed to enable DeckLink video input.
+[2022-05-16 17:56:09.171] [SEEDER ST2110] [error] bind to ip 192.168.123.40:20001 failed!
+[2022-05-16 17:56:09.171] [SEEDER ST2110] [error] Failed to enable DeckLink video input.
+[2022-05-16 17:56:09.171] [SEEDER ST2110] [error] channel 2 decklink producer error Failed to enable DeckLink video input.
+[2022-05-16 17:57:26.015] [SEEDER ST2110] [error] Failed to enable DeckLink video input.
+[2022-05-16 17:57:26.015] [SEEDER ST2110] [error] channel 1 decklink producer error Failed to enable DeckLink video input.
+[2022-05-16 17:57:26.019] [SEEDER ST2110] [error] Failed to enable DeckLink video input.
+[2022-05-16 17:57:26.019] [SEEDER ST2110] [error] channel 2 decklink producer error Failed to enable DeckLink video input.

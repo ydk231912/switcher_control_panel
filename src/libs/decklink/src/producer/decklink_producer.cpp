@@ -1,8 +1,8 @@
 /**
  * @file decklink_producer.h
- * @author your name (you@domain.com)
+ * @author 
  * @brief decklink producer, capture SDI frame by decklink card
- * @version 0.1
+ * @version 
  * @date 2022-04-19
  * 
  * @copyright Copyright (c) 2022
@@ -13,6 +13,7 @@
 
 #include "producer/decklink_producer.h"
 #include "util/logger.h"
+#include "util.h"
 
 using namespace seeder::util;
 namespace seeder::decklink {
@@ -20,12 +21,13 @@ namespace seeder::decklink {
      * @brief Construct a new decklink producer::decklink producer object.
      * initialize deckllink device and start input stream
      */
-    decklink_producer::decklink_producer()
+    decklink_producer::decklink_producer(int device_id, util::video_format_desc& format_desc)
+    :decklink_index_(device_id)
+    ,format_desc_(format_desc)
     {
         HRESULT result;
-        decklink_index_ = 1;
         pixel_format_ = bmdFormat8BitYUV;
-        bmd_mode_ = bmdModeHD1080p50;
+        bmd_mode_ = get_decklink_video_format(format_desc_.format);
         video_flags_ = 0;
         
         // get the decklink device
@@ -45,12 +47,12 @@ namespace seeder::decklink {
         }
 
         // get decklink input mode
-        // result =  input_->GetDisplayMode(bmd_mode_, &display_mode_);
-        // if(result != S_OK)
-        // {
-        //    logger->error("Failed to get DeckLink input mode.");
-        //    throw std::runtime_error("Failed to get DeckLink input mode.");
-        // }
+        result =  input_->GetDisplayMode(bmd_mode_, &display_mode_);
+        if(result != S_OK)
+        {
+           logger->error("Failed to get DeckLink input mode.");
+           throw std::runtime_error("Failed to get DeckLink input mode.");
+        }
 
         // set the capture callback
         result = input_->SetCallback(this);
@@ -109,6 +111,19 @@ namespace seeder::decklink {
         }
     }
 
+    /**
+     * @brief stop decklink capture
+     * 
+     */
+    void decklink_producer::stop()
+    {
+        if(input_ != nullptr)
+        {
+            input_->StopStreams();
+            input_->DisableAudioInput();
+            input_->DisableVideoInput();
+        }
+    }
 
     ULONG decklink_producer::AddRef(void)
     {
@@ -176,7 +191,7 @@ namespace seeder::decklink {
                 BMDTimeValue duration;
                 if (video->GetStreamTime(&in_video_pts, &duration, AV_TIME_BASE)) 
                 {
-                    frame->pts = in_video_pts;
+                    frame->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
                 }
             }
         }

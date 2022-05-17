@@ -21,14 +21,27 @@ namespace seeder::util
 
     std::shared_ptr<spdlog::logger> create_logger()
     {
-        auto max_size = 1048576 * 10 ; //10M
-        auto max_files = 30;
 
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
         console_sink->set_level(spdlog::level::debug);
+        std::vector< spdlog::sink_ptr> sinks = {console_sink};
+        auto logger = std::make_shared<spdlog::logger>("SEEDER ST2110", sinks.begin(), sinks.end());
+        return logger;
+    }
+
+    std::shared_ptr<spdlog::logger> create_logger(std::string console_level,
+                                                  std::string file_leve,
+                                                  std::string log_path,
+                                                  int max_size,
+                                                  int max_files)
+    {
+        auto size = 1048576 * max_size ; //MB
+
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        console_sink->set_level(spdlog::level::from_str(console_level));
         
-        auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("/home/seeder/logs/st2110/log.txt", max_size, max_files);
-        file_sink->set_level(spdlog::level::warn); //only write error and warn log to file
+        auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_path, size, max_files);
+        file_sink->set_level(spdlog::level::from_str(file_leve));
         
         std::vector< spdlog::sink_ptr> sinks = {console_sink, file_sink};
         auto logger = std::make_shared<spdlog::logger>("SEEDER ST2110", sinks.begin(), sinks.end());
@@ -36,5 +49,9 @@ namespace seeder::util
 
         return logger;
     }
+
+
+
+
     
 }

@@ -30,7 +30,7 @@ class packet
     void reset_size(int length);
 
   private:
-    uint8_t*    data_;
+    uint8_t*    data_ = nullptr;
     int      length_;
 
 };

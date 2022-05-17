@@ -14,8 +14,9 @@ namespace seeder::rtp {
     packet::packet()
     {
         data_ = (uint8_t*)malloc(d10::STANDARD_UDP_SIZE_LIMIT);
-        uint8_t* ptr = data_;
         length_      = d10::STANDARD_UDP_SIZE_LIMIT;
+        
+        uint8_t* ptr = data_;
         if (!ptr)
             return;
 

@@ -37,7 +37,7 @@ namespace seeder::sdl
         sdl_consumer();
         ~sdl_consumer();
 
-        int start();
+        void run();
 
         void send_frame(std::shared_ptr<AVFrame> frm);
         std::shared_ptr<AVFrame> get_frame();

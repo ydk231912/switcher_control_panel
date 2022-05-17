@@ -17,6 +17,8 @@ namespace seeder::util
 {
     class timer
     {
+        std::int_least64_t start_time_;
+
       public:
         /**
          * @brief get system current precise time
@@ -30,6 +32,12 @@ namespace seeder::util
 
             return ms.count();
         }
+
+        timer() { start_time_ = now(); }
+
+        void restart() { start_time_ = now(); }
+
+        double elapsed() const { return static_cast<double>(now() - start_time_);}
 
     };
 }// namespace seeder::util
