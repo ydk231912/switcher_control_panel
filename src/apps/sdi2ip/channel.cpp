@@ -13,20 +13,21 @@
 #include <boost/thread/thread.hpp>
 
 #include "channel.h"
-#include "util/frame.h"
+#include "core/frame.h"
 #include "util/timer.h"
 #include "util/logger.h"
 
 using namespace seeder::util;
+using namespace seeder::core;
 namespace seeder
 {
     channel::channel(channel_config& config)
     :config_(config),
     rtp_consumer_(std::make_shared<rtp::rtp_st2110_consumer>()),
-    udp_client_(std::make_shared<net::udp_client>())
+    udp_sender_(std::make_shared<net::udp_sender>())
     {
-        // bing nic 
-        udp_client_->bind_ip(config.bind_ip, config.bind_port);
+        // bind nic 
+        udp_sender_->bind_ip(config.bind_ip, config.bind_port);
     }
 
     channel::~channel()
@@ -39,8 +40,8 @@ namespace seeder
         if(rtp_consumer_)
             rtp_consumer_.reset();
 
-        if(udp_client_)
-            udp_client_.reset();
+        if(udp_sender_)
+            udp_sender_.reset();
 
         if(sdl_consumer_)
             sdl_consumer_.reset();
@@ -177,7 +178,7 @@ namespace seeder
                             sd.length = p->get_data_size();
                             vdata.push_back(sd);
                         }
-                        udp_client_->sendmmsg_to(vdata, config_.multicast_ip, config_.multicast_port);
+                        udp_sender_->sendmmsg_to(vdata, config_.multicast_ip, config_.multicast_port);
                     }
                     else
                     {
@@ -227,7 +228,7 @@ namespace seeder
                     auto avframe = decklink_producer_->get_frame();
                     if(avframe)
                     {
-                        util::frame frame;
+                        core::frame frame;
                         frame.video = std::move(avframe);
                         auto duration = int(config_.format_desc.fps * 1000 * avframe->pts); //the milliseconds from play start time to now
                         frame.timestamp = int(((start_time + duration) * 90) % int(pow(2, 32))); //timestamp = seconds * 90000 mod 2^32

@@ -15,5 +15,6 @@ namespace seeder { namespace d10 {
     */
     constexpr uint16_t STANDARD_UDP_SIZE_LIMIT = 1370; // 1460 - 8;
     constexpr uint16_t EXTENDED_UDP_SIZE_LIMIT = 8960 - 8;
+    constexpr uint16_t MAX_PACKET_SIZE = 1900;
 
 }} // namespace seeder::d10

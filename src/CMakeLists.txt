@@ -59,7 +59,8 @@ include_directories(./)
 aux_source_directory(./ SRC_LIST)
 add_executable(app ${SRC_LIST})
 
-target_link_libraries(app 
+target_link_libraries(app
+core
 rtp
 st2110
 net

@@ -41,7 +41,7 @@ namespace seeder::rtp
         //util::timer timer;
 
         //get frame from buffer
-        util::frame frame;
+        core::frame frame;
         {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             if(frame_buffer_.size() < 1)
@@ -263,7 +263,7 @@ namespace seeder::rtp
      * when the frame buffer is full, dicard the last frame
      * 
      */
-    void rtp_st2110_consumer::send_frame(util::frame frame)
+    void rtp_st2110_consumer::send_frame(core::frame frame)
     {
         std::unique_lock<std::mutex> lock(frame_mutex_);
         if(frame_buffer_.size() >= frame_capacity_)

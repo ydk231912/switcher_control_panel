@@ -1,8 +1,8 @@
 /**
  * @file server.h
- * @author your name (you@domain.com)
+ * @author 
  * @brief seeder sdi to st2110 server
- * @version 0.1
+ * @version 
  * @date 2022-04-27
  * 
  * @copyright Copyright (c) 2022

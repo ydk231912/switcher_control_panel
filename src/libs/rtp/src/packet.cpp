@@ -56,9 +56,15 @@ namespace seeder::rtp {
         *ptr++ = 0;
     }
 
+    packet::packet(int length)
+    {
+        data_ = (uint8_t*)malloc(length);
+        length_ = length;
+    }
+
     packet::~packet()
     {
-        if (data_)
+        if(data_)
             free(data_);
     }
 

@@ -1,2 +1,2 @@
-add_subdirectory(sdi2st2110)
-add_subdirectory(st21102sdi)
+add_subdirectory(sdi2ip)
+add_subdirectory(ip2sdi)

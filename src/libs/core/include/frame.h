@@ -14,7 +14,7 @@ extern "C"
     #include <libavutil/imgutils.h>
 }
 
-namespace seeder { namespace util {
+namespace seeder { namespace core {
     struct frame
     {
       std::shared_ptr<AVFrame> video;

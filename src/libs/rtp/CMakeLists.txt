@@ -11,6 +11,8 @@ file(COPY ./include/ DESTINATION  ${PROJECT_BINARY_DIR}/include/rtp )
 
 add_library(rtp ${SRC_LIST})
 
-target_link_libraries(rtp 
+target_link_libraries(rtp
+    core
     util
+    st2110
 )

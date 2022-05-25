@@ -15,7 +15,7 @@
 #include <vector>
 #include <boost/rational.hpp>
 
-namespace seeder::util
+namespace seeder::core
 {
     enum class video_format
     {
@@ -89,4 +89,4 @@ namespace seeder::util
         video_format_desc(std::string format_name);
         video_format_desc();
     };
-}// namespace seeder::util
+}// namespace seeder::core

@@ -24,7 +24,7 @@ extern "C"
 }
 
 #include "../interop/DeckLinkAPI.h"
-#include "util/video_format.h"
+#include "core/video_format.h"
 
 namespace seeder::decklink {
     class decklink_producer : public IDeckLinkInputCallback
@@ -34,7 +34,7 @@ namespace seeder::decklink {
          * @brief Construct a new decklink producer::decklink producer object.
          * initialize deckllink device and start input stream
          */
-        decklink_producer(int device_id, util::video_format_desc& format_desc);
+        decklink_producer(int device_id, core::video_format_desc& format_desc);
         ~decklink_producer();
 
 
@@ -91,7 +91,7 @@ namespace seeder::decklink {
 
       private:
         int decklink_index_;
-        util::video_format_desc format_desc_;
+        core::video_format_desc format_desc_;
         BMDVideoInputFlags video_flags_;
         BMDPixelFormat pixel_format_;
         BMDDisplayMode bmd_mode_;

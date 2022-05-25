@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include "util/video_format.h"
+#include "core/video_format.h"
 
 namespace seeder
 {
@@ -27,7 +27,7 @@ namespace seeder
         std::string bind_ip;
         short bind_port;
         bool display_screen;
-        util::video_format_desc format_desc;
+        core::video_format_desc format_desc;
     };
 
     struct config

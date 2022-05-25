@@ -1,7 +1,12 @@
-aux_source_directory(./src/producer SRC_LIST)
+aux_source_directory(./src SRC_LIST)
 include_directories(./include)
-include_directories(${PROGRAM_INCLUDE_PATH})
-link_directories(${PROJECT_SOURCE_DIR}/build/lib)
+include_directories(${PROJECT_SOURCE_DIR}/build/include)
+
+
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build/lib)
+file(COPY ./include/ DESTINATION  ${PROJECT_BINARY_DIR}/include/core)
+
+add_library(core ${SRC_LIST})
 
 # FFMPEG
 set(FFMPEG_INCLUDE_PATH /usr/include)
@@ -18,19 +23,6 @@ list(APPEND FFMPEG_LIBS
     ${FFMPEG_LIB_PATH}/libswresample.so
     )
 
-# DeckLink 
-list(APPEND DECKLINK_LIBS 
-/usr/lib/libDeckLinkAPI.so
-/usr/lib/libDeckLinkPreviewAPI.so)
-
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build/lib)
-file(COPY ./include/ DESTINATION  ${PROJECT_BINARY_DIR}/include/decklink)
-
-add_library(decklink ${SRC_LIST})
-
-target_link_libraries(decklink
-core
-util
+target_link_libraries(core 
 ${FFMPEG_LIBS} 
-${DECKLINK_LIBS}
 )

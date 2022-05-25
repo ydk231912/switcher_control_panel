@@ -14,6 +14,7 @@ class packet
 {
   public:
     packet();
+    packet(int length);
     ~packet();
 
     void set_marker(uint8_t marker);

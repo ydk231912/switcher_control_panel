@@ -12,7 +12,7 @@
 #include <boost/algorithm/string.hpp>
 #include "video_format.h"
 
-namespace seeder::util
+namespace seeder::core
 {
     const std::vector<video_format_desc> format_descs = {
     {video_format::pal, 2, 720, 576, 1024, 576, 50000, 1000, "PAL", {1920 / 2}},
@@ -95,4 +95,4 @@ namespace seeder::util
         *this = format_descs.at(static_cast<int>(video_format::invalid));
     }
 
-} // namespace seeder::util
+} // namespace seeder::core

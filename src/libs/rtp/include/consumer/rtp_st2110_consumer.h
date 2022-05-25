@@ -15,7 +15,7 @@
 #include <mutex>
 #include <deque>
 
-#include "util/frame.h"
+#include "core/frame.h"
 #include "rtp/packet.h"
 
 namespace seeder::rtp
@@ -37,14 +37,14 @@ namespace seeder::rtp
          * @brief send frame to the rtp st2110 consumer 
          * 
          */
-        void send_frame(util::frame);
+        void send_frame(core::frame);
 
         /**
          * @brief Get the frame from the frame buffer
          * 
-         * @return util::frame 
+         * @return core::frame 
          */
-        util::frame get_frame();
+        core::frame get_frame();
 
         /**
          * @brief Get the st2110 packet 
@@ -64,7 +64,7 @@ namespace seeder::rtp
       private:
         uint16_t sequence_number_;
         std::mutex frame_mutex_, packet_mutex_;
-        std::deque<util::frame> frame_buffer_;
+        std::deque<core::frame> frame_buffer_;
         std::deque<std::shared_ptr<rtp::packet>> packet_buffer_;
         const std::size_t frame_capacity_ = 10;
         const std::size_t packet_capacity_ = 30000; // 30k * 1.4k = 42M 

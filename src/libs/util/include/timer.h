@@ -1,8 +1,8 @@
 /**
  * @file timer.h
- * @author your name (you@domain.com)
+ * @author 
  * @brief get system current precise time
- * @version 0.1
+ * @version 
  * @date 2022-04-27
  * 
  * @copyright Copyright (c) 2022

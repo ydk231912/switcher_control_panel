@@ -1,13 +1,14 @@
 /**
  * @file main.cpp
  * @author 
- * @brief convert SDI data to ST2110, send data by udp
- * @version
- * @date 2022-04-26
+ * @brief convert st2110 udp packets to sdi output
+ * @version 
+ * @date 2022-05-18
  * 
  * @copyright Copyright (c) 2022
  * 
  */
+
 #include <string>
 #include <future>
 #include <exception>
@@ -18,21 +19,21 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "util/logger.h"
-#include "util/video_format.h"
+#include "core/video_format.h"
 #include "config.h"
 #include "server.h"
 
 using namespace seeder::util;
 using namespace boost::property_tree;
 
-namespace seeder
+namespace seeder 
 {
     void print_info()
     {
         logger->info("############################################################################");
-        logger->info("SEEDER SDI to SMPTE ST2110 Server 1.00");
+        logger->info("SEEDER SMPTE ST2110 to SDI Server 1.00");
         logger->info("############################################################################");
-        logger->info("Starting SDI to SMPTE ST2110 Server ");
+        logger->info("Starting SMPTE ST2110 to SDI Server ");
     }
 
     // parse config file
@@ -62,7 +63,7 @@ namespace seeder
                 channel.bind_ip = xml_channel.second.get<std::string>("bind-ip");
                 channel.bind_port = xml_channel.second.get<short>("bind-port");
                 channel.display_screen = xml_channel.second.get<bool>("display-screen");
-                channel.format_desc = util::video_format_desc(channel.video_mode);
+                channel.format_desc = core::video_format_desc(channel.video_mode);
                 config.channels.push_back(channel);
             }
         }
@@ -82,7 +83,7 @@ namespace seeder
 
         print_info();
 
-        // start sdi to st2110 server
+        // start st2110 to sdi server
         std::unique_ptr<server> main_server(new server(config));
         main_server->start();
 
@@ -91,7 +92,7 @@ namespace seeder
             while(true)
             {
                 std::string cmd;
-                if(!std::getline(std::cin, cmd)) // block for waiting input
+                if(!std::getline(std::cin, cmd)) // block for waiting the input
                 {
                     std::cin.clear();
                     continue;
@@ -125,7 +126,7 @@ int main(int argc, char* argv[])
     try
     {
         // parse config file
-        auto config = seeder::parse_config("config.xml");
+        auto config = seeder::parse_config("ip2sdi_config.xml");
 
         // set logger config
         logger = create_logger(config.console_level, config.file_level, config.log_path, config.max_size, config.max_files);

@@ -16,12 +16,13 @@
 #include "util.h"
 
 using namespace seeder::util;
+using namespace seeder::core;
 namespace seeder::decklink {
     /**
      * @brief Construct a new decklink producer::decklink producer object.
      * initialize deckllink device and start input stream
      */
-    decklink_producer::decklink_producer(int device_id, util::video_format_desc& format_desc)
+    decklink_producer::decklink_producer(int device_id, video_format_desc& format_desc)
     :decklink_index_(device_id)
     ,format_desc_(format_desc)
     {
