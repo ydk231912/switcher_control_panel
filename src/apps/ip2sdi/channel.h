@@ -14,7 +14,7 @@
 
 #include <thread>
 
-#include "decklink/producer/decklink_producer.h"
+#include "decklink/consumer/decklink_consumer.h"
 #include "rtp/producer/rtp_st2110_producer.h"
 #include "net/udp_receiver.h"
 #include "sdl/consumer/sdl_consumer.h"
@@ -50,7 +50,7 @@ namespace seeder
       
       private:
         channel_config config_;
-        std::shared_ptr<decklink::decklink_producer> decklink_producer_ = nullptr;
+        std::shared_ptr<decklink::decklink_consumer> decklink_consumer_ = nullptr;
         std::shared_ptr<rtp::rtp_st2110_producer> rtp_producer_ = nullptr;
         std::shared_ptr<net::udp_receiver> udp_receiver_ = nullptr;
         std::shared_ptr<sdl::sdl_consumer> sdl_consumer_ = nullptr;

@@ -8,6 +8,7 @@
  * @copyright Copyright (c) 2022
  * 
  */
+#pragma once
 
 #include <string>
 #include <memory>
@@ -15,8 +16,16 @@
 #include "interop/DeckLinkAPI.h"
 #include "core/video_format.h"
 
-namespace seeder::decklink
+namespace seeder::decklink::util
 {
+    /**
+     * @brief get decklink by selected device index
+     * 
+     * @param decklink_index 
+     * @return IDeckLink* 
+     */
+    IDeckLink* get_decklink(int decklink_index);
+    
     /**
      * @brief Get the decklink video format object
      * 

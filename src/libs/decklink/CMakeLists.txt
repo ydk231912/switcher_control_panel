@@ -1,4 +1,4 @@
-aux_source_directory(./src/producer SRC_LIST)
+file(GLOB_RECURSE SRC_LIST src/*.cpp include/*.h)
 include_directories(./include)
 include_directories(${PROGRAM_INCLUDE_PATH})
 link_directories(${PROJECT_SOURCE_DIR}/build/lib)

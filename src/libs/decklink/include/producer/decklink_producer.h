@@ -1,9 +1,9 @@
 /**
- * @file decklink_producer.h
+ * @file decklink_consumer.h
  * @author 
- * @brief decklink producer, capture SDI frame by decklink card
+ * @brief decklink consumer, send SDI frame by decklink card
  * @version 
- * @date 2022-04-19
+ * @date 2022-05-26
  * 
  * @copyright Copyright (c) 2022
  * 
@@ -80,14 +80,6 @@ namespace seeder::decklink {
          * @return std::shared_ptr<AVFrame> 
          */
         std::shared_ptr<AVFrame> get_frame();
-
-        /**
-         * @brief get decklink by selected device index
-         * 
-         * @param decklink_index 
-         * @return IDeckLink* 
-         */
-        IDeckLink* get_decklink(int);
 
       private:
         int decklink_index_;

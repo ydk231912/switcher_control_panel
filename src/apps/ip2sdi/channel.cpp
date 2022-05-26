@@ -23,6 +23,7 @@ namespace seeder
 {
     channel::channel(channel_config& config)
     :config_(config),
+    decklink_consumer_(std::make_shared<decklink::decklink_consumer>(config.device_id, config.format_desc)),
     rtp_producer_(std::make_shared<rtp::rtp_st2110_producer>(config.format_desc)),
     udp_receiver_(std::make_shared<net::udp_receiver>(config.multicast_ip))
     {
@@ -34,8 +35,8 @@ namespace seeder
     {
         stop();
 
-        if(decklink_producer_)
-            decklink_producer_.reset();
+        if(decklink_consumer_)
+            decklink_consumer_.reset();
         
         if(rtp_producer_)
             rtp_producer_.reset();
@@ -88,10 +89,10 @@ namespace seeder
             decklink_thread_->join();
             decklink_thread_.reset();
         }
-        if(decklink_producer_)
+        if(decklink_consumer_)
         {
-            decklink_producer_->stop();
-            decklink_producer_.reset();
+            decklink_consumer_->stop();
+            decklink_consumer_.reset();
         }
 
         if(rtp_thread_ && rtp_thread_->joinable())
@@ -131,12 +132,12 @@ namespace seeder
         decklink_thread_ = std::make_shared<std::thread>([&](){
             try
             {
-                decklink_producer_ = std::make_shared<decklink::decklink_producer>(config_.device_id, config_.format_desc);
-                this->decklink_producer_->start();
+                decklink_consumer_ = std::make_shared<decklink::decklink_consumer>(config_.device_id, config_.format_desc);
+                this->decklink_consumer_->start();
             }
             catch(const std::exception& e)
             {
-                logger->error("channel {} decklink producer error {}", config_.device_id, e.what());
+                logger->error("channel {} decklink consumer error {}", config_.device_id, e.what());
             }
         });
     }
@@ -172,11 +173,11 @@ namespace seeder
                    packet->reset_size(len); // set the packet size by the true receive size
 
                    // push the packet to the rtp producer buffer
-
+                   rtp_producer_->send_packet(packet);
                 }
                 catch(const std::exception& e)
                 {
-                    logger->error("channel {} upd error {}", config_.device_id, e.what());
+                    logger->error("channel {} upd receiver error {}", config_.device_id, e.what());
                 }
             }
         });        
@@ -213,23 +214,18 @@ namespace seeder
             {
                 try
                 {
-                    // capture sdi frame
-                    auto avframe = decklink_producer_->get_frame();
+                    // receive rtp frame
+                    auto avframe = rtp_producer_->get_frame();
                     if(avframe)
                     {
-                        core::frame frame;
-                        frame.video = std::move(avframe);
-                        auto duration = int(config_.format_desc.fps * 1000 * avframe->pts); //the milliseconds from play start time to now
-                        frame.timestamp = int(((start_time + duration) * 90) % int(pow(2, 32))); //timestamp = seconds * 90000 mod 2^32
+                        // push to decklink output
+                        decklink_consumer_->send_frame(avframe);
                         
-                        // push to rtp
-                        //rtp_producer_->send_frame(frame);
-                        
-                        // if(sdl_consumer_)
-                        // {
-                        //     // push to sdl screen display
-                        //     sdl_consumer_->send_frame(frame.video);
-                        // }
+                        if(sdl_consumer_)
+                        {
+                            // push to sdl screen display
+                            sdl_consumer_->send_frame(avframe);
+                        }
                     }
 
                     boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second

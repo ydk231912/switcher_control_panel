@@ -17,6 +17,7 @@
 
 using namespace seeder::util;
 using namespace seeder::core;
+using namespace seeder::decklink::util;
 namespace seeder::decklink {
     /**
      * @brief Construct a new decklink producer::decklink producer object.
@@ -199,7 +200,7 @@ namespace seeder::decklink {
 
         // push the frame into the buffer, if the buffer is full, discard the oldest frame
         {
-            std::unique_lock<std::mutex> lock(frame_mutex_);
+            std::lock_guard<std::mutex> lock(frame_mutex_);
             if(frame_buffer_.size() >= frame_capacity_)
             {
                 auto f = frame_buffer_[0];
@@ -220,7 +221,7 @@ namespace seeder::decklink {
     {
         std::shared_ptr<AVFrame> frame;
         {
-            std::unique_lock<std::mutex> lock(frame_mutex_);
+            std::lock_guard<std::mutex> lock(frame_mutex_);
             if(frame_buffer_.size() < 1)
                 return last_frame_;
 
@@ -231,39 +232,4 @@ namespace seeder::decklink {
 
         return frame;
     }
-
-    /**
-     * @brief get decklink by selected device index
-     * 
-     * @param decklink_index 
-     * @return IDeckLink* 
-     */
-    IDeckLink* decklink_producer::get_decklink(int decklink_index)
-    {
-        IDeckLink* decklink;
-        IDeckLinkIterator* decklink_interator = CreateDeckLinkIteratorInstance();
-        int i = 0;
-        HRESULT result;
-        if(!decklink_interator)
-        {
-            return nullptr;
-        }
-
-        while((result = decklink_interator->Next(&decklink)) == S_OK)
-        {
-            if(i >= decklink_index)
-                break;
-                
-            i++;
-            decklink->Release();
-        }
-
-        decklink_interator->Release();
-
-        if(result != S_OK)
-            return nullptr;
-
-        return decklink;
-    }
-
 }

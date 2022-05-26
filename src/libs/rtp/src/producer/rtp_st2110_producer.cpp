@@ -72,7 +72,11 @@ namespace seeder::rtp
             }
 
             // detect frame transition
-            if(last_frame_timestamp_ != 0 && last_frame_timestamp_ != rtp_header->timestamp)
+            if(last_frame_timestamp_ = 0)
+            {
+                last_frame_timestamp_ = rtp_header->timestamp;
+            }
+            if(last_frame_timestamp_ != rtp_header->timestamp)
             {
                 // new frame, put current_frame to buffer, then alloc new frame
                 send_frame(current_frame_);
@@ -179,32 +183,29 @@ namespace seeder::rtp
     /**
      * @brief Get the packet batch
      * 
-     * @return std::vector<std::shared_ptr<packet>> 
+     * @return std::deque<std::shared_ptr<rtp::packet>>
      */
-    std::vector<std::shared_ptr<packet>> rtp_st2110_producer::get_packet_batch()
+    std::deque<std::shared_ptr<rtp::packet>> rtp_st2110_producer::get_packet_batch()
     {
-        std::vector<std::shared_ptr<rtp::packet>> packets;
-        int size = 1;
-        if(height_ > 0)
-        {
-            size = int(height_ / chunks_per_frame_); // each frame send chunks_per_frame_ times
-        }
-
-        std::unique_lock<std::mutex> lock(packet_mutex_);
-        if(size > packet_buffer_.size())
-        {
-            size = packet_buffer_.size();
-        }
-    
-        for(int i = 0; i < size; i++)
-        {
-            std::shared_ptr<rtp::packet> p = packet_buffer_[0];
-            packet_buffer_.pop_front();
-            packets.push_back(p);
-            //util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
-        }
-
+        std::lock_guard<std::mutex> lock(packet_mutex_);        
+        //cope packets pointer in local variable, in order to quickly unlock the packet buffer
+        std::deque<std::shared_ptr<rtp::packet>> packets(packet_buffer_);
+        packet_buffer_.clear();
         return packets;
+    }
+
+    void rtp_st2110_producer::send_packet(std::shared_ptr<packet> packet)
+    {
+        std::unique_lock<std::mutex> lock(packet_mutex_);
+        if(packet_buffer_.size() < packet_capacity_)
+        {
+            packet_buffer_.push_back(packet); 
+        } 
+        else
+        {
+            // discard the last packet
+            logger->error("The packet is discarded");
+        }
     }
 
 }

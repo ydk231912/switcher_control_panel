@@ -46,7 +46,7 @@ namespace seeder::rtp
             std::lock_guard<std::mutex> lock(frame_mutex_);
             if(frame_buffer_.size() < 1)
             {
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
+                boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
                 return;
             }
 
@@ -260,7 +260,7 @@ namespace seeder::rtp
 
     /**
      * @brief send frame to the rtp st2110 consumer 
-     * when the frame buffer is full, dicard the last frame
+     * if the frame buffer is full, dicard the last frame
      * 
      */
     void rtp_st2110_consumer::send_frame(core::frame frame)
