@@ -215,17 +215,17 @@ namespace seeder
                 try
                 {
                     // receive rtp frame
-                    auto avframe = rtp_producer_->get_frame();
-                    if(avframe)
+                    auto frame = rtp_producer_->get_frame();
+                    if(frame)
                     {
                         // push to decklink output
-                        decklink_consumer_->send_frame(avframe);
+                        decklink_consumer_->send_frame(frame);
                         
-                        if(sdl_consumer_)
-                        {
-                            // push to sdl screen display
-                            sdl_consumer_->send_frame(avframe);
-                        }
+                        // if(sdl_consumer_)
+                        // {
+                        //     // push to sdl screen display
+                        //     sdl_consumer_->send_frame(frame);
+                        // }
                     }
 
                     boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second

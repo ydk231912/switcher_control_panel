@@ -17,6 +17,7 @@
 #include "consumer/decklink_consumer.h"
 #include "util/logger.h"
 #include "util.h"
+#include "util/color_conversion.h"
 
 using namespace seeder::util;
 using namespace seeder::core;
@@ -58,8 +59,16 @@ namespace seeder::decklink {
            throw std::runtime_error("Failed to get DeckLink output mode.");
         }
 
+        // enable video output
+        result = output_->EnableVideoOutput(bmd_mode_, bmdVideoOutputFlagDefault);
+        if (result != S_OK)
+        {
+            logger->error("Unable to enable video output");
+            throw std::runtime_error("Unable to enable video output");
+        }
+
         // create display frame
-        auto outputBytesPerRow = ((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
+        auto outputBytesPerRow = display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
         result = output_->CreateVideoFrame((int32_t)display_mode_->GetWidth(),
 													  (int32_t)display_mode_->GetHeight(),
 													  outputBytesPerRow,
@@ -70,7 +79,18 @@ namespace seeder::decklink {
         {
            logger->error("Unable to create video frame.");
            throw std::runtime_error("Unable to create video frame.");
-        }                                                    
+        }
+
+        // // ffmpeg sws context, AV_PIX_FMT_UYVY422 to AV_PIX_FMT_RGBA
+        // sws_ctx_ = sws_getContext(format_desc.width, format_desc.height, AV_PIX_FMT_UYVY422,
+        //                     format_desc.width, format_desc.height, AV_PIX_FMT_BGRA, 
+        //                     SWS_BICUBIC, NULL, NULL, NULL);
+        
+        // dst_frame_ = av_frame_alloc();
+        // int buf_size = av_image_get_buffer_size(AV_PIX_FMT_BGRA, format_desc.width, format_desc.height, 1);
+        // dst_frame_buffer_ = (uint8_t*)av_malloc(buf_size);
+        // av_image_fill_arrays(dst_frame_->data, dst_frame_->linesize, dst_frame_buffer_, AV_PIX_FMT_BGRA, 
+        //                     format_desc.width, format_desc.height, 1);
     }
     
     decklink_consumer::~decklink_consumer()
@@ -82,6 +102,12 @@ namespace seeder::decklink {
         if(decklink_ != nullptr) decklink_->Release();
 
         if(playbackFrame_ != nullptr) playbackFrame_->Release();
+
+        if(sws_ctx_) sws_freeContext(sws_ctx_);
+
+        if(dst_frame_)  av_frame_free(&dst_frame_);
+
+        if(dst_frame_buffer_) av_free(dst_frame_buffer_);
     }
 
     /**
@@ -95,7 +121,7 @@ namespace seeder::decklink {
 
         while(!abort_)
         {
-            std::shared_ptr<AVFrame> frame;
+            std::shared_ptr<buffer> frame;
             {
                 std::lock_guard<std::mutex> lock(frame_mutex_);
                 if(frame_buffer_.size() < 1)
@@ -107,16 +133,21 @@ namespace seeder::decklink {
                 frame_buffer_.pop_front();
             }
 
+            // convert frame format
+            // sws_scale(sws_ctx_, (const uint8_t *const *)frame->data,
+            //                         frame->linesize, 0, format_desc_.height, dst_frame_->data, dst_frame_->linesize);
+            // convert uyvy422 10bit to decklink bgra 8 bit
+            auto bgra_frame = ycbcr422_to_bgra(frame, format_desc_);
+
             // fill playback frame
             uint8_t* deckLinkBuffer = nullptr;
             if (playbackFrame_->GetBytes((void**)&deckLinkBuffer) != S_OK)
             {
                 logger->error("Could not get DeckLinkVideoFrame buffer pointer");
             }
-            //memset(deckLinkBuffer, 0, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
-            //memcpy(deckLinkBuffer, frame->data[0], playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
-
-            deckLinkBuffer = reinterpret_cast<uint8_t*>(frame->data[0]);
+            //deckLinkBuffer = reinterpret_cast<uint8_t*>(dst_frame_->data[0]);
+            memset(deckLinkBuffer, 0, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
+            memcpy(deckLinkBuffer, bgra_frame->begin(), playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
 
             result = output_->DisplayVideoFrameSync(playbackFrame_);
 			if (result != S_OK)
@@ -140,7 +171,7 @@ namespace seeder::decklink {
      * if the frame buffer is full, dicard the last frame
      * 
      */
-    void decklink_consumer::send_frame(std::shared_ptr<AVFrame> frame)
+    void decklink_consumer::send_frame(std::shared_ptr<buffer> frame)
     {
         std::lock_guard<std::mutex> lock(frame_mutex_);
         if(frame_buffer_.size() >= frame_capacity_)

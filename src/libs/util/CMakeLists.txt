@@ -23,6 +23,7 @@ list(APPEND FFMPEG_LIBS
     ${FFMPEG_LIB_PATH}/libswresample.so
     )
 
-target_link_libraries(util 
+target_link_libraries(util
+core
 ${FFMPEG_LIBS} 
 )

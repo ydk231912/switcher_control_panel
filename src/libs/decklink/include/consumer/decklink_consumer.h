@@ -25,7 +25,9 @@ extern "C"
 
 #include "../interop/DeckLinkAPI.h"
 #include "core/video_format.h"
+#include "util/buffer.h"
 
+using namespace seeder::util;
 namespace seeder::decklink {
     class decklink_consumer
     {
@@ -54,25 +56,29 @@ namespace seeder::decklink {
          * 
          * @return void
          */
-        void send_frame(std::shared_ptr<AVFrame>);
+        void send_frame(std::shared_ptr<buffer>);
 
       private:
         int decklink_index_;
         core::video_format_desc format_desc_;
         BMDVideoInputFlags video_flags_;
-        BMDPixelFormat pixel_format_ = bmdFormat10BitYUV;
+        BMDPixelFormat pixel_format_ = bmdFormat8BitBGRA;
         BMDDisplayMode bmd_mode_;
         IDeckLinkDisplayMode* display_mode_;
         IDeckLink* decklink_;
         IDeckLinkOutput* output_;
         bool abort_ = false;
+
         IDeckLinkMutableVideoFrame*	playbackFrame_ = nullptr;
+        SwsContext* sws_ctx_ = nullptr;
+        AVFrame* dst_frame_ = nullptr;
+        uint8_t * dst_frame_buffer_ = nullptr;
 
         //buffer
         std::mutex frame_mutex_;
-        std::deque<std::shared_ptr<AVFrame>> frame_buffer_;
+        std::deque<std::shared_ptr<buffer>> frame_buffer_;
         const size_t frame_capacity_ = 5;
-        std::shared_ptr<AVFrame> last_frame_;
+        std::shared_ptr<buffer> last_frame_;
     };
 
 }

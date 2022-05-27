@@ -29,7 +29,8 @@ namespace seeder::rtp
     :format_desc_(format_desc)
     {
         // create new frame
-        current_frame_ = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+        frame_size_ = static_cast<int>((format_desc.width * 5 / 2) * format_desc.height); // 2 pixel = 40bit
+        current_frame_ = std::make_shared<buffer>(frame_size_);
     }
 
     rtp_st2110_producer::~rtp_st2110_producer()
@@ -80,7 +81,7 @@ namespace seeder::rtp
             {
                 // new frame, put current_frame to buffer, then alloc new frame
                 send_frame(current_frame_);
-                current_frame_ = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+                current_frame_ = std::make_shared<buffer>(frame_size_);
                 last_frame_timestamp_ = rtp_header->timestamp;
             }
 
@@ -119,7 +120,8 @@ namespace seeder::rtp
             {
                 const auto byte_offset = static_cast<int>(line_offset[i] * samples_per_pixel_ * color_depth_ / 8);
                 const auto line_byte = static_cast<int>(format_desc_.width * samples_per_pixel_ * color_depth_ / 8) * line_number[i];
-                const auto target = current_frame_->data[0] + line_byte + byte_offset;
+                const auto target = current_frame_->begin() + line_byte + byte_offset;
+                // TODO: 10bit UYVY to 8bit UYVY, because ffmpeg not have 10bit UYVY format
                 std::memcpy(target, ptr, line_length[i]);
                 ptr += line_length[i];
             }
@@ -131,9 +133,9 @@ namespace seeder::rtp
      * @brief send the frame to the rtp frame buffer 
      * 
      */
-    void rtp_st2110_producer::send_frame(std::shared_ptr<AVFrame> frame)
+    void rtp_st2110_producer::send_frame(std::shared_ptr<buffer> frame)
     {
-        std::unique_lock<std::mutex> lock(frame_mutex_);
+        std::lock_guard<std::mutex> lock(frame_mutex_);
         if(frame_buffer_.size() >= frame_capacity_)
         {
             auto f = frame_buffer_[0];
@@ -146,11 +148,11 @@ namespace seeder::rtp
      * @brief Get the frame from the frame buffer
      * 
      */
-    std::shared_ptr<AVFrame> rtp_st2110_producer::get_frame()
+    std::shared_ptr<buffer> rtp_st2110_producer::get_frame()
     {
-        std::shared_ptr<AVFrame> frame;
+        std::shared_ptr<buffer> frame;
         {
-            std::unique_lock<std::mutex> lock(frame_mutex_);
+            std::lock_guard<std::mutex> lock(frame_mutex_);
             if(frame_buffer_.size() > 0)
             {
                 frame = frame_buffer_[0];
@@ -169,7 +171,7 @@ namespace seeder::rtp
     std::shared_ptr<packet> rtp_st2110_producer::get_packet()
     {
         std::shared_ptr<rtp::packet> packet = nullptr;
-        std::unique_lock<std::mutex> lock(packet_mutex_);
+        std::lock_guard<std::mutex> lock(packet_mutex_);
         if(packet_buffer_.size() > 0)
         {
             packet = packet_buffer_[0];
@@ -196,7 +198,7 @@ namespace seeder::rtp
 
     void rtp_st2110_producer::send_packet(std::shared_ptr<packet> packet)
     {
-        std::unique_lock<std::mutex> lock(packet_mutex_);
+        std::lock_guard<std::mutex> lock(packet_mutex_);
         if(packet_buffer_.size() < packet_capacity_)
         {
             packet_buffer_.push_back(packet); 
