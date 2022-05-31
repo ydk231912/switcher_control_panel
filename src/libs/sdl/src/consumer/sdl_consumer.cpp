@@ -30,7 +30,6 @@ namespace seeder::sdl
         auto frame = get_frame();
         if(!frame)
         {
-            boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
             return;
         }
 
@@ -97,17 +96,18 @@ namespace seeder::sdl
     void sdl_consumer::send_frame(std::shared_ptr<AVFrame> frm)
     {
         std::unique_lock<std::mutex> lock(frame_mutex_);
+        
         frame_buffer_.push_back(frm);
         lock.unlock();
     }
 
     std::shared_ptr<AVFrame> sdl_consumer::get_frame()
     {
-        std::shared_ptr<AVFrame> frame = NULL;
+        std::shared_ptr<AVFrame> frame = nullptr;
         
+        std::unique_lock<std::mutex> lock(frame_mutex_);
         if(frame_buffer_.size() > 0)
         {
-            std::unique_lock<std::mutex> lock(frame_mutex_);
             frame = frame_buffer_[0];
             frame_buffer_.pop_front();
             lock.unlock();

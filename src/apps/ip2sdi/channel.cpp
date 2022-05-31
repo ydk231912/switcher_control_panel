@@ -23,9 +23,9 @@ namespace seeder
 {
     channel::channel(channel_config& config)
     :config_(config),
-    decklink_consumer_(std::make_shared<decklink::decklink_consumer>(config.device_id, config.format_desc)),
-    rtp_producer_(std::make_shared<rtp::rtp_st2110_producer>(config.format_desc)),
-    udp_receiver_(std::make_shared<net::udp_receiver>(config.multicast_ip))
+    decklink_consumer_(std::make_unique<decklink::decklink_consumer>(config.device_id, config.format_desc)),
+    rtp_producer_(std::make_unique<rtp::rtp_st2110_producer>(config.format_desc)),
+    udp_receiver_(std::make_unique<net::udp_receiver>(config.multicast_ip))
     {
         // bind nic 
         // udp_receiver_->bind_ip(config.bind_ip, config.bind_port);
@@ -84,16 +84,13 @@ namespace seeder
         abort_ = true;
 
         // wait for threads to complete
+        if(decklink_consumer_) decklink_consumer_->stop();
         if(decklink_thread_ && decklink_thread_->joinable())
         {
             decklink_thread_->join();
             decklink_thread_.reset();
         }
-        if(decklink_consumer_)
-        {
-            decklink_consumer_->stop();
-            decklink_consumer_.reset();
-        }
+        if(decklink_consumer_)  decklink_consumer_.reset();
 
         if(rtp_thread_ && rtp_thread_->joinable())
         {
@@ -129,10 +126,10 @@ namespace seeder
     // start sdi producer in separate thread
     void channel::start_decklink()
     {
-        decklink_thread_ = std::make_shared<std::thread>([&](){
+        decklink_thread_ = std::make_unique<std::thread>([&](){
             try
             {
-                decklink_consumer_ = std::make_shared<decklink::decklink_consumer>(config_.device_id, config_.format_desc);
+                decklink_consumer_ = std::make_unique<decklink::decklink_consumer>(config_.device_id, config_.format_desc);
                 this->decklink_consumer_->start();
             }
             catch(const std::exception& e)
@@ -145,7 +142,7 @@ namespace seeder
     // start rtp consume in separate thread
     void channel::start_rtp()
     {
-        rtp_thread_ = std::make_shared<std::thread>([&](){
+        rtp_thread_ = std::make_unique<std::thread>([&](){
             while(!abort_)
             {
                 try
@@ -163,7 +160,7 @@ namespace seeder
     // start udp receive in separate thread
     void channel::start_udp()
     {
-        udp_thread_ = std::make_shared<std::thread>([&](){
+        udp_thread_ = std::make_unique<std::thread>([&](){
             while(!abort_)
             {
                 try
@@ -189,8 +186,8 @@ namespace seeder
         if(!config_.display_screen)
             return;
         
-        sdl_consumer_ = std::make_shared<sdl::sdl_consumer>();
-        sdl_thread_ = std::make_shared<std::thread>([&](){
+        sdl_consumer_ = std::make_unique<sdl::sdl_consumer>();
+        sdl_thread_ = std::make_unique<std::thread>([&](){
             while(!abort_)
             {
                 try
@@ -208,7 +205,7 @@ namespace seeder
     // do main loop, capture sdi(decklink) input frame, encode to st2110 packets
     void channel::run()
     {
-        channel_thread_ = std::make_shared<std::thread>([&](){
+        channel_thread_ = std::make_unique<std::thread>([&](){
             auto start_time = util::timer::now();
             while(!abort_)
             {

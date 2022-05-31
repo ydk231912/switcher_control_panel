@@ -23,8 +23,8 @@ namespace seeder
 {
     channel::channel(channel_config& config)
     :config_(config),
-    rtp_consumer_(std::make_shared<rtp::rtp_st2110_consumer>()),
-    udp_sender_(std::make_shared<net::udp_sender>())
+    rtp_consumer_(std::make_unique<rtp::rtp_st2110_consumer>()),
+    udp_sender_(std::make_unique<net::udp_sender>())
     {
         // bind nic 
         udp_sender_->bind_ip(config.bind_ip, config.bind_port);
@@ -83,17 +83,17 @@ namespace seeder
         abort_ = true;
 
         // wait for threads to complete
-        if(decklink_thread_ && decklink_thread_->joinable())
-        {
-            decklink_thread_->join();
-            decklink_thread_.reset();
-        }
         if(decklink_producer_)
         {
             decklink_producer_->stop();
             decklink_producer_.reset();
         }
-
+        if(decklink_thread_ && decklink_thread_->joinable())
+        {
+            decklink_thread_->join();
+            decklink_thread_.reset();
+        }
+        
         if(rtp_thread_ && rtp_thread_->joinable())
         {
             rtp_thread_->join();
@@ -111,11 +111,12 @@ namespace seeder
             sdl_thread_->join();
             sdl_thread_.reset();
         }
+
         if(sdl_consumer_)
         {
             sdl_consumer_.reset();
         }
-
+        
         if(channel_thread_ && channel_thread_->joinable())
         {
             channel_thread_->join();
@@ -128,10 +129,10 @@ namespace seeder
     // start sdi producer in separate thread
     void channel::start_decklink()
     {
-        decklink_thread_ = std::make_shared<std::thread>([&](){
+        decklink_thread_ = std::make_unique<std::thread>([&](){
             try
             {
-                decklink_producer_ = std::make_shared<decklink::decklink_producer>(config_.device_id, config_.format_desc);
+                decklink_producer_ = std::make_unique<decklink::decklink_producer>(config_.device_id, config_.format_desc);
                 this->decklink_producer_->start();
             }
             catch(const std::exception& e)
@@ -144,7 +145,7 @@ namespace seeder
     // start rtp consume in separate thread
     void channel::start_rtp()
     {
-        rtp_thread_ = std::make_shared<std::thread>([&](){
+        rtp_thread_ = std::make_unique<std::thread>([&](){
             while(!abort_)
             {
                 try
@@ -162,7 +163,7 @@ namespace seeder
     // start udp consume in separate thread
     void channel::start_udp()
     {
-        udp_thread_ = std::make_shared<std::thread>([&](){
+        udp_thread_ = std::make_unique<std::thread>([&](){
             while(!abort_)
             {
                 try
@@ -171,6 +172,7 @@ namespace seeder
                     if(packets.size() > 0)
                     {
                         std::vector<net::send_data> vdata;
+                        vdata.reserve(packets.size());
                         for(auto p : packets)
                         {
                             net::send_data sd;
@@ -179,10 +181,6 @@ namespace seeder
                             vdata.push_back(sd);
                         }
                         udp_sender_->sendmmsg_to(vdata, config_.multicast_ip, config_.multicast_port);
-                    }
-                    else
-                    {
-                        boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
                     }
                 }
                 catch(const std::exception& e)
@@ -199,8 +197,8 @@ namespace seeder
         if(!config_.display_screen)
             return;
         
-        sdl_consumer_ = std::make_shared<sdl::sdl_consumer>();
-        sdl_thread_ = std::make_shared<std::thread>([&](){
+        sdl_consumer_ = std::make_unique<sdl::sdl_consumer>();
+        sdl_thread_ = std::make_unique<std::thread>([&](){
             while(!abort_)
             {
                 try
@@ -218,7 +216,7 @@ namespace seeder
     // do main loop, capture sdi(decklink) input frame, encode to st2110 packets
     void channel::run()
     {
-        channel_thread_ = std::make_shared<std::thread>([&](){
+        channel_thread_ = std::make_unique<std::thread>([&](){
             auto start_time = util::timer::now();
             while(!abort_)
             {
@@ -229,7 +227,7 @@ namespace seeder
                     if(avframe)
                     {
                         core::frame frame;
-                        frame.video = std::move(avframe);
+                        frame.video = avframe;
                         auto duration = int(config_.format_desc.fps * 1000 * avframe->pts); //the milliseconds from play start time to now
                         frame.timestamp = int(((start_time + duration) * 90) % int(pow(2, 32))); //timestamp = seconds * 90000 mod 2^32
                         

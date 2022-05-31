@@ -48,7 +48,7 @@ namespace seeder::rtp
 
         // 1. get packets
         std::unique_lock<std::mutex> lock(packet_mutex_);
-        if(packet_buffer_.size() < 1) return;
+        packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
         
         //cope packets pointer in local variable, in order to quickly unlock the packet buffer
         std::deque<std::shared_ptr<rtp::packet>> packets(packet_buffer_);
@@ -140,6 +140,7 @@ namespace seeder::rtp
         {
             auto f = frame_buffer_[0];
             frame_buffer_.pop_front(); // discard the last frame
+            logger->error("The frame is discarded");
         }
         frame_buffer_.push_back(frame);
     }
@@ -202,6 +203,7 @@ namespace seeder::rtp
         if(packet_buffer_.size() < packet_capacity_)
         {
             packet_buffer_.push_back(packet); 
+            packet_cv_.notify_all();
         } 
         else
         {

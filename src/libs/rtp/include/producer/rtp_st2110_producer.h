@@ -14,6 +14,7 @@
 #include <memory>
 #include <mutex>
 #include <deque>
+#include <condition_variable>
 
 extern "C"
 {
@@ -87,6 +88,7 @@ namespace seeder::rtp
         std::deque<std::shared_ptr<rtp::packet>> packet_buffer_;
         const std::size_t frame_capacity_ = 10;
         const std::size_t packet_capacity_ = 30000; // 30k * 1.4k = 42M 
+        std::condition_variable packet_cv_;
 
         const float samples_per_pixel_ = 2; //YCbCr_4_2_2:2; YCbCr_4_4_4: 3; RGB_4_4_4: 3;YCbCr_4_2_0: 1.5
         const int color_depth_ = 10;

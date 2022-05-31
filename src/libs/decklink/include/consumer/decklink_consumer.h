@@ -14,6 +14,7 @@
 #include <mutex>
 #include <memory>
 #include <deque>
+#include <condition_variable>
 
 extern "C"
 {
@@ -79,6 +80,7 @@ namespace seeder::decklink {
         std::deque<std::shared_ptr<buffer>> frame_buffer_;
         const size_t frame_capacity_ = 5;
         std::shared_ptr<buffer> last_frame_;
+        std::condition_variable frame_cv_;
     };
 
 }

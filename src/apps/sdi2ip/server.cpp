@@ -54,7 +54,7 @@ namespace seeder
 
         // TODO: add controller server
 
-        logger->info("Start sdi to st2110 Server completed");
+        logger->info("Start sdi to st2110 server completed");
     }
 
     /**

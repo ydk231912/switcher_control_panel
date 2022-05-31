@@ -15,6 +15,7 @@
 #include <string>
 #include <mutex>
 #include <deque>
+#include <condition_variable>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_rect.h>

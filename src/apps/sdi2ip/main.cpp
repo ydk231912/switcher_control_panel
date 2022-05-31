@@ -119,29 +119,6 @@ namespace seeder
 
 } // namespace seeder
 
-// move function test
-void test()
-{
-    int* a = (int*)malloc(8);
-    *a = 1;
-    int a1 = *a;
-    a++;
-    *a = 2;
-    int a2 = *a;
-    a--;
-    
-    int* b = std::move(a);
-    int a3 = *a;
-
-    int b1 = *b;
-    b++;
-    int b2 = *b;
-    b--;
-    free(b);
-    int b3 = *b;
-    int a4 = *a;
-}
-
 int main(int argc, char* argv[])
 {
     int return_code = 0;

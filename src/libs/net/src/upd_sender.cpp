@@ -85,7 +85,7 @@ namespace seeder { namespace net {
        * @param ip 
        * @param port 
        */
-    void udp_sender::sendmmsg_to(std::vector<send_data> data, std::string ip, short port)
+    void udp_sender::sendmmsg_to(std::vector<send_data> data, std::string& ip, short port)
     {
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));

@@ -14,6 +14,7 @@
 #include <memory>
 #include <mutex>
 #include <deque>
+#include <condition_variable>
 
 #include "core/frame.h"
 #include "rtp/packet.h"
@@ -70,6 +71,8 @@ namespace seeder::rtp
         const std::size_t packet_capacity_ = 30000; // 30k * 1.4k = 42M 
         const std::size_t chunks_per_frame_ = 10;
         uint16_t height_;
+        std::condition_variable frame_cv_;
+        std::condition_variable packet_cv_;
 
 
     };

@@ -123,12 +123,8 @@ namespace seeder::decklink {
         {
             std::shared_ptr<buffer> frame;
             {
-                std::lock_guard<std::mutex> lock(frame_mutex_);
-                if(frame_buffer_.size() < 1)
-                {
-                    boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-                    continue;
-                }
+                std::unique_lock<std::mutex> lock(frame_mutex_);
+                frame_cv_.wait(lock, [this](){return !frame_buffer_.empty();});
                 frame = frame_buffer_[0];
                 frame_buffer_.pop_front();
             }
@@ -178,7 +174,9 @@ namespace seeder::decklink {
         {
             auto f = frame_buffer_[0];
             frame_buffer_.pop_front(); // discard the last frame
+            logger->error("The frame be discarded");
         }
         frame_buffer_.push_back(frame);
+        frame_cv_.notify_all();
     }
 }

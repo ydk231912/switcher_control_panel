@@ -67,20 +67,16 @@ namespace seeder::decklink {
     
     decklink_producer::~decklink_producer()
     {
+        stop();
+
         if(display_mode_ != nullptr)
             display_mode_->Release();
 
         if(input_ != nullptr)
-        {
-            input_->StopStreams();
-            input_->DisableAudioInput();
-            input_->DisableVideoInput();
             input_->Release();
-        }
 
         if(decklink_ != nullptr)
             decklink_->Release();
-
     }
 
     /**

@@ -50,17 +50,17 @@ namespace seeder
       
       private:
         channel_config config_;
-        std::shared_ptr<decklink::decklink_consumer> decklink_consumer_ = nullptr;
-        std::shared_ptr<rtp::rtp_st2110_producer> rtp_producer_ = nullptr;
-        std::shared_ptr<net::udp_receiver> udp_receiver_ = nullptr;
-        std::shared_ptr<sdl::sdl_consumer> sdl_consumer_ = nullptr;
+        std::unique_ptr<decklink::decklink_consumer> decklink_consumer_ = nullptr;
+        std::unique_ptr<rtp::rtp_st2110_producer> rtp_producer_ = nullptr;
+        std::unique_ptr<net::udp_receiver> udp_receiver_ = nullptr;
+        std::unique_ptr<sdl::sdl_consumer> sdl_consumer_ = nullptr;
 
         //thread
-        std::shared_ptr<std::thread> decklink_thread_ = nullptr;
-        std::shared_ptr<std::thread> rtp_thread_ = nullptr;
-        std::shared_ptr<std::thread> udp_thread_ = nullptr;
-        std::shared_ptr<std::thread> sdl_thread_ = nullptr;
-        std::shared_ptr<std::thread> channel_thread_ = nullptr;
+        std::unique_ptr<std::thread> decklink_thread_ = nullptr;
+        std::unique_ptr<std::thread> rtp_thread_ = nullptr;
+        std::unique_ptr<std::thread> udp_thread_ = nullptr;
+        std::unique_ptr<std::thread> sdl_thread_ = nullptr;
+        std::unique_ptr<std::thread> channel_thread_ = nullptr;
         bool abort_ = false;
 
     };

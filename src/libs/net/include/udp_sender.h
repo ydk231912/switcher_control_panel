@@ -46,7 +46,7 @@ class udp_sender
        * @param ip 
        * @param port 
        */
-      void sendmmsg_to(std::vector<send_data> data, std::string ip, short port);
+      void sendmmsg_to(std::vector<send_data> data, std::string& ip, short port);
 
   private:
       int socket_;

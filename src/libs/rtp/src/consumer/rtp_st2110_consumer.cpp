@@ -43,12 +43,8 @@ namespace seeder::rtp
         //get frame from buffer
         core::frame frame;
         {
-            std::lock_guard<std::mutex> lock(frame_mutex_);
-            if(frame_buffer_.size() < 1)
-            {
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-                return;
-            }
+            std::unique_lock<std::mutex> lock(frame_mutex_);
+            frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); // block until the buffer is not empty
 
             frame = frame_buffer_[0];
             frame_buffer_.pop_front();
@@ -240,17 +236,18 @@ namespace seeder::rtp
             //client_.send_to(rtp_packet->get_data_ptr(), rtp_packet->get_data_size(), "239.0.10.1", 20000);
             // st20_to_png(rtp_packet);
 
-            // 4 push to buffer  
+            // 4 push to buffer
+            std::unique_lock<std::mutex> lock(packet_mutex_);
             if(packet_buffer_.size() < packet_capacity_)
             {
-                std::unique_lock<std::mutex> lock(packet_mutex_);
                 packet_buffer_.push_back(rtp_packet);
+                packet_cv_.notify_all();
+
                 //debug
                 util::logger->debug("packet buffer size: {}", packet_buffer_.size());
             }
             else
             {
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(5));
                 util::logger->error("error: packet discarded! "); // discard
             }
         }
@@ -272,6 +269,7 @@ namespace seeder::rtp
             frame_buffer_.pop_front(); // discard the last frame
         }
         frame_buffer_.push_back(frame);
+        frame_cv_.notify_all();
     }
 
     /**
@@ -283,12 +281,11 @@ namespace seeder::rtp
     {
         std::shared_ptr<rtp::packet> packet = nullptr;
         std::unique_lock<std::mutex> lock(packet_mutex_);
-        if(packet_buffer_.size() > 0)
-        {
-            packet = packet_buffer_[0];
-            packet_buffer_.pop_front();
-            //util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
-        }
+        packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
+        packet = packet_buffer_[0];
+        packet_buffer_.pop_front();
+        packet_cv_.notify_all();
+        //util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
 
         return packet;
     }
@@ -308,11 +305,13 @@ namespace seeder::rtp
         }
 
         std::unique_lock<std::mutex> lock(packet_mutex_);
+        packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
         if(size > packet_buffer_.size())
         {
             size = packet_buffer_.size();
         }
-    
+
+        packets.reserve(size);
         for(int i = 0; i < size; i++)
         {
             std::shared_ptr<rtp::packet> p = packet_buffer_[0];
@@ -320,6 +319,7 @@ namespace seeder::rtp
             packets.push_back(p);
             //util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
         }
+        packet_cv_.notify_all();
 
         return packets;
     }
