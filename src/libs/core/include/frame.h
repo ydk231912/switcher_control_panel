@@ -18,6 +18,6 @@ namespace seeder { namespace core {
     struct frame
     {
       std::shared_ptr<AVFrame> video;
-      int timestamp;
+      uint32_t timestamp;
     };
 }}

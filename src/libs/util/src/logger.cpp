@@ -1,8 +1,8 @@
 /**
  * @file logger.h
- * @author your name (you@domain.com)
+ * @author 
  * @brief spdlog configure
- * @version 0.1
+ * @version 
  * @date 2022-04-24
  * 
  * @copyright Copyright (c) 2022
@@ -46,6 +46,7 @@ namespace seeder::util
         std::vector< spdlog::sink_ptr> sinks = {console_sink, file_sink};
         auto logger = std::make_shared<spdlog::logger>("SEEDER ST2110", sinks.begin(), sinks.end());
         //logger->set_level(spdlog::level::debug);
+        //logger->set_pattern("[%H:%M:%S %z] [%n] [%^---%L---%$] [thread %t] %s"); //https://github.com/gabime/spdlog/wiki/3.-Custom-formatting
 
         return logger;
     }

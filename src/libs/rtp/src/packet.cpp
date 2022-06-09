@@ -37,7 +37,7 @@ namespace seeder::rtp {
         uint8_t extension = 0;
         uint8_t padding = 0;
         uint8_t version = 2;
-        uint8_t payload_type = 102; // 96 97 102  103
+        uint8_t payload_type = 96; // 96 97 102  103
         uint8_t marker       = 0;
 
         //*ptr++ = ((csrc_count << 4) & 0xf0) | ((extension << 3) & 0x08) | ((padding << 2) & 0x04) | (version & 0x03);
@@ -113,7 +113,7 @@ namespace seeder::rtp {
     void packet::set_marker(uint8_t marker)
     {
         uint8_t* ptr   = data_ + 1;
-        uint8_t  payload_type = 102;
+        uint8_t  payload_type = 96;
         *ptr = (payload_type & 0x7f) | ((marker << 7) & 0x80);
     }
 

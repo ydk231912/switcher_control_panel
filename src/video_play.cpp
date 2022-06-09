@@ -115,7 +115,7 @@ namespace seeder
                     boost::this_thread::sleep_for(boost::chrono::milliseconds(40));
                 }
 
-                util::frame frm;
+                core::frame frm;
                 int duration = fps * 1000 * avframe->pts; //the milliseconds from play start time to now
                 // st2110 rtp video timestamp = seconds * 90000 mod 2^32
                 frm.timestamp = (int)(((start_time + duration) * 90) % (int)pow(2, 32));
@@ -146,9 +146,9 @@ namespace seeder
      * 
      * @return frame
      */
-    util::frame video_play::receive_frame()
+    core::frame video_play::receive_frame()
     {
-        util::frame frm;
+        core::frame frm;
         std::unique_lock<std::mutex> lock(buffer_mutex_);
         if(frame_buffer_.empty())
             return frm;

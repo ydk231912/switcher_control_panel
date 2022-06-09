@@ -22,7 +22,7 @@ namespace seeder
      * 
      * @return int 
      */
-    int rtp_st2110::rtp_handler(util::frame frm)
+    int rtp_st2110::rtp_handler(core::frame frm)
     {
         auto s = boost::posix_time::microsec_clock::local_time();
 
@@ -218,15 +218,15 @@ namespace seeder
         return 0;
     }
 
-    void rtp_st2110::push_frame(util::frame frm)
+    void rtp_st2110::push_frame(core::frame frm)
     {
         std::unique_lock<std::mutex> lock(frame_mutex_);
         frame_buffer_.push_back(frm);
     }
 
-    util::frame rtp_st2110::receive_frame()
+    core::frame rtp_st2110::receive_frame()
     {
-        util::frame frame;
+        core::frame frame;
         
         std::unique_lock<std::mutex> lock(frame_mutex_);
         if(frame_buffer_.size() > 0)

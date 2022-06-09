@@ -14,7 +14,7 @@ extern "C"
 
 #include "net/udp_client.h"
 #include "rtp/packet.h"
-#include "util/frame.h"
+#include "core/frame.h"
 
 namespace seeder
 {
@@ -29,7 +29,7 @@ namespace seeder
          * 
          * @return int 
          */
-        int rtp_handler(util::frame frm);
+        int rtp_handler(core::frame frm);
         int send_rtp_8bit(AVFrame* frame);
 
         /**
@@ -38,8 +38,8 @@ namespace seeder
          */
         int get_timestamp();
 
-        void push_frame(util::frame frm);
-        util::frame receive_frame();
+        void push_frame(core::frame frm);
+        core::frame receive_frame();
 
         void push_packet(std::shared_ptr<rtp::packet> packet);
         std::shared_ptr<rtp::packet> receive_packet();
@@ -49,7 +49,7 @@ namespace seeder
       private:
         uint16_t sequence_number_;
         std::mutex frame_mutex_, packet_mutex_;
-        std::deque<util::frame> frame_buffer_;
+        std::deque<core::frame> frame_buffer_;
         std::deque<std::shared_ptr<rtp::packet>> packet_buffer_;
         const std::size_t packet_capacity_ = 300000; // 300k * 1.4k = 420M 
 

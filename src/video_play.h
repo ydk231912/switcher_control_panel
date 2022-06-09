@@ -12,7 +12,7 @@ extern "C"
     #include <libavutil/imgutils.h>
 }
 
-#include "util/frame.h"
+#include "core/frame.h"
 #include "sdl_consumer.h"
 
 namespace seeder
@@ -37,7 +37,7 @@ namespace seeder
          * 
          * @return frame
          */
-        util::frame receive_frame();
+        core::frame receive_frame();
 
         // get system precision time
         int64_t get_timestamp();
@@ -48,7 +48,7 @@ namespace seeder
 
       public:
         std::mutex buffer_mutex_;
-        std::deque<util::frame> frame_buffer_;
+        std::deque<core::frame> frame_buffer_;
         std::size_t buffer_capacity_ = 25;
 
 

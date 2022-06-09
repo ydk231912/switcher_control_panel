@@ -28,6 +28,8 @@ find_package(Boost REQUIRED COMPONENTS filesystem thread timer chrono iostreams)
 if (NOT Boost_FOUND)
     message("Boost lib can not be found")
 endif()
+#message("boost inlcude ${Boost_INCLUDE_DIRS} ${Boost_LIBRARIES}")
+
 include_directories(${Boost_INCLUDE_DIRS})
 list(APPEND LINKER_LIBS ${Boost_LIBRARIES})
 

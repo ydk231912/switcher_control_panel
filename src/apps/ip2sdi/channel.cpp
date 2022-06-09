@@ -90,7 +90,6 @@ namespace seeder
             decklink_thread_->join();
             decklink_thread_.reset();
         }
-        if(decklink_consumer_)  decklink_consumer_.reset();
 
         if(rtp_thread_ && rtp_thread_->joinable())
         {
@@ -129,7 +128,6 @@ namespace seeder
         decklink_thread_ = std::make_unique<std::thread>([&](){
             try
             {
-                decklink_consumer_ = std::make_unique<decklink::decklink_consumer>(config_.device_id, config_.format_desc);
                 this->decklink_consumer_->start();
             }
             catch(const std::exception& e)

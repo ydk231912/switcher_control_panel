@@ -23,6 +23,7 @@
 namespace seeder::rtp
 {
     rtp_st2110_consumer::rtp_st2110_consumer()
+    :udp_sender_(std::make_unique<net::udp_sender>())
     {
         sequence_number_ = 0;
     }
@@ -38,8 +39,6 @@ namespace seeder::rtp
      */
     void rtp_st2110_consumer::run()
     {
-        //util::timer timer;
-
         //get frame from buffer
         core::frame frame;
         {
@@ -49,6 +48,8 @@ namespace seeder::rtp
             frame = frame_buffer_[0];
             frame_buffer_.pop_front();
         }
+
+        util::timer timer;
 
         auto avframe = frame.video;
         if (!avframe)
@@ -68,10 +69,10 @@ namespace seeder::rtp
         uint16_t offset = 0;
         uint16_t width = avframe->width;
         height_ = avframe->height;
-        int timestamp   = frame.timestamp; // get_timestamp();
+        auto timestamp   = frame.timestamp;
 
         while(line < height_) {
-            if(line >= 100)
+            if(line >= 100) // for debug
             {
                 int i = line;
             }
@@ -226,15 +227,16 @@ namespace seeder::rtp
 
             if (line >= height_) { //complete
                 rtp_packet->set_marker(1);
-            }
+                //is_frame_complete_ = true;
+                //packet_cv_.notify_all();
+            } 
 
             if (left > 0) {
                 rtp_packet->reset_size(rtp_packet->get_size() - left);
             }
 
             //// send packet by udp  //for debug test
-            //client_.send_to(rtp_packet->get_data_ptr(), rtp_packet->get_data_size(), "239.0.10.1", 20000);
-            // st20_to_png(rtp_packet);
+            //udp_sender_->send_to(rtp_packet->get_data_ptr(), rtp_packet->get_data_size(), "239.0.20.17", 20000);
 
             // 4 push to buffer
             std::unique_lock<std::mutex> lock(packet_mutex_);
@@ -244,14 +246,14 @@ namespace seeder::rtp
                 packet_cv_.notify_all();
 
                 //debug
-                util::logger->debug("packet buffer size: {}", packet_buffer_.size());
+                //util::logger->info("The packet buffer size: {}", packet_buffer_.size());
             }
             else
             {
-                util::logger->error("error: packet discarded! "); // discard
+                util::logger->error("The packet was discarded! "); // discard
             }
         }
-
+        //std::cout << timer.elapsed() << std::endl;
         //util::logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
     }
 
@@ -267,9 +269,11 @@ namespace seeder::rtp
         {
             auto f = frame_buffer_[0];
             frame_buffer_.pop_front(); // discard the last frame
+            util::logger->error("Discard the last frame");
         }
         frame_buffer_.push_back(frame);
         frame_cv_.notify_all();
+        //util::logger->info("The frame buffer size is {}", frame_buffer_.size());
     }
 
     /**
@@ -284,8 +288,7 @@ namespace seeder::rtp
         packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
         packet = packet_buffer_[0];
         packet_buffer_.pop_front();
-        packet_cv_.notify_all();
-        //util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
+        //packet_cv_.notify_all();
 
         return packet;
     }
@@ -297,19 +300,11 @@ namespace seeder::rtp
      */
     std::vector<std::shared_ptr<packet>> rtp_st2110_consumer::get_packet_batch()
     {
+        int size = 600;
         std::vector<std::shared_ptr<rtp::packet>> packets;
-        int size = 1;
-        if(height_ > 0)
-        {
-            size = int(height_ / chunks_per_frame_); // each frame send chunks_per_frame_ times
-        }
-
         std::unique_lock<std::mutex> lock(packet_mutex_);
         packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
-        if(size > packet_buffer_.size())
-        {
-            size = packet_buffer_.size();
-        }
+        if(size > packet_buffer_.size()) size = packet_buffer_.size();
 
         packets.reserve(size);
         for(int i = 0; i < size; i++)
@@ -317,9 +312,8 @@ namespace seeder::rtp
             std::shared_ptr<rtp::packet> p = packet_buffer_[0];
             packet_buffer_.pop_front();
             packets.push_back(p);
-            //util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
         }
-        packet_cv_.notify_all();
+        //packet_cv_.notify_all();
 
         return packets;
     }

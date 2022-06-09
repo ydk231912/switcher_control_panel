@@ -36,6 +36,9 @@ namespace seeder
 
         if(decklink_producer_)
             decklink_producer_.reset();
+
+        if(ffmpeg_producer_)
+            ffmpeg_producer_.reset();
         
         if(rtp_consumer_)
             rtp_consumer_.reset();
@@ -57,7 +60,8 @@ namespace seeder
         abort_ = false;
 
         // start sdi producer in separate thread
-        start_decklink();
+        //start_decklink();
+        start_ffmpeg();
 
         // start rtp consume in separate thread
         start_rtp();
@@ -142,6 +146,28 @@ namespace seeder
         });
     }
 
+    /**
+     * @brief for test
+     * start ffmpeg producer in separate thread
+     */
+    void channel::start_ffmpeg()
+    {
+        ffmpeg_thread_ = std::make_unique<std::thread>([&](){
+            try
+            {
+                ffmpeg_producer_ = std::make_unique<ffmpeg::ffmpeg_producer>();
+                while(!abort_) // loop playback
+                {
+                    ffmpeg_producer_->run("/home/seeder/d.MXF");
+                }
+            }
+            catch(const std::exception& e)
+            {
+                logger->error("channel {} ffmpeg producer error {}", config_.device_id, e.what());
+            }
+        });
+    }
+
     // start rtp consume in separate thread
     void channel::start_rtp()
     {
@@ -168,19 +194,28 @@ namespace seeder
             {
                 try
                 {
-                    auto packets = rtp_consumer_->get_packet_batch();
-                    if(packets.size() > 0)
+                    // sendmmsg_to multi-packets 
+                    // auto packets = rtp_consumer_->get_packet_batch();
+                    // if(packets.size() > 0)
+                    // {
+                    //     std::cout << packets.size() << std::endl;
+                    //     std::vector<net::send_data> vdata;
+                    //     vdata.reserve(packets.size());
+                    //     for(auto p : packets)
+                    //     {
+                    //         net::send_data sd;
+                    //         sd.data = p->get_data_ptr();
+                    //         sd.length = p->get_data_size();
+                    //         vdata.push_back(sd);
+                    //     }
+                    //     udp_sender_->sendmmsg_to(vdata, config_.multicast_ip, config_.multicast_port);
+                    // }
+
+                    //send_to single packet 
+                    auto packet = rtp_consumer_->get_packet();
+                    if(packet)
                     {
-                        std::vector<net::send_data> vdata;
-                        vdata.reserve(packets.size());
-                        for(auto p : packets)
-                        {
-                            net::send_data sd;
-                            sd.data = p->get_data_ptr();
-                            sd.length = p->get_data_size();
-                            vdata.push_back(sd);
-                        }
-                        udp_sender_->sendmmsg_to(vdata, config_.multicast_ip, config_.multicast_port);
+                        udp_sender_->send_to(packet->get_data_ptr(), packet->get_data_size(), config_.multicast_ip, config_.multicast_port);
                     }
                 }
                 catch(const std::exception& e)
@@ -188,7 +223,7 @@ namespace seeder
                     logger->error("channel {} upd error {}", config_.device_id, e.what());
                 }
             }
-        });        
+        });
     }
 
     // start sdl consume in separate thread
@@ -218,19 +253,23 @@ namespace seeder
     {
         channel_thread_ = std::make_unique<std::thread>([&](){
             auto start_time = util::timer::now();
+            auto base = static_cast<uint32_t>(pow(2, 32));
             while(!abort_)
             {
                 try
                 {
                     // capture sdi frame
-                    auto avframe = decklink_producer_->get_frame();
+                    //auto avframe = decklink_producer_->get_frame();
+                    auto avframe = ffmpeg_producer_->get_frame();
                     if(avframe)
                     {
                         core::frame frame;
                         frame.video = avframe;
-                        auto duration = int(config_.format_desc.fps * 1000 * avframe->pts); //the milliseconds from play start time to now
-                        frame.timestamp = int(((start_time + duration) * 90) % int(pow(2, 32))); //timestamp = seconds * 90000 mod 2^32
-                        
+                        auto duration = avframe->pts / config_.format_desc.fps * 1000; //the milliseconds from play start time to now
+                        auto time = static_cast<uint64_t>((start_time + duration) * 90);
+                        frame.timestamp = static_cast<uint32_t>(time % base); //timestamp = seconds * 90000 mod 2^32
+                        //std::cout << frame.timestamp << std::endl;
+
                         // push to rtp
                         rtp_consumer_->send_frame(frame);
                         

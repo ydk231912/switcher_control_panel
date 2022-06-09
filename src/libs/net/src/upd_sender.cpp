@@ -109,7 +109,11 @@ namespace seeder { namespace net {
             msg[i].msg_hdr.msg_namelen = sizeof(struct sockaddr);
         }
 
-        sendmmsg(socket_, msg, 1, 0);
+        auto result = sendmmsg(socket_, msg, 1, 0);
+        if (result < 0)
+        {
+            util::logger->error("sendmmsg to ip {}:{} udp packet failed!", ip, port);
+        }
     }
 
 }} // namespace seeder::net

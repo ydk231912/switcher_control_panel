@@ -17,22 +17,13 @@
                 1556p2398|1556p2400|1556p2500|dci1080p2398|dci1080p2400|dci1080p2500|
                 2160p2398|2160p2400|2160p2500|2160p2997|2160p3000|2160p5000|2160p5994|2160p6000|dci2160p2398|dci2160p2400|dci2160p2500]
             </video-mode -->
-            <video-mode>720p5000</video-mode>
+            <video-mode>1080p2500</video-mode>
             <device-id>1</device-id>
-            <multicast-ip>239.0.0.1</multicast-ip>
+            <multicast-ip>239.0.20.17</multicast-ip>
             <multicast-port>20000</multicast-port>
-            <bind-ip>192.168.123.40</bind-ip>
+            <bind-ip>192.168.10.103</bind-ip>
             <bind-port>20001</bind-port>
-            <display-screen>false</display-screen>
-        </channel>
-        <channel>
-            <video-mode>720p5000</video-mode>
-            <device-id>2</device-id>
-            <multicast-ip>239.0.0.2</multicast-ip>
-            <multicast-port>20000</multicast-port>
-            <bind-ip>192.168.123.40</bind-ip>
-            <bind-port>20002</bind-port>
-            <display-screen>false</display-screen>
+            <display-screen>true</display-screen>
         </channel>
     </channels>
 </configuration>

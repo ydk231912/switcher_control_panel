@@ -42,7 +42,7 @@ sdl_consumer sdl_;
 // decode vedio file, generate frame
 void ffmpeg_producer()
 {
-    while(true)
+    while(true) // loop play
     {
         play_.play(filename);
     }

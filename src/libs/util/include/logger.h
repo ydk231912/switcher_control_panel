@@ -1,8 +1,8 @@
 /**
  * @file logger.h
- * @author your name (you@domain.com)
+ * @author 
  * @brief spdlog configure
- * @version 0.1
+ * @version 
  * @date 2022-04-24
  * 
  * @copyright Copyright (c) 2022

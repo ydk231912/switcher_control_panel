@@ -18,6 +18,7 @@
 
 #include "core/frame.h"
 #include "rtp/packet.h"
+#include "net/udp_sender.h"
 
 namespace seeder::rtp
 {
@@ -73,6 +74,12 @@ namespace seeder::rtp
         uint16_t height_;
         std::condition_variable frame_cv_;
         std::condition_variable packet_cv_;
+        
+        const std::size_t batch_send_size_ = 600;
+        bool is_frame_complete_ = false;
+
+        std::unique_ptr<net::udp_sender> udp_sender_ = nullptr;
+
 
 
     };
