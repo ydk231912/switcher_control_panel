@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+#include <time.h>
 
 namespace seeder { namespace net {
 
@@ -31,6 +32,15 @@ class udp_sender
       int bind_ip(std::string ip, short port);
 
       /**
+       * @brief connect to remote host
+       * 
+       * @param ip 
+       * @param port 
+       * @return int 
+       */
+      int connect_host(std::string ip, short port);
+
+      /**
        * @brief send the data in builk via linux socket sendto
        * 
        * @param data 
@@ -50,5 +60,7 @@ class udp_sender
 
   private:
       int socket_;
+      timespec delay_;
+      int64_t packet_count_ = 0;
 };
 }} // namespace seeder::net

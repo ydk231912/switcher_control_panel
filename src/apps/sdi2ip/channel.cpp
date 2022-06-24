@@ -11,10 +11,12 @@
  */
 
 #include <boost/thread/thread.hpp>
+#include <unistd.h>
 
 #include "channel.h"
 #include "core/frame.h"
 #include "util/timer.h"
+#include "util/date.h"
 #include "util/logger.h"
 
 using namespace seeder::util;
@@ -28,6 +30,9 @@ namespace seeder
     {
         // bind nic 
         udp_sender_->bind_ip(config.bind_ip, config.bind_port);
+
+        // packet drain interval/duration  nanosecond
+        packet_drain_interval_ = static_cast<int64_t>(((1000000000/config_.format_desc.fps) / 3848) / 1.1);// (t_frame / n_pakcets) * (1 / B) defined by st2110-21
     }
 
     channel::~channel()
@@ -158,7 +163,7 @@ namespace seeder
                 ffmpeg_producer_ = std::make_unique<ffmpeg::ffmpeg_producer>();
                 while(!abort_) // loop playback
                 {
-                    ffmpeg_producer_->run("/home/seeder/d.MXF");
+                    ffmpeg_producer_->run("/home/seeder/c.MXF");
                 }
             }
             catch(const std::exception& e)
@@ -189,34 +194,42 @@ namespace seeder
     // start udp consume in separate thread
     void channel::start_udp()
     {
+        util::logger->info("start udp sender test92 ");
+
+        packet_drained_number_ = 0;
+
         udp_thread_ = std::make_unique<std::thread>([&](){
+            // bind thread to one fixed cpu core
+            cpu_set_t mask;
+            CPU_ZERO(&mask);
+            CPU_SET(1, &mask);
+            if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
+            {
+                util::logger->error("bind udp thread to cpu failed");
+            }
+
             while(!abort_)
             {
                 try
                 {
-                    // sendmmsg_to multi-packets 
-                    // auto packets = rtp_consumer_->get_packet_batch();
-                    // if(packets.size() > 0)
-                    // {
-                    //     std::cout << packets.size() << std::endl;
-                    //     std::vector<net::send_data> vdata;
-                    //     vdata.reserve(packets.size());
-                    //     for(auto p : packets)
-                    //     {
-                    //         net::send_data sd;
-                    //         sd.data = p->get_data_ptr();
-                    //         sd.length = p->get_data_size();
-                    //         vdata.push_back(sd);
-                    //     }
-                    //     udp_sender_->sendmmsg_to(vdata, config_.multicast_ip, config_.multicast_port);
-                    // }
-
                     //send_to single packet 
                     auto packet = rtp_consumer_->get_packet();
                     if(packet)
                     {
+                        if(packet_drained_number_ == 0)
+                        {
+                            start_time_ = timer::now();
+                        }
+                        auto elapse = timer::now() - start_time_;
+                        auto drain_elapse = packet_drained_number_ * packet_drain_interval_;
+                        while(drain_elapse > elapse) // wait until time point arrive
+                        {
+                            elapse = timer::now() - start_time_;
+                        }
+                        packet_drained_number_++;
                         udp_sender_->send_to(packet->get_data_ptr(), packet->get_data_size(), config_.multicast_ip, config_.multicast_port);
                     }
+
                 }
                 catch(const std::exception& e)
                 {
@@ -252,8 +265,9 @@ namespace seeder
     void channel::run()
     {
         channel_thread_ = std::make_unique<std::thread>([&](){
-            auto start_time = util::timer::now();
+            auto time_stamp = util::date::now() + 37000000; //37s: leap second, since 1970-01-01 to 2022-01-01
             auto base = static_cast<uint32_t>(pow(2, 32));
+
             while(!abort_)
             {
                 try
@@ -265,8 +279,8 @@ namespace seeder
                     {
                         core::frame frame;
                         frame.video = avframe;
-                        auto duration = avframe->pts / config_.format_desc.fps * 1000; //the milliseconds from play start time to now
-                        auto time = static_cast<uint64_t>((start_time + duration) * 90);
+                        auto duration = (avframe->pts + 1) / config_.format_desc.fps * 1000000; //the milliseconds from play start time to now
+                        auto time = static_cast<uint64_t>((time_stamp + duration) * 90 / 1000);
                         frame.timestamp = static_cast<uint32_t>(time % base); //timestamp = seconds * 90000 mod 2^32
                         //std::cout << frame.timestamp << std::endl;
 
@@ -280,7 +294,7 @@ namespace seeder
                         }
                     }
 
-                    boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
+                    //boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
                 }
                 catch(const std::exception& e)
                 {
@@ -291,3 +305,60 @@ namespace seeder
     }
 
 } // namespace seeder
+
+////////////////////////////////////////////////////////////////// backup
+    // udp
+    // void channel::start_udp()
+    // {
+    //     util::logger->info("start udp sender test92 ");
+
+    //     packet_drained_number_ = 0;
+
+    //     udp_thread_ = std::make_unique<std::thread>([&](){
+    //         while(!abort_)
+    //         {
+    //             try
+    //             {
+    //                 // sendmmsg_to multi-packets 
+    //                 // auto packets = rtp_consumer_->get_packet_batch();
+    //                 // if(packets.size() > 0)
+    //                 // {
+    //                 //     //std::cout << packets.size() << std::endl;
+    //                 //     std::vector<net::send_data> vdata;
+    //                 //     vdata.reserve(packets.size());
+    //                 //     for(auto p : packets)
+    //                 //     {
+    //                 //         net::send_data sd;
+    //                 //         sd.data = p->get_data_ptr();
+    //                 //         sd.length = p->get_data_size();
+    //                 //         vdata.push_back(sd);
+    //                 //     }
+    //                 //     udp_sender_->sendmmsg_to(vdata, config_.multicast_ip, config_.multicast_port);
+    //                 // }
+
+    //                 //send_to single packet 
+    //                 auto packet = rtp_consumer_->get_packet();
+    //                 if(packet)
+    //                 {
+    //                     if(packet_drained_number_ == 0)
+    //                     {
+    //                         start_time_ = timer::now();
+    //                     }
+    //                     auto elapse = timer::now() - start_time_;
+    //                     auto drain_elapse = packet_drained_number_ * packet_drain_interval_;
+    //                     while(drain_elapse > elapse) // wait until time point arrive
+    //                     {
+    //                         elapse = timer::now() - start_time_;
+    //                     }
+    //                     packet_drained_number_++;
+    //                     udp_sender_->send_to(packet->get_data_ptr(), packet->get_data_size(), config_.multicast_ip, config_.multicast_port);
+    //                 }
+
+    //             }
+    //             catch(const std::exception& e)
+    //             {
+    //                 logger->error("channel {} upd error {}", config_.device_id, e.what());
+    //             }
+    //         }
+    //     });
+    // }

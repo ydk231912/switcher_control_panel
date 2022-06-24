@@ -69,7 +69,7 @@ namespace seeder
         }
         catch(const std::exception& e)
         {
-            throw std::runtime_error("Error in read the config.xml file:" + std::string(e.what()));
+            throw std::runtime_error("Error in read the config file:" + std::string(e.what()));
         }        
         
         return config;
@@ -105,6 +105,7 @@ namespace seeder
                 {
                     util::logger->info("Received message from Console: {}", cmd);
                     shutdown(false);
+                    exit(0);
                     break;
                 }
             }

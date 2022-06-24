@@ -38,6 +38,9 @@ namespace seeder { namespace net {
             throw std::runtime_error("Create udp socket client failed!");
         }
 
+        int buffer_size = 4000000;
+        setsockopt(socket_, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
+
         // join multicast group
         struct ip_mreq multi_adr;
         multi_adr.imr_multiaddr.s_addr = inet_addr(multicast_ip.data());

@@ -1,7 +1,7 @@
 /**
  * @file timer.h
  * @author 
- * @brief get system current precise time
+ * @brief get steady clock time point
  * @version 
  * @date 2022-04-27
  * 
@@ -23,14 +23,14 @@ namespace seeder::util
         /**
          * @brief get system current precise time
          * 
-         * @return int64_t //milliseconds since 1970.1.1 0:0:0
+         * @return int64_t //nanoseconds since 1970.1.1 0:0:0 utc
          */
         static int64_t now()
         {
-            std::chrono::milliseconds ms = std::chrono::duration_cast <std::chrono::milliseconds> (
-                    std::chrono::system_clock::now().time_since_epoch()); 
+            std::chrono::nanoseconds ns = std::chrono::duration_cast <std::chrono::nanoseconds> (
+                    std::chrono::steady_clock::now().time_since_epoch()); 
 
-            return ms.count();
+            return ns.count(); 
         }
 
         timer() { start_time_ = now(); }
@@ -38,6 +38,10 @@ namespace seeder::util
         void restart() { start_time_ = now(); }
 
         double elapsed() const { return static_cast<double>(now() - start_time_);}
+
+        double elapsed_milliseconds() const { return static_cast<double>((now() - start_time_) / 1000000);}
+
+        double elapsed_microseconds() const { return static_cast<double>((now() - start_time_) / 1000);}
 
     };
 }// namespace seeder::util

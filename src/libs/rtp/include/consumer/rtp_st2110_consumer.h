@@ -68,15 +68,16 @@ namespace seeder::rtp
         std::mutex frame_mutex_, packet_mutex_;
         std::deque<core::frame> frame_buffer_;
         std::deque<std::shared_ptr<rtp::packet>> packet_buffer_;
-        const std::size_t frame_capacity_ = 10;
-        const std::size_t packet_capacity_ = 30000; // 30k * 1.4k = 42M 
+        const std::size_t frame_capacity_ = 3;
+        const std::size_t packet_capacity_ = 11544; // 30k * 1.4k = 42M 
         const std::size_t chunks_per_frame_ = 10;
         uint16_t height_;
         std::condition_variable frame_cv_;
         std::condition_variable packet_cv_;
+        std::condition_variable batch_packet_cv_;
         
-        const std::size_t batch_send_size_ = 600;
-        bool is_frame_complete_ = false;
+        const std::size_t batch_send_size_ = 200;
+        bool need_push_ = false;
 
         std::unique_ptr<net::udp_sender> udp_sender_ = nullptr;
 

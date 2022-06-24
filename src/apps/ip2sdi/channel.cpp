@@ -23,12 +23,12 @@ namespace seeder
 {
     channel::channel(channel_config& config)
     :config_(config),
-    decklink_consumer_(std::make_unique<decklink::decklink_consumer>(config.device_id, config.format_desc)),
-    rtp_producer_(std::make_unique<rtp::rtp_st2110_producer>(config.format_desc)),
+    ////decklink_consumer_(std::make_unique<decklink::decklink_consumer>(config.device_id, config.format_desc)),
+    ////rtp_producer_(std::make_unique<rtp::rtp_st2110_producer>(config.format_desc)),
     udp_receiver_(std::make_unique<net::udp_receiver>(config.multicast_ip))
     {
         // bind nic 
-        // udp_receiver_->bind_ip(config.bind_ip, config.bind_port);
+        udp_receiver_->bind_ip(config.bind_ip, config.bind_port);
     }
 
     channel::~channel()
@@ -58,19 +58,19 @@ namespace seeder
         abort_ = false;
 
         // start sdi producer in separate thread
-        start_decklink();
+        //start_decklink();
 
         // start rtp consume in separate thread
-        start_rtp();
+        //start_rtp();
 
         // start sdl consume in separate thread
-        start_sdl();
+        //start_sdl();
         
         // start udp consume in separate thread
-        start_udp();
+        //start_udp();
 
         // do main loop, capture sdi(decklink) input frame, encode to st2110 packets
-        run();
+       // run();
 
         logger->info("Channel {} has already been started", config_.device_id);
     }
@@ -168,7 +168,7 @@ namespace seeder
                    packet->reset_size(len); // set the packet size by the true receive size
 
                    // push the packet to the rtp producer buffer
-                   rtp_producer_->send_packet(packet);
+                   //rtp_producer_->send_packet(packet);
                 }
                 catch(const std::exception& e)
                 {

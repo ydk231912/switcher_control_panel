@@ -49,6 +49,7 @@ namespace seeder
         void start_udp();
         void start_sdl();
         void run();
+        
       
       private:
         channel_config config_;
@@ -66,6 +67,11 @@ namespace seeder
         std::unique_ptr<std::thread> channel_thread_ = nullptr;
         std::unique_ptr<std::thread> ffmpeg_thread_ = nullptr; // for test
         bool abort_ = false;
+
+        // time stamp
+        int64_t start_time_;
+        int64_t packet_drain_interval_;
+        int64_t packet_drained_number_ = 0;
 
     };
 } // namespace seeder

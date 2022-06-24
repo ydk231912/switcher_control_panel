@@ -21,8 +21,16 @@
 #include "core/video_format.h"
 #include "config.h"
 #include "server.h"
+#include "util/timer.h"
 
 #include <malloc.h>
+
+// for test
+#include <time.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/time.h>
+#include <sys/select.h>
 
 using namespace seeder::util;
 using namespace boost::property_tree;
@@ -32,7 +40,7 @@ namespace seeder
     void print_info()
     {
         logger->info("############################################################################");
-        logger->info("SEEDER SDI to SMPTE ST2110 Server 1.00");
+        logger->info("SEEDER SDI to SMPTE ST2110 Server 1.00  test 100");
         logger->info("############################################################################");
         logger->info("Starting SDI to SMPTE ST2110 Server ");
     }
@@ -80,7 +88,9 @@ namespace seeder
     {
         auto promise = std::make_shared<std::promise<bool>>();
         auto future =  promise->get_future();
-        auto shutdown = [promise = std::move(promise)](bool restart){promise->set_value(restart);};
+        auto shutdown = [promise = std::move(promise)](bool restart){
+            promise->set_value(restart);
+            };
 
         print_info();
 
@@ -106,6 +116,7 @@ namespace seeder
                 {
                     util::logger->info("Received message from Console: {}", cmd);
                     shutdown(false);
+                    exit(0);
                     break;
                 }
             }
@@ -119,8 +130,78 @@ namespace seeder
 
 } // namespace seeder
 
+
+void signal_hander(int signal_no)
+{
+    std::cout << timer::now() << std::endl;
+}
+// nanosleep test
+void test()
+{
+
+    // ///////////////////////////////////////////// setitimer (precision 1us)
+    // signal(SIGALRM, signal_hander);
+    // struct itimerval timer;
+    // timer.it_value.tv_sec = 0;	
+    // timer.it_value.tv_usec = 1;
+    // timer.it_interval.tv_sec = 0;
+    // timer.it_interval.tv_usec = 1;
+    // setitimer(ITIMER_REAL, &timer, 0);
+
+    // timespec delay;
+    // delay.tv_sec = 0;
+    // delay.tv_nsec = 10000;
+    struct timeval tv;
+    tv.tv_sec = 0;	
+    tv.tv_usec = 1000000;
+    struct timespec req;
+    req.tv_sec = 0;
+    req.tv_nsec = 1000;
+    while(true)
+    {
+        /////////////////////////////////////////// select
+        timer timer;
+        //auto ret = select(0, NULL, NULL, NULL, &tv);
+        //auto ret = pselect(0, NULL, NULL, NULL, &req, NULL);
+        auto e = timer.elapsed();
+        std::cout << e << std::endl;
+
+        ///////////////////////////////////////////nanosleep test
+        // timer timer;
+        // auto ret = nanosleep(&delay, NULL);
+        // auto e = timer.elapsed();
+        // std::cout << e << std::endl;
+
+        /////////////////////////////////////////// timer.elapsed test(30ns); std::cout test(1400ns)
+        // timer t1;
+        // timer t2;
+        // auto e2 = t2.elapsed();
+        // auto e1 = t1.elapsed();
+        // timer t3;
+        // std::cout << e1 << "   " << e2 << "  " << e1 - e2 <<std::endl;
+        // auto e3 = t3.elapsed();
+        // std::cout << e1 << "   " << e3 << std::endl;
+
+        ///////////////////////////////////////////// for test
+        // timer t;
+        // for(long i = 0; i < 1000; i++) // 300ns
+        // {}
+        // auto e = t.elapsed();
+        // std::cout << e << std::endl;
+
+        // timer t;
+        // auto e = t.elapsed();
+        // std::cout << e << std::endl;
+
+    }
+}
+
 int main(int argc, char* argv[])
 {
+    //test();
+
+    auto start_time = std::chrono::steady_clock::now();
+
     int return_code = 0;
 
     try
