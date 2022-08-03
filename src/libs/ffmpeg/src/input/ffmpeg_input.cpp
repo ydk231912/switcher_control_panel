@@ -104,8 +104,7 @@ namespace seeder::ffmpeg
                     throw std::runtime_error("avcode_receive_frame() failed");
                 }
                 auto frm = std::shared_ptr<core::frame>(new core::frame(), [&avframe](core::frame* ptr){ av_frame_free(&avframe); });
-                //frm->set_video_data(avframe);
-                set_video_data(frm, avframe);
+                frm->set_video_data(avframe);
                 set_frame(frm);
                 //logger->info("frame buffer number {}", frame_buffer_.size());
             }
@@ -114,23 +113,6 @@ namespace seeder::ffmpeg
 
         avcodec_close(codec_ctx);
         avformat_close_input(&fmt_ctx);
-    }
-
-    void ffmpeg_input::set_video_data(std::shared_ptr<core::frame> frm, AVFrame* avframe)
-    {
-        frm->format = avframe->format;
-        frm->width = avframe->width;
-        frm->height = avframe->height;
-        frm->interlaced_frame = avframe->interlaced_frame;
-        frm->top_field_first  = avframe->top_field_first;
-        frm->key_frame        = avframe->key_frame;
-        frm->pts = avframe->pts;
-
-        for(int i = 0; i < AV_NUM_DATA_POINTERS; i++)
-        {
-            frm->video_data[i] = avframe->data[i];
-            frm->linesize[i] = avframe->linesize[i];
-        }
     }
         
     /**

@@ -58,8 +58,6 @@ namespace seeder::ffmpeg
          */
         std::shared_ptr<core::frame> get_frame();
 
-        void set_video_data(std::shared_ptr<core::frame> frm, AVFrame* avframe);
-
       private:
         bool abort = false;
         std::string filename_;
