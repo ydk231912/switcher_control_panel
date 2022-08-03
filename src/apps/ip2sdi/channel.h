@@ -14,10 +14,11 @@
 
 #include <thread>
 
-#include "decklink/consumer/decklink_consumer.h"
-#include "rtp/producer/rtp_st2110_producer.h"
-#include "net/udp_receiver.h"
-#include "sdl/consumer/sdl_consumer.h"
+#include "ffmpeg/input/ffmpeg_input.h"
+#include "rtp/input/rtp_st2110_input.h"
+#include "decklink/output/decklink_output.h"
+#include "rtp/rtp_context.h"
+#include "sdl/output/sdl_output.h"
 #include "config.h"
 
 namespace seeder
@@ -29,8 +30,8 @@ namespace seeder
         ~channel();
 
         /**
-         * @brief start sdi channel, capture sdi(decklink) input frame, 
-         * encode to st2110 packets, send to net by udp
+         * @brief start sdi channel, capture rtp input frame, 
+         * decode st2110 packets, send to sdi(decklink) card
          * 
          */
         void start();
@@ -42,26 +43,20 @@ namespace seeder
         void stop();
       
       private:
-        void start_decklink();
-        void start_rtp();
-        void start_udp();
-        void start_sdl();
         void run();
+        
       
       private:
-        channel_config config_;
-        std::unique_ptr<decklink::decklink_consumer> decklink_consumer_ = nullptr;
-        std::unique_ptr<rtp::rtp_st2110_producer> rtp_producer_ = nullptr;
-        std::unique_ptr<net::udp_receiver> udp_receiver_ = nullptr;
-        std::unique_ptr<sdl::sdl_consumer> sdl_consumer_ = nullptr;
-
-        //thread
-        std::unique_ptr<std::thread> decklink_thread_ = nullptr;
-        std::unique_ptr<std::thread> rtp_thread_ = nullptr;
-        std::unique_ptr<std::thread> udp_thread_ = nullptr;
-        std::unique_ptr<std::thread> sdl_thread_ = nullptr;
-        std::unique_ptr<std::thread> channel_thread_ = nullptr;
         bool abort_ = false;
+        channel_config config_;
+        std::unique_ptr<decklink::decklink_output> decklink_output_ = nullptr;
+        std::unique_ptr<ffmpeg::ffmpeg_input> ffmpeg_input_ = nullptr; // for test
+        std::unique_ptr<rtp::rtp_st2110_input> rtp_input_ = nullptr;
+        rtp::rtp_context rtp_context_;
+        std::unique_ptr<sdl::sdl_output> sdl_output_ = nullptr;
+        
+        //thread
+        std::unique_ptr<std::thread> channel_thread_ = nullptr;
 
     };
 } // namespace seeder

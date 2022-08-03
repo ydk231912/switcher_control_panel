@@ -32,6 +32,7 @@ class packet
 
     void set_first_of_frame(bool first_packet);
     bool get_first_of_frame();
+    bool is_first_of_frame();
     void set_last_of_frame(bool last_packet);
 
   private:

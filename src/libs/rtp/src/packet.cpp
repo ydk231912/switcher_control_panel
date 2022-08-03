@@ -150,6 +150,11 @@ namespace seeder::rtp {
         return first_of_frame_;
     }
 
+    bool packet::is_first_of_frame()
+    {
+        return first_of_frame_;
+    }
+
     void packet::set_last_of_frame(bool last_packet)
     {
         last_of_frame_ = last_packet;

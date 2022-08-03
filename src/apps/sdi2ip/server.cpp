@@ -36,7 +36,7 @@ namespace seeder
      */
     void server::start()
     {
-        //for every sdi channel, create channel, then start handle
+        // for every sdi channel, create channel, then start handle
         for(auto channel_config : config_.channels)
         {
             try

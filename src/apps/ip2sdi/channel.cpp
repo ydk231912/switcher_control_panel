@@ -9,68 +9,68 @@
  * @copyright Copyright (c) 2022
  * 
  */
-
 #include <boost/thread/thread.hpp>
+#include <unistd.h>
 
 #include "channel.h"
-#include "core/frame.h"
+#include "core/frame/frame.h"
 #include "util/timer.h"
+#include "util/date.h"
 #include "util/logger.h"
-#include "st2110/d10/network.h"
 
 using namespace seeder::util;
+using namespace seeder::core;
 namespace seeder
 {
     channel::channel(channel_config& config)
-    :config_(config),
-    ////decklink_consumer_(std::make_unique<decklink::decklink_consumer>(config.device_id, config.format_desc)),
-    ////rtp_producer_(std::make_unique<rtp::rtp_st2110_producer>(config.format_desc)),
-    udp_receiver_(std::make_unique<net::udp_receiver>(config.multicast_ip))
+    :config_(config)
+    ,rtp_context_(config.format_desc, config.multicast_ip, config.multicast_port)
+    ,decklink_output_(std::make_unique<decklink::decklink_output>(config.device_id, config.format_desc))
+    ,rtp_input_(std::make_unique<rtp::rtp_st2110_input>(rtp_context_))
+    ,ffmpeg_input_(std::make_unique<ffmpeg::ffmpeg_input>("/home/seeder/c.MXF")) // for test
     {
-        // bind nic 
-        udp_receiver_->bind_ip(config.bind_ip, config.bind_port);
+        if(config.display_screen)
+            sdl_output_ = std::make_unique<sdl::sdl_output>(config_.format_desc);
     }
 
     channel::~channel()
     {
         stop();
 
-        if(decklink_consumer_)
-            decklink_consumer_.reset();
+        if(decklink_output_)
+            decklink_output_.reset();
+
+        if(ffmpeg_input_)
+            ffmpeg_input_.reset();
         
-        if(rtp_producer_)
-            rtp_producer_.reset();
+        if(rtp_input_)
+            rtp_input_.reset();
 
-        if(udp_receiver_)
-            udp_receiver_.reset();
-
-        if(sdl_consumer_)
-            sdl_consumer_.reset();
+        if(sdl_output_)
+            sdl_output_.reset();
     }
         
     /**
-     * @brief start sdi channel, capture sdi(decklink) input frame, 
-     * encode to st2110 packets, send to net by udp
+     * @brief start sdi channel, capture rtp input frame, 
+     * decode st2110 packets, send to sdi(decklink) card
      * 
      */
     void channel::start()
     {
         abort_ = false;
 
-        // start sdi producer in separate thread
-        //start_decklink();
+        rtp_input_->start();
 
-        // start rtp consume in separate thread
-        //start_rtp();
+        if(ffmpeg_input_)
+            ffmpeg_input_->start();
 
-        // start sdl consume in separate thread
-        //start_sdl();
+        decklink_output_->start();
+
+        if(sdl_output_)
+            sdl_output_->start();
         
-        // start udp consume in separate thread
-        //start_udp();
-
-        // do main loop, capture sdi(decklink) input frame, encode to st2110 packets
-       // run();
+        // do main loop, capture rtp input stream, decode st2110 packets to frame, send to sdi card 
+        run();
 
         logger->info("Channel {} has already been started", config_.device_id);
     }
@@ -83,147 +83,50 @@ namespace seeder
     {
         abort_ = true;
 
-        // wait for threads to complete
-        if(decklink_consumer_) decklink_consumer_->stop();
-        if(decklink_thread_ && decklink_thread_->joinable())
-        {
-            decklink_thread_->join();
-            decklink_thread_.reset();
-        }
+        if(rtp_input_)
+            rtp_input_->stop();
 
-        if(rtp_thread_ && rtp_thread_->joinable())
-        {
-            rtp_thread_->join();
-            rtp_thread_.reset();
-        }
+        if(ffmpeg_input_)
+            ffmpeg_input_->stop();
+        
+        if(decklink_output_)
+            decklink_output_->stop();
 
-        if(udp_thread_ && udp_thread_->joinable())
-        {
-            udp_thread_->join();
-            udp_thread_.reset();
-        }
-
-        if(sdl_thread_ && sdl_thread_->joinable())
-        {
-            sdl_thread_->join();
-            sdl_thread_.reset();
-        }
-        if(sdl_consumer_)
-        {
-            sdl_consumer_.reset();
-        }
-
-        if(channel_thread_ && channel_thread_->joinable())
-        {
-            channel_thread_->join();
-            channel_thread_.reset();
-        }
+        if(sdl_output_)
+            sdl_output_->stop();
 
         logger->info("Channel {} has already been stopped", config_.device_id);
-    }
-
-    // start sdi producer in separate thread
-    void channel::start_decklink()
-    {
-        decklink_thread_ = std::make_unique<std::thread>([&](){
-            try
-            {
-                this->decklink_consumer_->start();
-            }
-            catch(const std::exception& e)
-            {
-                logger->error("channel {} decklink consumer error {}", config_.device_id, e.what());
-            }
-        });
-    }
-
-    // start rtp consume in separate thread
-    void channel::start_rtp()
-    {
-        rtp_thread_ = std::make_unique<std::thread>([&](){
-            while(!abort_)
-            {
-                try
-                {
-                   this->rtp_producer_->run();
-                }
-                catch(const std::exception& e)
-                {
-                    logger->error("channel {} rtp error {}", config_.device_id, e.what());
-                }
-            }
-        });
-    }
-
-    // start udp receive in separate thread
-    void channel::start_udp()
-    {
-        udp_thread_ = std::make_unique<std::thread>([&](){
-            while(!abort_)
-            {
-                try
-                {
-                   std::shared_ptr<rtp::packet> packet = std::make_shared<rtp::packet>(d10::MAX_PACKET_SIZE);
-                   auto len = udp_receiver_->receive(packet->get_data_ptr(), d10::MAX_PACKET_SIZE);
-                   packet->reset_size(len); // set the packet size by the true receive size
-
-                   // push the packet to the rtp producer buffer
-                   //rtp_producer_->send_packet(packet);
-                }
-                catch(const std::exception& e)
-                {
-                    logger->error("channel {} upd receiver error {}", config_.device_id, e.what());
-                }
-            }
-        });        
-    }
-
-    // start sdl consume in separate thread
-    void channel::start_sdl()
-    {
-        if(!config_.display_screen)
-            return;
-        
-        sdl_consumer_ = std::make_unique<sdl::sdl_consumer>();
-        sdl_thread_ = std::make_unique<std::thread>([&](){
-            while(!abort_)
-            {
-                try
-                {
-                    sdl_consumer_->run();
-                }
-                catch(const std::exception& e)
-                {
-                    logger->error("channel {} sdl error {}", config_.device_id, e.what());
-                }
-            }
-        });
     }
 
     // do main loop, capture sdi(decklink) input frame, encode to st2110 packets
     void channel::run()
     {
         channel_thread_ = std::make_unique<std::thread>([&](){
-            auto start_time = util::timer::now();
+            // cpu_set_t mask;
+            // CPU_ZERO(&mask);
+            // CPU_SET(5, &mask);
+            // if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
+            // {
+            //     util::logger->error("bind udp thread to cpu failed");
+            // }
+
             while(!abort_)
             {
                 try
                 {
-                    // receive rtp frame
-                    auto frame = rtp_producer_->get_frame();
+                    // capture sdi frame
+                    auto frame = rtp_input_->get_frame();
+                    //auto frame = ffmpeg_input_->get_frame();
                     if(frame)
                     {
-                        // push to decklink output
-                        decklink_consumer_->send_frame(frame);
+                        // push to rtp
+                        decklink_output_->set_frame(frame);
                         
-                        // if(sdl_consumer_)
-                        // {
-                        //     // push to sdl screen display
-                        //     sdl_consumer_->send_frame(frame);
-                        // }
+                        if(sdl_output_)
+                            // push to sdl screen display
+                            sdl_output_->set_frame(frame);
                     }
-
-                    boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
+                    //boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
                 }
                 catch(const std::exception& e)
                 {
@@ -232,5 +135,4 @@ namespace seeder
             }
         });
     }
-
 } // namespace seeder

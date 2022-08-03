@@ -1,29 +1,35 @@
 /**
- * @file decklink_producer.cpp
+ * @file decklink_input.cpp
  * @author 
- * @brief decklink producer, receive SDI frame from decklink card
- * @version 
- * @date 2022-04-19
+ * @brief decklink stream input handle
+ * @version 1.0
+ * @date 2022-07-26
  * 
  * @copyright Copyright (c) 2022
  * 
  */
 
-#include <iostream>
+#pragma once
 
-#include "producer/decklink_producer.h"
+extern "C"
+{
+    #include <libavformat/avformat.h>
+}
+
+#include "input/decklink_input.h"
 #include "util/logger.h"
 #include "util.h"
 
 using namespace seeder::util;
-using namespace seeder::core;
 using namespace seeder::decklink::util;
-namespace seeder::decklink {
+//using namespace seeder::core;
+namespace seeder::decklink
+{
     /**
-     * @brief Construct a new decklink producer::decklink producer object.
+     * @brief Construct a new decklink input object.
      * initialize deckllink device and start input stream
      */
-    decklink_producer::decklink_producer(int device_id, video_format_desc& format_desc)
+    decklink_input::decklink_input(int device_id, video_format_desc& format_desc)
     :decklink_index_(device_id)
     ,format_desc_(format_desc)
     {
@@ -64,8 +70,8 @@ namespace seeder::decklink {
             throw std::runtime_error("Failed to set DeckLink input callback.");
         }
     }
-    
-    decklink_producer::~decklink_producer()
+
+    decklink_input::~decklink_input()
     {
         stop();
 
@@ -80,12 +86,11 @@ namespace seeder::decklink {
     }
 
     /**
-     * @brief start decklink capture
+     * @brief start input stream handle
      * 
      */
-    void decklink_producer::start()
+    void decklink_input::start()
     {
-
         // enable input and start streams
         HRESULT result = input_->EnableVideoInput(bmd_mode_, pixel_format_, video_flags_);
         if(result != S_OK)
@@ -110,10 +115,10 @@ namespace seeder::decklink {
     }
 
     /**
-     * @brief stop decklink capture
+     * @brief stop input stream handle
      * 
      */
-    void decklink_producer::stop()
+    void decklink_input::stop()
     {
         if(input_ != nullptr)
         {
@@ -123,12 +128,12 @@ namespace seeder::decklink {
         }
     }
 
-    ULONG decklink_producer::AddRef(void)
+    ULONG decklink_input::AddRef(void)
     {
         return 1;
     }
 
-    ULONG decklink_producer::Release(void)
+    ULONG decklink_input::Release(void)
     {
         return 1;
     }
@@ -141,13 +146,14 @@ namespace seeder::decklink {
      * @param format_flags 
      * @return HRESULT 
      */
-    HRESULT decklink_producer::VideoInputFormatChanged(BMDVideoInputFormatChangedEvents events, 
+    HRESULT decklink_input::VideoInputFormatChanged(BMDVideoInputFormatChangedEvents events, 
                                                         IDeckLinkDisplayMode* mode, 
                                                         BMDDetectedVideoInputFormatFlags format_flags)
     {
         display_mode_ = mode;
         input_->StopStreams();
         input_->EnableVideoInput(mode->GetDisplayMode(), pixel_format_, video_flags_);
+        //input_->EnableAudioInput();
         input_->FlushStreams();
         input_->StartStreams();
         
@@ -162,70 +168,76 @@ namespace seeder::decklink {
      * @param audio_frame 
      * @return HRESULT 
      */
-    HRESULT decklink_producer::VideoInputFrameArrived(IDeckLinkVideoInputFrame* video, 
+    HRESULT decklink_input::VideoInputFrameArrived(IDeckLinkVideoInputFrame* video, 
                                                        IDeckLinkAudioInputPacket* audio)
     {
         BMDTimeValue in_video_pts = 0LL;
-        auto frame = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+        std::shared_ptr<frame> frm = std::make_shared<frame>();
 
         if(video)
         {
-            frame->format = AV_PIX_FMT_UYVY422;
-            frame->width = video->GetWidth();
-            frame->height = video->GetHeight();
-            frame->interlaced_frame = display_mode_->GetFieldDominance() != bmdProgressiveFrame;
-            frame->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
-            frame->key_frame        = 1;
+            frm->format = AV_PIX_FMT_UYVY422;
+            frm->width = video->GetWidth();
+            frm->height = video->GetHeight();
+            frm->interlaced_frame = display_mode_->GetFieldDominance() != bmdProgressiveFrame;
+            frm->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
+            frm->key_frame        = 1;
 
             void* video_bytes = nullptr;
             if(video->GetBytes(&video_bytes) && video_bytes)
             {
                 video->AddRef();
-                frame = std::shared_ptr<AVFrame>(frame.get(), [frame, video](AVFrame* ptr) { video->Release(); });
+                frm = std::shared_ptr<frame>(frm.get(), [frm, video](core::frame* ptr) { video->Release(); });
 
-                frame->data[0]     = reinterpret_cast<uint8_t*>(video_bytes);
-                frame->linesize[0] = video->GetRowBytes();
+                frm->video_data[0] = reinterpret_cast<uint8_t*>(video_bytes);
+                frm->linesize[0] = video->GetRowBytes();
 
                 BMDTimeValue duration;
                 if (video->GetStreamTime(&in_video_pts, &duration, AV_TIME_BASE)) 
                 {
-                    frame->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
+                    frm->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
                 }
             }
         }
 
-        // push the frame into the buffer, if the buffer is full, discard the oldest frame
-        {
-            std::lock_guard<std::mutex> lock(frame_mutex_);
-            if(frame_buffer_.size() >= frame_capacity_)
-            {
-                auto f = frame_buffer_[0];
-                frame_buffer_.pop_front(); // discard the oldest frame
-            }
-            frame_buffer_.push_back(frame);
-        }
+        this->set_frame(frm);
 
         return S_OK;
     }
 
     /**
-     * @brief Get the frame object from the frame_buffer
-     * 
-     * @return std::shared_ptr<AVFrame> 
+     * @brief push the frame into the stream buffer,
+     * if the buffer is full, discard the oldest frame
      */
-    std::shared_ptr<AVFrame> decklink_producer::get_frame()
+    void decklink_input::set_frame(std::shared_ptr<frame> frm)
     {
-        std::shared_ptr<AVFrame> frame;
+        std::lock_guard<std::mutex> lock(frame_mutex_);
+        if(frame_buffer_.size() >= frame_capacity_)
+        {
+            auto f = frame_buffer_[0];
+            frame_buffer_.pop_front(); // discard the oldest frame
+        }
+        frame_buffer_.push_back(frm);
+    }
+
+    /**
+     * @brief Get a frame from this input stream
+     * 
+     */
+    std::shared_ptr<frame> decklink_input::get_frame()
+    {
+        std::shared_ptr<frame> frm;
         {
             std::lock_guard<std::mutex> lock(frame_mutex_);
             if(frame_buffer_.size() < 1)
                 return last_frame_;
 
-            frame = frame_buffer_[0];
+            frm = frame_buffer_[0];
             frame_buffer_.pop_front();
-            last_frame_ = frame;
+            last_frame_ = frm;
         }
 
-        return frame;
+        return frm;
     }
+
 }

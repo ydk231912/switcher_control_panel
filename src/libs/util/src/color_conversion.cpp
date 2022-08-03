@@ -12,7 +12,7 @@
 #include <math.h>
 #include <tuple>
 
-#include "color_conversion.h"
+#include "util/color_conversion.h"
 
 using namespace seeder::core;
 namespace seeder::util
@@ -55,7 +55,7 @@ namespace seeder::util
      * @param format_desc 
      * @return std::shared_ptr<buffer> 
      */
-    std::shared_ptr<buffer> ycbcr422_to_rgba(std::shared_ptr<buffer> ycbcr422, video_format_desc& format_desc)
+    std::shared_ptr<buffer> ycbcr422_to_rgba(uint8_t* ycbcr422, video_format_desc& format_desc)
     {
         const auto width                 = format_desc.width;
         const auto height                = format_desc.height;
@@ -68,7 +68,7 @@ namespace seeder::util
 
         std::shared_ptr<buffer> frame_buffer = std::make_shared<buffer>(ycbcr_frame_size);
 
-        auto input = frame_buffer->begin();
+        auto input = ycbcr422;
 
         for(auto y = 0; y < height; ++y)
         {
@@ -119,7 +119,7 @@ namespace seeder::util
      * @param format_desc 
      * @return std::shared_ptr<buffer> 
      */
-    std::shared_ptr<buffer> ycbcr422_to_bgra(std::shared_ptr<buffer> ycbcr422, video_format_desc& format_desc)
+    std::shared_ptr<buffer> ycbcr422_to_bgra(uint8_t* ycbcr422, video_format_desc& format_desc)
     {
         const auto width                 = format_desc.width;
         const auto height                = format_desc.height;
@@ -132,7 +132,7 @@ namespace seeder::util
 
         std::shared_ptr<buffer> frame_buffer = std::make_shared<buffer>(ycbcr_frame_size);
 
-        auto input = frame_buffer->begin();
+        auto input = ycbcr422;
 
         for(auto y = 0; y < height; ++y)
         {
@@ -177,13 +177,13 @@ namespace seeder::util
     }
 
     /**
-     * @brief convert ycbcr422/uyvy422/cby0cry1 10bit to rgba 8 bit
+     * @brief convert ycbcr422/uyvy422/cby0cry1 10bit to 8 bit
      * 
      * @param ycbcr422 
      * @param format_desc 
      * @return std::shared_ptr<buffer> 
      */
-    std::shared_ptr<buffer> ycbcr422_to_uyvy(std::shared_ptr<buffer> ycbcr422, video_format_desc& format_desc)
+    std::shared_ptr<buffer> ycbcr422_to_uyvy(uint8_t* ycbcr422, video_format_desc& format_desc)
     {
         const auto width           = format_desc.width;
         const auto height          = format_desc.height;
@@ -195,7 +195,7 @@ namespace seeder::util
 
         std::shared_ptr<buffer> frame_buffer = std::make_shared<buffer>(ycbcr_frame_size);
 
-        auto input = frame_buffer->begin();
+        auto input = ycbcr422;
 
         for(auto y = 0; y < height; ++y)
         {

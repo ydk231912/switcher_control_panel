@@ -1,9 +1,9 @@
 /**
- * @file decklink_producer.h
+ * @file decklink_input.h
  * @author 
- * @brief decklink producer, receive SDI frame from decklink card
- * @version 
- * @date 2022-05-26
+ * @brief decklink stream input handle
+ * @version 1.0
+ * @date 2022-07-26
  * 
  * @copyright Copyright (c) 2022
  * 
@@ -15,27 +15,23 @@
 #include <memory>
 #include <deque>
 
-extern "C"
-{
-    #include <libavcodec/avcodec.h>
-    #include <libavformat/avformat.h>
-    #include <libswscale/swscale.h>
-    #include <libavutil/imgutils.h>
-}
-
 #include "../interop/DeckLinkAPI.h"
+
+#include "core/stream/input.h"
 #include "core/video_format.h"
 
-namespace seeder::decklink {
-    class decklink_producer : public IDeckLinkInputCallback
+using namespace seeder::core;
+namespace seeder::decklink
+{
+    class decklink_input : public input, public IDeckLinkInputCallback
     {
       public:
         /**
-         * @brief Construct a new decklink producer::decklink producer object.
+         * @brief Construct a new decklink input object.
          * initialize deckllink device and start input stream
          */
-        decklink_producer(int device_id, core::video_format_desc& format_desc);
-        ~decklink_producer();
+        decklink_input(int device_id, video_format_desc& format_desc);
+        ~decklink_input();
 
 
         virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID *ppv) { return E_NOINTERFACE; }
@@ -63,23 +59,28 @@ namespace seeder::decklink {
         virtual HRESULT STDMETHODCALLTYPE VideoInputFrameArrived(IDeckLinkVideoInputFrame*, IDeckLinkAudioInputPacket*) override;
 
         /**
-         * @brief start decklink capture
+         * @brief start input stream handle
          * 
          */
         void start();
-
+            
         /**
-         * @brief stop decklink capture
+         * @brief stop input stream handle
          * 
          */
         void stop();
 
         /**
-         * @brief Get the frame object from the frame_buffer
+         * @brief push a frame into this input stream
          * 
-         * @return std::shared_ptr<AVFrame> 
          */
-        std::shared_ptr<AVFrame> get_frame();
+        void set_frame(std::shared_ptr<frame> frm);
+
+        /**
+         * @brief Get a frame from this input stream
+         * 
+         */
+        std::shared_ptr<frame> get_frame();
 
       private:
         int decklink_index_;
@@ -93,9 +94,9 @@ namespace seeder::decklink {
 
         //buffer
         std::mutex frame_mutex_;
-        std::deque<std::shared_ptr<AVFrame>> frame_buffer_;
-        const size_t frame_capacity_ = 5;
-        std::shared_ptr<AVFrame> last_frame_;
-    };
+        std::deque<std::shared_ptr<frame>> frame_buffer_;
+        const size_t frame_capacity_ = 3;
+        std::shared_ptr<frame> last_frame_;
 
+    };
 }

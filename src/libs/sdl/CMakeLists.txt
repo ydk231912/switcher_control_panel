@@ -1,6 +1,7 @@
-aux_source_directory(./src/consumer SRC_LIST)
+file(GLOB_RECURSE SRC_LIST src/*.cpp include/*.h)
 include_directories(./include)
-include_directories(${PROJECT_SOURCE_DIR}/build/include)
+include_directories(${PROGRAM_INCLUDE_PATH})
+link_directories(${PROJECT_SOURCE_DIR}/build/lib)
 
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/build/lib)
@@ -24,5 +25,7 @@ list(APPEND FFMPEG_LIBS
     )
 
 target_link_libraries(sdl
-${FFMPEG_LIBS}
+    core
+    util
+    ${FFMPEG_LIBS}
 )

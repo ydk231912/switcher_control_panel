@@ -12,15 +12,17 @@
 
 #pragma once
 
+#include <stdint.h>
+
 namespace seeder::util
 {
     class buffer
     {
       public:
-        buffer();
         buffer(int size);
         ~buffer();
 
+        void free_buffer();
         uint8_t * begin();
         uint8_t * end();
         int size();

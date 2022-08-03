@@ -1,9 +1,9 @@
 /**
- * @file decklink_consumer.h
- * @author 
- * @brief decklink consumer, send SDI frame by decklink card
- * @version 
- * @date 2022-05-26
+ * @file decklink_output.cpp
+ * @author
+ * @brief decklink output, send SDI frame by decklink card
+ * @version 1.0
+ * @date 2022-07-29
  * 
  * @copyright Copyright (c) 2022
  * 
@@ -14,22 +14,19 @@
 #include <boost/chrono.hpp>
 #include <boost/thread/thread.hpp>
 
-#include "consumer/decklink_consumer.h"
 #include "util/logger.h"
 #include "util.h"
 #include "util/color_conversion.h"
+#include "output/decklink_output.h"
 
 using namespace seeder::util;
 using namespace seeder::core;
 using namespace seeder::decklink::util;
-namespace seeder::decklink {
-    /**
-     * @brief Construct a new decklink consumer::decklink consumer object.
-     * initialize deckllink device and start output stream
-     */
-    decklink_consumer::decklink_consumer(int device_id, video_format_desc& format_desc)
-    :decklink_index_(device_id)
-    ,format_desc_(format_desc)
+namespace seeder::decklink
+{
+    decklink_output::decklink_output(int device_id, core::video_format_desc format_desc)
+    :decklink_index_(device_id),
+    format_desc_(format_desc)
     {
         HRESULT result;
         bmd_mode_ = get_decklink_video_format(format_desc_.format);
@@ -92,8 +89,8 @@ namespace seeder::decklink {
         // av_image_fill_arrays(dst_frame_->data, dst_frame_->linesize, dst_frame_buffer_, AV_PIX_FMT_BGRA, 
         //                     format_desc.width, format_desc.height, 1);
     }
-    
-    decklink_consumer::~decklink_consumer()
+
+    decklink_output::~decklink_output()
     {
         if(display_mode_ != nullptr) display_mode_->Release();
 
@@ -111,63 +108,58 @@ namespace seeder::decklink {
     }
 
     /**
-     * @brief start decklink output
+     * @brief start output stream handle
      * 
      */
-    void decklink_consumer::start()
+    void decklink_output::start()
     {
         HRESULT result;
         abort_ = false;
 
-        while(!abort_)
-        {
-            std::shared_ptr<buffer> frame;
+        std::thread([&](){
+            while(!abort_)
             {
-                std::unique_lock<std::mutex> lock(frame_mutex_);
-                frame_cv_.wait(lock, [this](){return !frame_buffer_.empty();});
-                frame = frame_buffer_[0];
-                frame_buffer_.pop_front();
+                auto frm = get_frame();
+
+                // convert frame format
+                // sws_scale(sws_ctx_, (const uint8_t *const *)frm->data,
+                //                         frm->linesize, 0, format_desc_.height, dst_frame_->data, dst_frame_->linesize);
+                // convert uyvy422 10bit to decklink bgra 8 bit
+                auto bgra_frame = ycbcr422_to_bgra(frm->video_data[0], format_desc_);
+
+                // fill playback frame
+                uint8_t* deckLinkBuffer = nullptr;
+                if (playbackFrame_->GetBytes((void**)&deckLinkBuffer) != S_OK)
+                {
+                    logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+                }
+                //deckLinkBuffer = reinterpret_cast<uint8_t*>(dst_frame_->data[0]);
+                memset(deckLinkBuffer, 0, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
+                memcpy(deckLinkBuffer, bgra_frame->begin(), playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
+
+                result = output_->DisplayVideoFrameSync(playbackFrame_);
+                if (result != S_OK)
+                {
+                    logger->error("Unable to display video output");
+                }
             }
-
-            // convert frame format
-            // sws_scale(sws_ctx_, (const uint8_t *const *)frame->data,
-            //                         frame->linesize, 0, format_desc_.height, dst_frame_->data, dst_frame_->linesize);
-            // convert uyvy422 10bit to decklink bgra 8 bit
-            auto bgra_frame = ycbcr422_to_bgra(frame->begin(), format_desc_);
-
-            // fill playback frame
-            uint8_t* deckLinkBuffer = nullptr;
-            if (playbackFrame_->GetBytes((void**)&deckLinkBuffer) != S_OK)
-            {
-                logger->error("Could not get DeckLinkVideoFrame buffer pointer");
-            }
-            //deckLinkBuffer = reinterpret_cast<uint8_t*>(dst_frame_->data[0]);
-            memset(deckLinkBuffer, 0, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
-            memcpy(deckLinkBuffer, bgra_frame->begin(), playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
-
-            result = output_->DisplayVideoFrameSync(playbackFrame_);
-			if (result != S_OK)
-			{
-				logger->error("Unable to display video output");
-			}
-        }
+        });
     }
-
+        
     /**
-     * @brief stop decklink capture
+     * @brief stop output stream handle
      * 
      */
-    void decklink_consumer::stop()
+    void decklink_output::stop()
     {
         abort_ = true;
     }
 
     /**
-     * @brief send the frame object to the frame_buffer
-     * if the frame buffer is full, dicard the last frame
+     * @brief push a frame into this output stream buffer
      * 
      */
-    void decklink_consumer::send_frame(std::shared_ptr<buffer> frame)
+    void decklink_output::set_frame(std::shared_ptr<core::frame> frm)
     {
         std::lock_guard<std::mutex> lock(frame_mutex_);
         if(frame_buffer_.size() >= frame_capacity_)
@@ -176,7 +168,21 @@ namespace seeder::decklink {
             frame_buffer_.pop_front(); // discard the last frame
             logger->error("The frame be discarded");
         }
-        frame_buffer_.push_back(frame);
+        frame_buffer_.push_back(frm);
         frame_cv_.notify_all();
+    }
+
+    /**
+     * @brief Get a frame from this output stream buffer
+     * 
+     */
+    std::shared_ptr<core::frame> decklink_output::get_frame()
+    {
+        std::shared_ptr<core::frame> frm;
+        std::unique_lock<std::mutex> lock(frame_mutex_);
+        frame_cv_.wait(lock, [this](){return !frame_buffer_.empty();});
+        frm = frame_buffer_[0];
+        frame_buffer_.pop_front();
+        return frm;
     }
 }

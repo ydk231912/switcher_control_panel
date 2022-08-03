@@ -14,6 +14,7 @@ net
 util
 decklink
 sdl
+ffmpeg
 ${LINKER_LIBS}
 )
 

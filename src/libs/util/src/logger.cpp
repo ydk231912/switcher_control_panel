@@ -13,7 +13,7 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 
-#include "logger.h"
+#include "util/logger.h"
 
 namespace seeder::util
 {

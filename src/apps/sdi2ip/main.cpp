@@ -34,6 +34,10 @@
 
 #include <net/udp_sender.h>
 #include <rtp/packet.h>
+#include <functional>
+#include <core/frame/frame.h>
+#include <memory>
+//#include <sdl/output/sdl_output.h>
 
 using namespace seeder::util;
 using namespace boost::property_tree;
@@ -43,7 +47,7 @@ namespace seeder
     void print_info()
     {
         logger->info("############################################################################");
-        logger->info("SEEDER SDI to SMPTE ST2110 Server 1.00  test 100");
+        logger->info("SEEDER SDI to SMPTE ST2110 Server 1.0 ");
         logger->info("############################################################################");
         logger->info("Starting SDI to SMPTE ST2110 Server ");
     }
@@ -133,11 +137,45 @@ namespace seeder
 
 } // namespace seeder
 
+int main(int argc, char* argv[])
+{
+    auto start_time = std::chrono::steady_clock::now();
+    int return_code = 0;
+
+    try
+    {
+        // parse config file
+        auto config = seeder::parse_config("sdi2ip_config.xml");
+
+        // set logger config
+        logger = create_logger(config.console_level, config.file_level, config.log_path, config.max_size, config.max_files);
+
+        auto should_restart = seeder::run(config);
+        return_code = should_restart ? 5 : 0; // restart or exit
+    }
+    catch(std::exception& e)
+    {
+        logger->error(e.what());
+    }
+    
+    return return_code;
+}
+
+
+//-------------------------------------------------for test-------------------------------
+
+void frame_test()
+{
+    std::shared_ptr<frame> frm = std::make_shared<frame>();
+    frm->linesize[0] = 100;
+    std::cout << frm->linesize[0] <<std::endl;
+}
 
 void signal_hander(int signal_no)
 {
     std::cout << timer::now() << std::endl;
 }
+
 // nanosleep test
 void test()
 {
@@ -218,30 +256,33 @@ void udp_send_test()
     }
 }
 
-int main(int argc, char* argv[])
+void reference_test(std::shared_ptr<int>& p)
 {
-    //test();
-    //udp_send_test();
+    std::cout << "p1 use count: " << p.use_count() << std::endl;
+}
 
-    auto start_time = std::chrono::steady_clock::now();
+std::function<void()> shared_ptr_test()
+{
+    std::shared_ptr<int> p1(new int(1));
+    std::cout << "p1 use count: " << p1.use_count() << std::endl;
 
-    int return_code = 0;
+    auto f([p1](){ // [&p1]
+        std::cout << "f::p1 use count: " << p1.use_count() << std::endl;
+    });
 
-    try
-    {
-        // parse config file
-        auto config = seeder::parse_config("sdi2ip_config.xml");
+    std::cout << "p1 use count: " << p1.use_count() << std::endl;
 
-        // set logger config
-        logger = create_logger(config.console_level, config.file_level, config.log_path, config.max_size, config.max_files);
+    return f;
 
-        auto should_restart = seeder::run(config);
-        return_code = should_restart ? 5 : 0; // restart or exit
-    }
-    catch(std::exception& e)
-    {
-        logger->error(e.what());
-    }
-    
-    return return_code;
+    // auto p2 = p1;
+    // std::cout << "p1 use count: " << p1.use_count() << std::endl;
+    // std::cout << "p2 use count: " << p2.use_count() << std::endl;
+
+    // p2.reset();
+    // std::cout << "p1 use count: " << p1.use_count() << std::endl;
+    // std::cout << "p2 use count: " << p2.use_count() << std::endl;
+
+    // p2 = std::make_shared<int>(2);
+    // std::cout << "p1 use count: " << p1.use_count() << std::endl;
+    // std::cout << "p2 use count: " << p2.use_count() << std::endl;
 }

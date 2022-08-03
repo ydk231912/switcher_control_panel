@@ -31,7 +31,7 @@ namespace seeder
     void print_info()
     {
         logger->info("############################################################################");
-        logger->info("SEEDER SMPTE ST2110 to SDI Server 1.00");
+        logger->info("SEEDER SMPTE ST2110 to SDI Server 1.0");
         logger->info("############################################################################");
         logger->info("Starting SMPTE ST2110 to SDI Server ");
     }

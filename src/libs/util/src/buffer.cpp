@@ -12,12 +12,10 @@
 
 #include <memory>
 
-#include "buffer.h"
+#include "util/buffer.h"
 
 namespace seeder::util
 {
-    buffer::buffer(){}
-
     buffer::buffer(int size)
     {
         data_ = (uint8_t*)malloc(size);
@@ -25,6 +23,12 @@ namespace seeder::util
     }
 
     buffer::~buffer()
+    {
+        // if(data_)
+        //     free(data_);
+    }
+
+    void buffer::free_buffer()
     {
         if(data_)
             free(data_);

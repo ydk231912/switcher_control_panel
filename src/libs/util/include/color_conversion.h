@@ -26,7 +26,7 @@ namespace seeder::util
      * @param format_desc 
      * @return std::shared_ptr<buffer> 
      */
-    std::shared_ptr<buffer> ycbcr422_to_rgba(std::shared_ptr<buffer> ycbcr422, video_format_desc& format_desc);
+    std::shared_ptr<buffer> ycbcr422_to_rgba(uint8_t* ycbcr422, video_format_desc& format_desc);
 
     /**
      * @brief convert ycbcr422/uyvy422/cby0cry1 10bit to rgba 8 bit
@@ -35,7 +35,7 @@ namespace seeder::util
      * @param format_desc 
      * @return std::shared_ptr<buffer> 
      */
-    std::shared_ptr<buffer> ycbcr422_to_bgra(std::shared_ptr<buffer> ycbcr422, video_format_desc& format_desc);
+    std::shared_ptr<buffer> ycbcr422_to_bgra(uint8_t* ycbcr422, video_format_desc& format_desc);
 
     /**
      * @brief convert ycbcr422/uyvy422/cby0cry1 10bit to rgba 8 bit
@@ -44,6 +44,6 @@ namespace seeder::util
      * @param format_desc 
      * @return std::shared_ptr<buffer> 
      */
-    std::shared_ptr<buffer> ycbcr422_to_uyvy(std::shared_ptr<buffer> ycbcr422, video_format_desc& format_desc);
+    std::shared_ptr<buffer> ycbcr422_to_uyvy(uint8_t* ycbcr422, video_format_desc& format_desc);
     
 } // namespace seeder::util
