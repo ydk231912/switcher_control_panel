@@ -14,11 +14,10 @@
 
 #include "channel.h"
 #include "core/frame/frame.h"
-#include "util/timer.h"
-#include "util/date.h"
-#include "util/logger.h"
+#include "core/util/timer.h"
+#include "core/util/date.h"
+#include "core/util/logger.h"
 
-using namespace seeder::util;
 using namespace seeder::core;
 namespace seeder
 {
@@ -107,7 +106,7 @@ namespace seeder
             // CPU_SET(5, &mask);
             // if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
             // {
-            //     util::logger->error("bind udp thread to cpu failed");
+            //     logger->error("bind udp thread to cpu failed");
             // }
 
             while(!abort_)

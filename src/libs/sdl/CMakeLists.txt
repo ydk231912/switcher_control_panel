@@ -26,6 +26,5 @@ list(APPEND FFMPEG_LIBS
 
 target_link_libraries(sdl
     core
-    util
     ${FFMPEG_LIBS}
 )

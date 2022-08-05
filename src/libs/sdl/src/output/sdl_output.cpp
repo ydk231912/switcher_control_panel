@@ -10,8 +10,9 @@
  */
 
 #include "sdl/output/sdl_output.h"
-#include "util/logger.h"
+#include "core/util/logger.h"
 
+using namespace seeder::core;
 namespace seeder::sdl
 {
     sdl_output::sdl_output()
@@ -44,7 +45,7 @@ namespace seeder::sdl
     {
         if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
         {
-            util::logger->error("SDL_Init() failed: {}", SDL_GetError());
+            logger->error("SDL_Init() failed: {}", SDL_GetError());
             throw std::runtime_error("SDL_Init() failed!");
         }
 
@@ -57,7 +58,7 @@ namespace seeder::sdl
                                             SDL_WINDOW_OPENGL);
         if(screen_ == NULL)
         {
-            util::logger->error("SDL_CreateWindow() is failed: {}", SDL_GetError());
+            logger->error("SDL_CreateWindow() is failed: {}", SDL_GetError());
             throw std::runtime_error("SDL_CreateWindow() failed!");
         }
 

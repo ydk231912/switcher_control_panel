@@ -24,9 +24,9 @@ extern "C"
     #include <libavformat/avformat.h>
 }
 
-#include "util/logger.h"
-#include "util/timer.h"
-#include "util/date.h"
+#include "core/util/logger.h"
+#include "core/util/timer.h"
+#include "core/util/date.h"
 #include "st2110/d20/raw_line_header.h"
 #include "st2110/d10/network.h"
 #include "rtp/header.h"
@@ -34,7 +34,6 @@ extern "C"
 
 #include "output/rtp_st2110_output.h"
 
-using namespace seeder::util;
 using namespace seeder::core;
 namespace seeder::rtp
 {
@@ -88,12 +87,12 @@ namespace seeder::rtp
         //get frame from buffer
         auto frame = get_frame();
 
-        //util::timer timer; // for debug
+        //timer timer; // for debug
 
         if (frame->format != AV_PIX_FMT_YUV422P && frame->format != AV_PIX_FMT_UYVY422)
         {
             //currently,only YUV422P UYVY422 format is supported
-            util::logger->error("The {} frame format is unsupported!", frame->format);
+            logger->error("The {} frame format is unsupported!", frame->format);
             throw std::runtime_error("The frame format is unsupported!");
         }
 
@@ -279,7 +278,7 @@ namespace seeder::rtp
         //// for debug
         //std::cout << "packet count of per frame: " << packet_count << std::endl;
         //std::cout << "st2110 encode us:" << timer.elapsed() << std::endl;
-        //util::logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
+        //logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
     }
 
     /**
@@ -295,7 +294,7 @@ namespace seeder::rtp
             // CPU_SET(23, &mask);
             // if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
             // {
-            //     util::logger->error("bind udp thread to cpu failed");
+            //     logger->error("bind udp thread to cpu failed");
             // }
 
             int timestamp = 0;
@@ -329,7 +328,7 @@ namespace seeder::rtp
                                 played_time = timer::now() - start_time_;
                             }
 
-                            auto time_now = util::date::now() + LEAP_SECONDS * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
+                            auto time_now = date::now() + LEAP_SECONDS * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
                             auto video_time = static_cast<uint64_t>(round(time_now * RTP_VIDEO_RATE / 1000000));
                             timestamp = static_cast<uint32_t>(video_time % RTP_WRAP_AROUND);
                             frame_number_++;
@@ -439,7 +438,7 @@ namespace seeder::rtp
         frame_cv_.wait(lock, [this](){return frame_buffer_.size() < frame_capacity_;}); // block until the buffer is not empty
         frame_buffer_.push_back(frm);
         frame_cv_.notify_all();
-        //util::logger->info("The frame buffer size is {}", frame_buffer_.size());
+        //logger->info("The frame buffer size is {}", frame_buffer_.size());
     }
 
     /**

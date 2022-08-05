@@ -14,12 +14,11 @@
 #include <boost/chrono.hpp>
 #include <boost/thread/thread.hpp>
 
-#include "util/logger.h"
+#include "core/util/logger.h"
 #include "util.h"
-#include "util/color_conversion.h"
+#include "core/util/color_conversion.h"
 #include "output/decklink_output.h"
 
-using namespace seeder::util;
 using namespace seeder::core;
 using namespace seeder::decklink::util;
 namespace seeder::decklink

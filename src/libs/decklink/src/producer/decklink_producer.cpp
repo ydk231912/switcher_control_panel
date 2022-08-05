@@ -12,10 +12,9 @@
 #include <iostream>
 
 #include "producer/decklink_producer.h"
-#include "util/logger.h"
+#include "core/util/logger.h"
 #include "util.h"
 
-using namespace seeder::util;
 using namespace seeder::core;
 using namespace seeder::decklink::util;
 namespace seeder::decklink {

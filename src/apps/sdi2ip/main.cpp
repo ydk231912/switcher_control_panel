@@ -17,11 +17,11 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include "util/logger.h"
+#include "core/util/logger.h"
 #include "core/video_format.h"
 #include "config.h"
 #include "server.h"
-#include "util/timer.h"
+#include "core/util/timer.h"
 
 #include <malloc.h>
 
@@ -39,7 +39,7 @@
 #include <memory>
 //#include <sdl/output/sdl_output.h>
 
-using namespace seeder::util;
+using namespace seeder::core;
 using namespace boost::property_tree;
 
 namespace seeder
@@ -121,7 +121,7 @@ namespace seeder
                 
                 if(boost::iequals(cmd, "EXIT") || boost::iequals(cmd, "Q") || boost::iequals(cmd, "QUIT") || boost::iequals(cmd, "BYE"))
                 {
-                    util::logger->info("Received message from Console: {}", cmd);
+                    logger->info("Received message from Console: {}", cmd);
                     shutdown(false);
                     exit(0);
                     break;

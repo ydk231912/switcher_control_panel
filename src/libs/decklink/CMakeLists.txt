@@ -30,7 +30,6 @@ add_library(decklink ${SRC_LIST})
 
 target_link_libraries(decklink
 core
-util
 ${FFMPEG_LIBS} 
 ${DECKLINK_LIBS}
 )

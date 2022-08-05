@@ -25,10 +25,9 @@ extern "C"
 
 #include "../interop/DeckLinkAPI.h"
 #include "core/video_format.h"
-#include "util/buffer.h"
 #include "core/stream/output.h"
 
-using namespace seeder::util;
+using namespace seeder::core;
 namespace seeder::decklink
 {
     class decklink_output : public core::output

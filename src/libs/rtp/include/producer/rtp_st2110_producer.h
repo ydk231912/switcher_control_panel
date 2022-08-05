@@ -27,9 +27,9 @@ extern "C"
 #include "core/frame.h"
 #include "core/video_format.h"
 #include "rtp/packet.h"
-#include "util/buffer.h"
+#include "core/util/buffer.h"
 
-using namespace seeder::util;
+using namespace seeder::core;
 namespace seeder::rtp
 {
     class rtp_st2110_producer

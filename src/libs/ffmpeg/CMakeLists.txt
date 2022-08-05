@@ -25,6 +25,5 @@ add_library(ffmpeg ${SRC_LIST})
 
 target_link_libraries(ffmpeg
 core
-util
 ${FFMPEG_LIBS} 
 )

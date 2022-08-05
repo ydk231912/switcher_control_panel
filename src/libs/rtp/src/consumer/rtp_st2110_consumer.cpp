@@ -17,9 +17,10 @@
 #include <boost/thread/thread.hpp>
 
 #include "consumer/rtp_st2110_consumer.h"
-#include "util/logger.h"
-#include "util/timer.h"
+#include "core/util/logger.h"
+#include "core/util/timer.h"
 
+using namespace seeder::core;
 namespace seeder::rtp
 {
     rtp_st2110_consumer::rtp_st2110_consumer()
@@ -50,7 +51,7 @@ namespace seeder::rtp
             frame_cv_.notify_all();
         }
 
-        //util::timer timer; // for debug
+        //timer timer; // for debug
 
         auto avframe = frame.video;
         if (!avframe)
@@ -59,7 +60,7 @@ namespace seeder::rtp
         if (avframe->format != AV_PIX_FMT_YUV422P && avframe->format != AV_PIX_FMT_UYVY422)
         {
             //currently,only YUV422P UYVY422 format is supported
-            util::logger->error("The {} frame format is unsupported!", avframe->format);
+            logger->error("The {} frame format is unsupported!", avframe->format);
             throw std::runtime_error("The frame format is unsupported!");
         }
 
@@ -261,18 +262,18 @@ namespace seeder::rtp
                 // }
                 
                     //debug
-                    //util::logger->info("The packet buffer size: {}", packet_buffer_.size());
+                    //logger->info("The packet buffer size: {}", packet_buffer_.size());
                 // }
                 // else
                 // {
-                //     util::logger->error("The packet was discarded! "); // discard
+                //     logger->error("The packet was discarded! "); // discard
                 // }
                 //packet_count++;
             }
         }
         //std::cout << "packet count of per frame: " << packet_count << std::endl;
         //std::cout << "st2110 encode us:" << timer.elapsed() << std::endl;
-        //util::logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
+        //logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
     }
 
     /**
@@ -288,11 +289,11 @@ namespace seeder::rtp
         // {
         //     auto f = frame_buffer_[0];
         //     frame_buffer_.pop_front(); // discard the last frame
-        //     util::logger->error("Discard the last frame");
+        //     logger->error("Discard the last frame");
         // }
         frame_buffer_.push_back(frame);
         frame_cv_.notify_all();
-        //util::logger->info("The frame buffer size is {}", frame_buffer_.size());
+        //logger->info("The frame buffer size is {}", frame_buffer_.size());
     }
 
     /**

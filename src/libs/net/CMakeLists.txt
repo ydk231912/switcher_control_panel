@@ -9,6 +9,6 @@ file(COPY ./include/ DESTINATION  ${PROJECT_BINARY_DIR}/include/net)
 add_library(net ${SRC_LIST})
 
 target_link_libraries(net 
-    util
+    core
 )
 

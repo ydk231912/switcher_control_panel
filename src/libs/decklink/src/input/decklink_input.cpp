@@ -17,12 +17,11 @@ extern "C"
 }
 
 #include "input/decklink_input.h"
-#include "util/logger.h"
+#include "core/util/logger.h"
 #include "util.h"
 
-using namespace seeder::util;
 using namespace seeder::decklink::util;
-//using namespace seeder::core;
+using namespace seeder::core;
 namespace seeder::decklink
 {
     /**

@@ -17,12 +17,12 @@
 #include <boost/thread/thread.hpp>
 
 #include "producer/rtp_st2110_producer.h"
-#include "util/logger.h"
-#include "util/timer.h"
+#include "core/util/logger.h"
+#include "core/util/timer.h"
 #include "header.h"
 #include "st2110/d20/raw_line_header.h"
 
-using namespace seeder::util;
+using namespace seeder::core;
 namespace seeder::rtp
 {
     rtp_st2110_producer::rtp_st2110_producer(core::video_format_desc format_desc)
@@ -44,7 +44,7 @@ namespace seeder::rtp
      */
     void rtp_st2110_producer::run()
     {
-        // util::timer timer;
+        // timer timer;
 
         // 1. get packets
         std::unique_lock<std::mutex> lock(packet_mutex_);
@@ -126,7 +126,7 @@ namespace seeder::rtp
                 ptr += line_length[i];
             }
         }
-        //util::logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
+        //logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
     }
 
     /**
@@ -177,7 +177,7 @@ namespace seeder::rtp
         {
             packet = packet_buffer_[0];
             packet_buffer_.pop_front();
-            //util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
+            //logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
         }
 
         return packet;

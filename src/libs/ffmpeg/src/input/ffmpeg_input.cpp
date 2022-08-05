@@ -1,8 +1,8 @@
 
 #include "input/ffmpeg_input.h"
-#include "util/logger.h"
+#include "core/util/logger.h"
 
-using namespace seeder::util;
+using namespace seeder::core;
 namespace seeder::ffmpeg
 {
     ffmpeg_input::ffmpeg_input(std::string filename)

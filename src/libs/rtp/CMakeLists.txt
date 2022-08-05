@@ -13,6 +13,5 @@ add_library(rtp ${SRC_LIST})
 
 target_link_libraries(rtp
     core
-    util
     st2110
 )

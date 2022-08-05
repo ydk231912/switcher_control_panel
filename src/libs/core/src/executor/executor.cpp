@@ -10,11 +10,12 @@
  */
 
 
-
-#include "executor/executor.h"
 //#include<iostream>
 //#include<vector>
 #include<algorithm>
+
+#include "core/executor/executor.h"
+#include "core/util/logger.h"
 
 
 namespace seeder::core
@@ -82,11 +83,11 @@ namespace seeder::core
         }
         catch(std::exception& ex)
         {
-            //logger()->error("exception while executing asynchronous task: {}", ex.what());
+            logger->error("exception while executing asynchronous task: {}", ex.what());
         }
         catch(...)
         {
-            //logger()->error("unknown exception while executing asynchronous task");
+            logger->error("unknown exception while executing asynchronous task");
         }
     }
 

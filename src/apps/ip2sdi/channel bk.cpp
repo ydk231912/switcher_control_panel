@@ -14,11 +14,11 @@
 
 // #include "channel_bk.h"
 // #include "core/frame.h"
-// #include "util/timer.h"
-// #include "util/logger.h"
+// #include "core/util/timer.h"
+// #include "core/util/logger.h"
 // #include "st2110/d10/network.h"
 
-// using namespace seeder::util;
+// using namespace seeder::core;
 // namespace seeder
 // {
 //     channel::channel(channel_config& config)

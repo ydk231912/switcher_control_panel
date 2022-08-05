@@ -15,9 +15,9 @@
 #include <chrono>
 
 #include "producer/ffmpeg_producer.h"
-#include "util/logger.h"
+#include "core/util/logger.h"
 
-using namespace seeder::util;
+using namespace seeder::core;
 namespace seeder::ffmpeg
 {
     ffmpeg_producer::ffmpeg_producer()

@@ -5,9 +5,9 @@
 #include <boost/thread/thread.hpp>
 
 #include "rtp_st2110.h"
-#include "util/logger.h"
+#include "core/util/logger.h"
 
-
+using namespace seeder::core;
 namespace seeder 
 {
     rtp_st2110::rtp_st2110()
@@ -252,7 +252,7 @@ namespace seeder
         {
             packet = packet_buffer_[0];
             packet_buffer_.pop_front();
-            util::logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
+            logger->info("rtp_st2110::receive_packet: packet buffer size: {}", packet_buffer_.size());
             //std::cout << "rtp_st2110::receive_packet: packet buffer size: " + packet_buffer_.size() << std::endl;
         }
 

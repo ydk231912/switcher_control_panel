@@ -18,7 +18,7 @@
 #include "net/udp_client.h"
 #include "video_play.h"
 #include "sdl_consumer.h"
-#include "util/logger.h"
+#include "core/util/logger.h"
 
 
 // test udp multicast
@@ -28,6 +28,7 @@
 #include <arpa/inet.h>
 
 using namespace seeder;
+using namespace seeder::core;
 
 std::string filename ="/home/seeder/d.MXF";
 //std::string filename ="/home/seeder/test.mp4";
@@ -160,7 +161,7 @@ int test_multicast()
 
 int main()
 {
-    util::logger->info("start server!");
+    logger->info("start server!");
 
     boost::thread play_thread(&run);
     boost::thread ffmpeg_thread(&ffmpeg_producer);

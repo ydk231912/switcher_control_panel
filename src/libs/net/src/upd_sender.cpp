@@ -11,9 +11,10 @@
 
 
 #include "udp_sender.h"
-#include "util/logger.h"
-#include "util/timer.h"
+#include "core/util/logger.h"
+#include "core/util/timer.h"
 
+using namespace seeder::core;
 namespace bai = boost::asio::ip;
 namespace seeder { namespace net {
     
@@ -37,7 +38,7 @@ namespace seeder { namespace net {
         socket_ = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if(socket_ == -1)
         {
-            util::logger->error("Create udp socket client failed!");
+            logger->error("Create udp socket client failed!");
             throw std::runtime_error("Create udp socket client failed!");
         }
 
@@ -92,7 +93,7 @@ namespace seeder { namespace net {
 
         // if(bind(socket_, (struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0)
         // {
-        //     util::logger->error("bind to ip {}:{} failed!", ip, port);
+        //     logger->error("bind to ip {}:{} failed!", ip, port);
         //     return -1;
         // }
 
@@ -128,7 +129,7 @@ namespace seeder { namespace net {
 
         if(connect(socket_, (struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0)
         {
-            util::logger->error("connect to ip {}:{} failed!", ip, port);
+            logger->error("connect to ip {}:{} failed!", ip, port);
             return -1;
         }
 
@@ -150,15 +151,15 @@ namespace seeder { namespace net {
         addr.sin_addr.s_addr = inet_addr(ip.data());
         addr.sin_port = htons(port);
 
-        auto start_time = util::timer::now();
+        auto start_time = timer::now();
         auto result = sendto(socket_, data, length, 0, (struct sockaddr *) &addr, sizeof(struct sockaddr));
         if (result < 0)
         {
-            util::logger->error("send to ip {}:{} udp packet failed!", ip, port);
+            logger->error("send to ip {}:{} udp packet failed!", ip, port);
         }
 
         // packet_count_++;
-        // auto end_time = util::timer::now();
+        // auto end_time = timer::now();
         // if(end_time - start_time > 60000)
         // {
         //     std::cout << "udp sendto time:  " << end_time - start_time << " , packet: " << packet_count_ - last_packet << std::endl;
@@ -172,9 +173,9 @@ namespace seeder { namespace net {
         bai::udp::resolver::query query(bai::udp::v4(), ip, std::to_string(port));
         auto endpoint_iter = resolver.resolve(query);
 
-        auto start_time = util::timer::now();
+        auto start_time = timer::now();
         boost_socket_.send_to(boost::asio::buffer(data, length), *endpoint_iter);
-        auto end_time = util::timer::now();
+        auto end_time = timer::now();
         packet_count_++;
         if(end_time - start_time > 60000)
         {
@@ -219,7 +220,7 @@ namespace seeder { namespace net {
             auto result = sendmmsg(socket_, msg, size, 0);
             if (result < 0)
             {
-                util::logger->error("sendmmsg to ip {}:{} udp packet failed!", ip, port);
+                logger->error("sendmmsg to ip {}:{} udp packet failed!", ip, port);
             }
         //}
         

@@ -11,7 +11,6 @@ core
 rtp
 st2110
 net
-util
 decklink
 sdl
 ffmpeg

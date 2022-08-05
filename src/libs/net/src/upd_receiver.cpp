@@ -9,16 +9,16 @@
 #include <arpa/inet.h>
 
 #include "udp_receiver.h"
-#include "util/logger.h"
+#include "core/util/logger.h"
 
-
+using namespace seeder::core;
 namespace seeder { namespace net {
     udp_receiver::udp_receiver()
     {
         socket_ = socket(AF_INET, SOCK_DGRAM, 0);
         if(socket_ == -1)
         {
-            util::logger->error("Create udp socket failed!");
+            logger->error("Create udp socket failed!");
             throw std::runtime_error("Create udp socket failed!");
         }
     }
@@ -34,7 +34,7 @@ namespace seeder { namespace net {
         socket_ = socket(AF_INET, SOCK_DGRAM, 0);
         if(socket_ == -1)
         {
-            util::logger->error("Create udp socket client failed!");
+            logger->error("Create udp socket client failed!");
             throw std::runtime_error("Create udp socket client failed!");
         }
 
@@ -48,7 +48,7 @@ namespace seeder { namespace net {
         auto ret = setsockopt(socket_, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *)&multi_adr, sizeof(multi_adr));
         if(ret == -1)
         {
-            util::logger->error("Join udp multicast group {} failed!", mulicast_ip_);
+            logger->error("Join udp multicast group {} failed!", mulicast_ip_);
             throw std::runtime_error("Join udp multicast group failed!");
         }
     }
@@ -75,7 +75,7 @@ namespace seeder { namespace net {
 
         if(bind(socket_, (struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0)
         {
-            util::logger->error("bind to ip {}:{} failed!", ip, port);
+            logger->error("bind to ip {}:{} failed!", ip, port);
             return -1;
         }
 
