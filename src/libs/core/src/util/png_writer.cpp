@@ -8,7 +8,7 @@ namespace seeder::core
     /**
      * @brief write frame data to png file
      * 
-     * @param data RGBA 8 bit
+     * @param data RGBA 8bit
      * @param width 
      * @param height 
      * @param path 
