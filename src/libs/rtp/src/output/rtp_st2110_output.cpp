@@ -89,10 +89,10 @@ namespace seeder::rtp
 
         //timer timer; // for debug
 
-        if (frame->format != AV_PIX_FMT_YUV422P && frame->format != AV_PIX_FMT_UYVY422)
+        if (frame->video->format != AV_PIX_FMT_YUV422P && frame->video->format != AV_PIX_FMT_UYVY422)
         {
             //currently,only YUV422P UYVY422 format is supported
-            logger->error("The {} frame format is unsupported!", frame->format);
+            logger->error("The {} frame format is unsupported!", frame->video->format);
             throw std::runtime_error("The frame format is unsupported!");
         }
 
@@ -104,9 +104,9 @@ namespace seeder::rtp
         uint16_t xinc   = 2;
         uint16_t yinc   = 1;
         uint16_t offset = 0;
-        uint16_t width = frame->width;
-        height_ = frame->height;
-        auto timestamp   = frame->timestamp;
+        uint16_t width = frame->video->width;
+        height_ = frame->video->height;
+        //auto timestamp   = frame->timestamp;
 
         while(line < height_) {
             uint32_t left, length, pixels;
@@ -200,14 +200,14 @@ namespace seeder::rtp
                 pgs           = len / pgroup; // how many pgroups
                 headers += 6;
 
-                switch (frame->format) {
+                switch (frame->video->format) {
                     case AV_PIX_FMT_YUV422P:
                     {
                         // frame.data[n] 0:Y 1:U 2:V
-                        uint8_t* yp   = frame->video_data[0] + ln * width + offs;            // y point in frame
+                        uint8_t* yp   = frame->video->data[0] + ln * width + offs;            // y point in frame
                         uint32_t temp     = (ln * width + offs) / xinc;
-                        uint8_t* uvp1 = frame->video_data[1] + temp; // uv point in frame
-                        uint8_t* uvp2 = frame->video_data[2] + temp;
+                        uint8_t* uvp1 = frame->video->data[1] + temp; // uv point in frame
+                        uint8_t* uvp2 = frame->video->data[2] + temp;
                         // the graph is the Ycbcr 4:2:2 10bit depth, total 5bytes
                         // 0                   1                   2                   3
                         // 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
@@ -236,7 +236,7 @@ namespace seeder::rtp
                     case AV_PIX_FMT_UYVY422:
                     {
                         //packed YUV 4:2:2, 16bpp, Cb Y0 Cr Y1
-                        uint8_t* datap   = frame->video_data[0] + ln * width + offs; 
+                        uint8_t* datap   = frame->video->data[0] + ln * width + offs; 
                         for (i = 0; i < pgs; i++) 
                         {
                             //8bit UYVY(CbY0CrY1) to 10bit ycbcr(CbY0CrY1)
@@ -261,7 +261,7 @@ namespace seeder::rtp
             //// 3 write rtp header
             sequence_number_++;
             rtp_packet->set_sequence_number(sequence_number_);
-            rtp_packet->set_timestamp(timestamp);
+            //rtp_packet->set_timestamp(timestamp);
 
             if (line >= height_) { //complete
                 rtp_packet->set_marker(1);

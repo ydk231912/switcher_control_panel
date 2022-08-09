@@ -119,7 +119,7 @@ namespace seeder
                 {
                     // capture sdi frame
                     //auto frame = decklink_input_->get_frame();
-                    auto frame = ffmpeg_input_->get_avframe();
+                    auto frame = ffmpeg_input_->get_frame(); //get_avframe()
                     if(frame)
                     {
                         // push to rtp
@@ -127,7 +127,7 @@ namespace seeder
                         
                         if(sdl_output_)
                             // push to sdl screen display
-                            sdl_output_->set_avframe(frame);
+                            sdl_output_->set_frame(frame); //set_avframe(frame)
                     }
                     boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
                 }

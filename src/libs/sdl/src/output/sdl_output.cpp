@@ -98,20 +98,20 @@ namespace seeder::sdl
         sdl_thread_ = std::make_unique<std::thread>(std::thread([&](){
             while(!abort)
             {
-                auto frm = get_avframe();
+                auto frm = get_frame(); //get_avframe();
                 if(!frm)
                     continue;
 
                 if(ffmpeg_format_ == AV_PIX_FMT_NONE)
                 {
-                    ffmpeg_format_ = (AVPixelFormat)frm->format;
+                    ffmpeg_format_ = (AVPixelFormat)frm->video->format;
                     sws_ctx_ = sws_getContext(format_desc_.width, format_desc_.height, ffmpeg_format_,//AV_PIX_FMT_UYVY422,//(AVPixelFormat)format_desc_.format,
                         window_width_, window_height_, AV_PIX_FMT_YUV420P, 
                         SWS_BICUBIC, NULL, NULL, NULL);
                 }
 
-                sws_scale(sws_ctx_, (const uint8_t *const *)frm->data,
-                                    frm->linesize, 0, frm->height, frm_yuv_->data, frm_yuv_->linesize);
+                sws_scale(sws_ctx_, (const uint8_t *const *)frm->video->data,  //frm->data,
+                                    frm->video->linesize, 0, frm->video->height, frm_yuv_->data, frm_yuv_->linesize);
                 
                 SDL_UpdateYUVTexture(sdl_texture_, &sdl_rect_, frm_yuv_->data[0], frm_yuv_->linesize[0],
                                     frm_yuv_->data[1], frm_yuv_->linesize[1], frm_yuv_->data[2], frm_yuv_->linesize[2]);

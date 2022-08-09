@@ -124,7 +124,7 @@ namespace seeder::decklink
                 // sws_scale(sws_ctx_, (const uint8_t *const *)frm->data,
                 //                         frm->linesize, 0, format_desc_.height, dst_frame_->data, dst_frame_->linesize);
                 // convert uyvy422 10bit to decklink bgra 8 bit
-                auto bgra_frame = ycbcr422_to_bgra(frm->video_data[0], format_desc_);
+                auto bgra_frame = ycbcr422_to_bgra(frm->video->data[0], format_desc_);
 
                 // fill playback frame
                 uint8_t* deckLinkBuffer = nullptr;

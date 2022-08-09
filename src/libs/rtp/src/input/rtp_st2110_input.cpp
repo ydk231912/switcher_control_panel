@@ -105,11 +105,13 @@ namespace seeder::rtp
                 last_frame_timestamp_ = rtp_header->timestamp;
                 buffer_ = (uint8_t*)malloc(frame_size_);
             }
-            if(last_frame_timestamp_ != rtp_header->timestamp)
+            if(last_frame_timestamp_ != rtp_header->timestamp) // new frame
             {
-                // new frame, put current_frame to buffer, then alloc new frame
-                auto frm = std::shared_ptr<core::frame>(new core::frame(), [](core::frame* ptr){ free(ptr->video_data[0]); });
-                frm->video_data[0] = buffer_;
+                // put current_frame to buffer, then alloc new frame memory
+                auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+                auto frm = std::make_shared<core::frame>(); 
+                avframe->data[0] = buffer_;
+                frm->video = avframe;
                 set_frame(frm);
                 buffer_ = (uint8_t*)malloc(frame_size_);
                 last_frame_timestamp_ = rtp_header->timestamp;

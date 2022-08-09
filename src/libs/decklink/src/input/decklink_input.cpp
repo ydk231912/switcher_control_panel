@@ -171,32 +171,34 @@ namespace seeder::decklink
                                                        IDeckLinkAudioInputPacket* audio)
     {
         BMDTimeValue in_video_pts = 0LL;
-        std::shared_ptr<frame> frm = std::make_shared<frame>();
+        auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+        auto frm = std::make_shared<core::frame>(); 
 
         if(video)
         {
-            frm->format = AV_PIX_FMT_UYVY422;
-            frm->width = video->GetWidth();
-            frm->height = video->GetHeight();
-            frm->interlaced_frame = display_mode_->GetFieldDominance() != bmdProgressiveFrame;
-            frm->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
-            frm->key_frame        = 1;
+            avframe->format = AV_PIX_FMT_UYVY422;
+            avframe->width = video->GetWidth();
+            avframe->height = video->GetHeight();
+            avframe->interlaced_frame = display_mode_->GetFieldDominance() != bmdProgressiveFrame;
+            avframe->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
+            avframe->key_frame        = 1;
 
             void* video_bytes = nullptr;
             if(video->GetBytes(&video_bytes) && video_bytes)
             {
                 video->AddRef();
-                frm = std::shared_ptr<frame>(frm.get(), [frm, video](core::frame* ptr) { video->Release(); });
+                avframe = std::shared_ptr<AVFrame>(avframe.get(), [avframe, video](AVFrame* ptr) { video->Release(); });
 
-                frm->video_data[0] = reinterpret_cast<uint8_t*>(video_bytes);
-                frm->linesize[0] = video->GetRowBytes();
+                avframe->data[0] = reinterpret_cast<uint8_t*>(video_bytes);
+                avframe->linesize[0] = video->GetRowBytes();
 
                 BMDTimeValue duration;
                 if (video->GetStreamTime(&in_video_pts, &duration, AV_TIME_BASE)) 
                 {
-                    frm->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
+                    avframe->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
                 }
             }
+            frm->video = avframe;
         }
 
         this->set_frame(frm);

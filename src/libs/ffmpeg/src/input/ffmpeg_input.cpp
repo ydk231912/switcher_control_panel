@@ -113,10 +113,10 @@ namespace seeder::ffmpeg
                     throw std::runtime_error("avcodec_send_packet() failed");
                 }
 
+                //auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
                 auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
-                //auto avframe = av_frame_alloc();
 
-                ret = avcodec_receive_frame(codec_ctx, avframe.get());
+                ret = avcodec_receive_frame(codec_ctx, avframe.get()); //avframe.get()
                 if(ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
                 {
                     continue;
@@ -126,13 +126,12 @@ namespace seeder::ffmpeg
                     logger->error("avcode_receive_frame() failed {}", ret);
                     throw std::runtime_error("avcode_receive_frame() failed");
                 }
-                //auto frm = std::shared_ptr<core::frame>(new core::frame(), [&avframe](core::frame* ptr){ av_frame_free(&avframe); });
+                auto frm = std::make_shared<core::frame>();
                 //frm->set_video_data(avframe);
-                //frm->avframe = std::shared_ptr<AVFrame>(avframe);
-                //set_frame(frm);
+                frm->video = avframe;
+                set_frame(frm);
                 //logger->info("frame buffer number {}", frame_buffer_.size());
-
-                set_avframe(avframe);
+                //set_avframe(avframe);
 
             }
             av_packet_unref(packet);

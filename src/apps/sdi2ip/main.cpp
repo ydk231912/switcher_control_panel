@@ -167,8 +167,8 @@ int main(int argc, char* argv[])
 void frame_test()
 {
     std::shared_ptr<frame> frm = std::make_shared<frame>();
-    frm->linesize[0] = 100;
-    std::cout << frm->linesize[0] <<std::endl;
+    frm->video->linesize[0] = 100;
+    std::cout << frm->video->linesize[0] <<std::endl;
 }
 
 void signal_hander(int signal_no)

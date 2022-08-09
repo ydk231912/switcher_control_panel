@@ -33,23 +33,9 @@ namespace seeder::core
       public:
         frame();
         ~frame();
-        void set_video_data(AVFrame* avframe);
-        void set_audio_data(AVFrame* avframe);
 
-        //std::vector<uint8_t *> video_data;
-        uint8_t *video_data[AV_NUM_DATA_POINTERS];
-        int linesize[AV_NUM_DATA_POINTERS];
-        //std::vector<int> linesize;
-        uint8_t *audio_data[AV_NUM_DATA_POINTERS];
-        int format;
-        int width, height;
-        int nb_samples;
-        int key_frame;
-        int interlaced_frame, top_field_first;
-        int64_t pts;
-        uint32_t timestamp;
-
-        std::shared_ptr<AVFrame> avframe;
+        std::shared_ptr<AVFrame> video;
+        std::shared_ptr<AVFrame> audio;
 
       private:
             
