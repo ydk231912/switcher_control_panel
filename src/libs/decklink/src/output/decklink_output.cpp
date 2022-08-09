@@ -115,7 +115,7 @@ namespace seeder::decklink
         HRESULT result;
         abort_ = false;
 
-        std::thread([&](){
+        decklink_thread_ = std::make_unique<std::thread>(std::thread([&](){
             while(!abort_)
             {
                 auto frm = get_frame();
@@ -142,7 +142,7 @@ namespace seeder::decklink
                     logger->error("Unable to display video output");
                 }
             }
-        });
+        }));
     }
         
     /**
@@ -152,6 +152,7 @@ namespace seeder::decklink
     void decklink_output::stop()
     {
         abort_ = true;
+        decklink_thread_->join();
     }
 
     /**

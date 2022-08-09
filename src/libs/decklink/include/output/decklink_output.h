@@ -14,6 +14,7 @@
 #include <memory>
 #include <deque>
 #include <condition_variable>
+#include <thread>
 
 extern "C"
 {
@@ -82,6 +83,8 @@ namespace seeder::decklink
         const size_t frame_capacity_ = 5;
         std::shared_ptr<core::frame> last_frame_;
         std::condition_variable frame_cv_;
+
+        std::unique_ptr<std::thread> decklink_thread_;
 
     };
 }

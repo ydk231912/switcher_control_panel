@@ -15,6 +15,7 @@
 #include <mutex>
 #include <deque>
 #include <condition_variable>
+#include <thread>
 
 extern "C"
 {
@@ -105,7 +106,9 @@ namespace seeder::rtp
         const std::size_t packet_capacity_ = 30000; // 30k * 1.4k = 42M 
         std::condition_variable packet_cv_;
         net::udp_receiver receiver_;
-        
+
+        std::unique_ptr<std::thread> st2110_thread_;
+        std::unique_ptr<std::thread> udp_thread_;        
 
         const float samples_per_pixel_ = 2; //YCbCr_4_2_2:2; YCbCr_4_4_4: 3; RGB_4_4_4: 3;YCbCr_4_2_0: 1.5
         const int color_depth_ = 10;

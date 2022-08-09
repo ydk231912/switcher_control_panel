@@ -15,6 +15,7 @@
 #include <mutex>
 #include <deque>
 #include <condition_variable>
+#include <thread>
 
 #include "core/stream/output.h"
 #include "rtp/packet.h"
@@ -98,6 +99,8 @@ namespace seeder::rtp
 
         std::condition_variable frame_cv_;
         std::condition_variable packet_cv_;
+        std::unique_ptr<std::thread> st2110_thread_;
+        std::unique_ptr<std::thread> udp_thread_;
 
         uint16_t height_;
         

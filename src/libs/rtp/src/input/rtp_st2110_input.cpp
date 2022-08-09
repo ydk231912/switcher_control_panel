@@ -51,12 +51,12 @@ namespace seeder::rtp
 
         receive_packet();
 
-        std::thread([&](){
+        st2110_thread_ =std::make_unique<std::thread>(std::thread([&](){
             while(!abort)
             {
                 decode();
             }
-        });
+        }));
     }
 
     void rtp_st2110_input::stop()
@@ -253,7 +253,7 @@ namespace seeder::rtp
      */
     void rtp_st2110_input::receive_packet()
     {
-        std::thread([&](){
+        udp_thread_ = std::make_unique<std::thread>(std::thread([&](){
             while(!abort)
             {
                 auto packet = std::make_shared<rtp::packet>(1900);
@@ -261,7 +261,7 @@ namespace seeder::rtp
                 if(len > 0)
                     set_packet(packet);
             }
-        });
+        }));
     }
 
 }

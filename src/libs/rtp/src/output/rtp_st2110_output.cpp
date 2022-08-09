@@ -74,12 +74,12 @@ namespace seeder::rtp
      */
     void rtp_st2110_output::encode()
     {
-        std::thread([&](){
+        st2110_thread_ = std::make_unique<std::thread>(std::thread([&](){
             while(!abort) 
             {
                 do_encode();
             }
-        });
+        }));
     }
 
     void rtp_st2110_output::do_encode()
@@ -287,7 +287,7 @@ namespace seeder::rtp
      */
     void rtp_st2110_output::send_packet()
     {
-        std::thread([&](){
+        udp_thread_ = std::make_unique<std::thread>(std::thread([&](){
             // bind thread to one fixed cpu core
             // cpu_set_t mask;
             // CPU_ZERO(&mask);
@@ -361,7 +361,7 @@ namespace seeder::rtp
                     logger->error("send rtp packet to {}:{} error {}", context_.multicast_ip, context_.multicast_port, e.what());
                 }
             }
-        });
+        }));
     }
 
     /**
@@ -434,11 +434,21 @@ namespace seeder::rtp
      */
     void rtp_st2110_output::set_frame(std::shared_ptr<core::frame> frm)
     {
-        std::unique_lock<std::mutex> lock(frame_mutex_);
-        frame_cv_.wait(lock, [this](){return frame_buffer_.size() < frame_capacity_;}); // block until the buffer is not empty
+        // std::unique_lock<std::mutex> lock(frame_mutex_);
+        // frame_cv_.wait(lock, [this](){return frame_buffer_.size() < frame_capacity_;}); // block until the buffer is not empty
+        // frame_buffer_.push_back(frm);
+        // frame_cv_.notify_all();
+        //logger->info("The frame buffer size is {}", frame_buffer_.size());
+
+        std::lock_guard<std::mutex> lock(frame_mutex_);
+        if(frame_buffer_.size() >= frame_capacity_)
+        {
+            auto f = frame_buffer_[0];
+            frame_buffer_.pop_front(); // discard the last frame
+            logger->error("The frame is discarded");
+        }
         frame_buffer_.push_back(frm);
         frame_cv_.notify_all();
-        //logger->info("The frame buffer size is {}", frame_buffer_.size());
     }
 
     /**
