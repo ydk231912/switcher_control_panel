@@ -15,6 +15,7 @@
 #include <mutex>
 #include <deque>
 #include <condition_variable>
+#include <thread>
 
 extern "C"
 {
@@ -46,6 +47,8 @@ namespace seeder::ffmpeg
          */
         void stop();
 
+        void run();
+
         /**
          * @brief push a frame into this output stream
          * 
@@ -58,6 +61,10 @@ namespace seeder::ffmpeg
          */
         std::shared_ptr<core::frame> get_frame();
 
+        // test
+        void set_avframe(std::shared_ptr<AVFrame> frm);
+        std::shared_ptr<AVFrame> get_avframe();
+
       private:
         bool abort = false;
         std::string filename_;
@@ -66,6 +73,11 @@ namespace seeder::ffmpeg
         const size_t frame_capacity_ = 5;
         std::shared_ptr<core::frame> last_frame_;
         std::condition_variable frame_cv_;
+
+        std::unique_ptr<std::thread> ffmpeg_thread_ = nullptr;
+
+        //for test
+        std::deque<std::shared_ptr<AVFrame>> avframe_buffer_;
 
     };
 }

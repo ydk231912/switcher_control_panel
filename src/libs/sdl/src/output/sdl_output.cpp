@@ -83,7 +83,7 @@ namespace seeder::sdl
         av_image_fill_arrays(frm_yuv_->data, frm_yuv_->linesize, buffer_, AV_PIX_FMT_YUV420P, 
                             window_width_, window_height_, 1);
 
-        sws_ctx_ = sws_getContext(format_desc_.width, format_desc_.height, (AVPixelFormat)format_desc_.format,
+        sws_ctx_ = sws_getContext(format_desc_.width, format_desc_.height, AV_PIX_FMT_YUV422P,//AV_PIX_FMT_UYVY422,//(AVPixelFormat)format_desc_.format,
                         window_width_, window_height_, AV_PIX_FMT_YUV420P, 
                         SWS_BICUBIC, NULL, NULL, NULL);
     }
@@ -95,16 +95,24 @@ namespace seeder::sdl
     void sdl_output::start()
     {
         abort = false;
-        std::thread([&](){
+        sdl_thread_ = std::make_unique<std::thread>(std::thread([&](){
             while(!abort)
             {
-                auto frm = get_frame();
+                auto frm = get_avframe();
                 if(!frm)
                     continue;
-                
-                sws_scale(sws_ctx_, (const uint8_t *const *)frm->video_data,
-                                    frm->linesize, 0, frm->height, frm_yuv_->data, frm_yuv_->linesize);
 
+                if(ffmpeg_format_ == AV_PIX_FMT_NONE)
+                {
+                    ffmpeg_format_ = (AVPixelFormat)frm->format;
+                    sws_ctx_ = sws_getContext(format_desc_.width, format_desc_.height, ffmpeg_format_,//AV_PIX_FMT_UYVY422,//(AVPixelFormat)format_desc_.format,
+                        window_width_, window_height_, AV_PIX_FMT_YUV420P, 
+                        SWS_BICUBIC, NULL, NULL, NULL);
+                }
+
+                sws_scale(sws_ctx_, (const uint8_t *const *)frm->data,
+                                    frm->linesize, 0, frm->height, frm_yuv_->data, frm_yuv_->linesize);
+                
                 SDL_UpdateYUVTexture(sdl_texture_, &sdl_rect_, frm_yuv_->data[0], frm_yuv_->linesize[0],
                                     frm_yuv_->data[1], frm_yuv_->linesize[1], frm_yuv_->data[2], frm_yuv_->linesize[2]);
 
@@ -112,7 +120,7 @@ namespace seeder::sdl
                 SDL_RenderCopy(sdl_renderer_, sdl_texture_, NULL, &sdl_rect_);
                 SDL_RenderPresent(sdl_renderer_);
             }
-        });
+        }));
     }
         
     /**
@@ -148,6 +156,27 @@ namespace seeder::sdl
         frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); // block until the buffer is not empty
         frm = frame_buffer_[0];
         frame_buffer_.pop_front();
+        frame_cv_.notify_all();
+
+        return frm;
+    }
+
+    void sdl_output::set_avframe(std::shared_ptr<AVFrame> frm)
+    {
+        std::unique_lock<std::mutex> lock(frame_mutex_);
+        frame_cv_.wait(lock, [this](){return avframe_buffer_.size() < frame_capacity_;}); // block until the buffer is not empty
+        avframe_buffer_.push_back(frm);
+        frame_cv_.notify_all();
+    }
+
+    std::shared_ptr<AVFrame> sdl_output::get_avframe()
+    {
+        std::shared_ptr<AVFrame> frm = nullptr;
+        
+        std::unique_lock<std::mutex> lock(frame_mutex_);
+        frame_cv_.wait(lock, [this](){return !(avframe_buffer_.empty());}); // block until the buffer is not empty
+        frm = avframe_buffer_[0];
+        avframe_buffer_.pop_front();
         frame_cv_.notify_all();
 
         return frm;

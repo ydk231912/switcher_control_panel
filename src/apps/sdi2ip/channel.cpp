@@ -25,8 +25,8 @@ namespace seeder
     channel::channel(channel_config& config)
     :config_(config)
     ,rtp_context_(config.format_desc, config.multicast_ip, config.multicast_port)
-    ,decklink_input_(std::make_unique<decklink::decklink_input>(config.device_id, config.format_desc))
-    ,rtp_output_(std::make_unique<rtp::rtp_st2110_output>(rtp_context_))
+    //,decklink_input_(std::make_unique<decklink::decklink_input>(config.device_id, config.format_desc))
+    //,rtp_output_(std::make_unique<rtp::rtp_st2110_output>(rtp_context_))
     ,ffmpeg_input_(std::make_unique<ffmpeg::ffmpeg_input>("/home/seeder/c.MXF")) // for test
     {
         if(config.display_screen)
@@ -59,12 +59,15 @@ namespace seeder
     {
         abort_ = false;
 
-        decklink_input_->start();
+        //decklink_input_->start();
 
         if(ffmpeg_input_)
+        {
             ffmpeg_input_->start();
+        }
+            
 
-        rtp_output_->start();
+        //rtp_output_->start();
 
         if(sdl_output_)
             sdl_output_->start();
@@ -116,17 +119,17 @@ namespace seeder
                 {
                     // capture sdi frame
                     //auto frame = decklink_input_->get_frame();
-                    auto frame = ffmpeg_input_->get_frame();
+                    auto frame = ffmpeg_input_->get_avframe();
                     if(frame)
                     {
                         // push to rtp
-                        rtp_output_->set_frame(frame);
+                        //rtp_output_->set_frame(frame);
                         
                         if(sdl_output_)
                             // push to sdl screen display
-                            sdl_output_->set_frame(frame);
+                            sdl_output_->set_avframe(frame);
                     }
-                    //boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
+                    boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
                 }
                 catch(const std::exception& e)
                 {
@@ -134,6 +137,8 @@ namespace seeder
                 }
             }
         });
+
+        channel_thread_->join();
     }
 
 } // namespace seeder

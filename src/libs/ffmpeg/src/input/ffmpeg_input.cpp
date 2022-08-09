@@ -1,4 +1,8 @@
 
+
+#include <unistd.h>
+#include <iostream>
+
 #include "input/ffmpeg_input.h"
 #include "core/util/logger.h"
 
@@ -22,6 +26,25 @@ namespace seeder::ffmpeg
     {
         abort = false;
 
+        ffmpeg_thread_ = std::make_unique<std::thread>(std::thread([&](){
+            while(!abort) // loop playback
+            {
+               run();
+            }
+       }));
+    }
+        
+    /**
+     * @brief stop output stream handle
+     * 
+     */
+    void ffmpeg_input::stop()
+    {
+        abort = true;
+    }
+
+    void ffmpeg_input::run()
+    {
         int ret;
         int count = 0;
         
@@ -90,10 +113,10 @@ namespace seeder::ffmpeg
                     throw std::runtime_error("avcodec_send_packet() failed");
                 }
 
-                //auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
-                auto avframe = av_frame_alloc();
+                auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+                //auto avframe = av_frame_alloc();
 
-                ret = avcodec_receive_frame(codec_ctx, avframe);
+                ret = avcodec_receive_frame(codec_ctx, avframe.get());
                 if(ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
                 {
                     continue;
@@ -103,25 +126,20 @@ namespace seeder::ffmpeg
                     logger->error("avcode_receive_frame() failed {}", ret);
                     throw std::runtime_error("avcode_receive_frame() failed");
                 }
-                auto frm = std::shared_ptr<core::frame>(new core::frame(), [&avframe](core::frame* ptr){ av_frame_free(&avframe); });
-                frm->set_video_data(avframe);
-                set_frame(frm);
+                //auto frm = std::shared_ptr<core::frame>(new core::frame(), [&avframe](core::frame* ptr){ av_frame_free(&avframe); });
+                //frm->set_video_data(avframe);
+                //frm->avframe = std::shared_ptr<AVFrame>(avframe);
+                //set_frame(frm);
                 //logger->info("frame buffer number {}", frame_buffer_.size());
+
+                set_avframe(avframe);
+
             }
             av_packet_unref(packet);
         }
 
         avcodec_close(codec_ctx);
         avformat_close_input(&fmt_ctx);
-    }
-        
-    /**
-     * @brief stop output stream handle
-     * 
-     */
-    void ffmpeg_input::stop()
-    {
-        abort = true;
     }
 
     /**
@@ -144,13 +162,51 @@ namespace seeder::ffmpeg
     {
         std::shared_ptr<core::frame> frm;
         {
-            std::lock_guard<std::mutex> lock(frame_mutex_);
-            if(frame_buffer_.size() < 1)
-                return last_frame_;
+            std::unique_lock<std::mutex> lock(frame_mutex_);
+            // if(frame_buffer_.size() < 1)
+            //     return last_frame_;
+            // frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); 
+            // frm = frame_buffer_[0];
+            // frame_buffer_.pop_front();
+            // last_frame_ = frm;
 
-            frm = frame_buffer_[0];
-            frame_buffer_.pop_front();
-            last_frame_ = frm;
+            if(frame_buffer_.size() > 0)
+            {
+                frm = frame_buffer_[0];
+                frame_buffer_.pop_front();
+                frame_cv_.notify_all();
+            }
+        }
+
+        return frm;
+    }
+
+    void ffmpeg_input::set_avframe(std::shared_ptr<AVFrame> frm)
+    {
+        std::unique_lock<std::mutex> lock(frame_mutex_);
+        frame_cv_.wait(lock, [this](){return avframe_buffer_.size() < frame_capacity_;}); // block until the buffer is not full
+        avframe_buffer_.push_back(frm);
+        frame_cv_.notify_all();
+    }
+
+    std::shared_ptr<AVFrame> ffmpeg_input::get_avframe()
+    {
+        std::shared_ptr<AVFrame> frm;
+        {
+            std::unique_lock<std::mutex> lock(frame_mutex_);
+            // if(frame_buffer_.size() < 1)
+            //     return last_frame_;
+            // frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); 
+            // frm = frame_buffer_[0];
+            // frame_buffer_.pop_front();
+            // last_frame_ = frm;
+
+            if(avframe_buffer_.size() > 0)
+            {
+                frm = avframe_buffer_[0];
+                avframe_buffer_.pop_front();
+                frame_cv_.notify_all();
+            }
         }
 
         return frm;

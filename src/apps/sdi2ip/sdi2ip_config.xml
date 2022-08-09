@@ -23,7 +23,7 @@
             <multicast-port>20000</multicast-port>
             <bind-ip>192.168.10.103</bind-ip>
             <bind-port>20001</bind-port>
-            <display-screen>false</display-screen>
+            <display-screen>true</display-screen>
         </channel>
     </channels>
 </configuration>

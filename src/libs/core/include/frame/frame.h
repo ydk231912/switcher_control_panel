@@ -49,6 +49,8 @@ namespace seeder::core
         int64_t pts;
         uint32_t timestamp;
 
+        std::shared_ptr<AVFrame> avframe;
+
       private:
             
         

@@ -15,6 +15,7 @@
 #include <mutex>
 #include <deque>
 #include <condition_variable>
+#include <thread>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_rect.h>
@@ -67,6 +68,10 @@ namespace seeder::sdl
          */
         std::shared_ptr<core::frame> get_frame();
 
+        // test
+        void set_avframe(std::shared_ptr<AVFrame> frm);
+        std::shared_ptr<AVFrame> get_avframe();
+
       private:
         core::video_format_desc format_desc_;
 
@@ -89,5 +94,11 @@ namespace seeder::sdl
         uint8_t* buffer_;
         SwsContext* sws_ctx_;
 
+        std::unique_ptr<std::thread> sdl_thread_ = nullptr;
+
+        AVPixelFormat ffmpeg_format_ = AV_PIX_FMT_NONE;
+
+        // for test
+        std::deque<std::shared_ptr<AVFrame>> avframe_buffer_;
     };
 }
