@@ -31,6 +31,8 @@ namespace seeder
     {
         if(config.display_screen)
             sdl_output_ = std::make_unique<sdl::sdl_output>(config_.format_desc);
+
+        rtp_output_ = std::make_unique<rtp::rtp_st2110_output>(rtp_context_);
     }
 
     channel::~channel()
@@ -67,7 +69,7 @@ namespace seeder
         }
             
 
-        //rtp_output_->start();
+        rtp_output_->start();
 
         if(sdl_output_)
             sdl_output_->start();
@@ -123,13 +125,13 @@ namespace seeder
                     if(frame)
                     {
                         // push to rtp
-                        //rtp_output_->set_frame(frame);
+                        rtp_output_->set_frame(frame);
                         
                         if(sdl_output_)
                             // push to sdl screen display
                             sdl_output_->set_frame(frame); //set_avframe(frame)
                     }
-                    boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
+                    //boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
                 }
                 catch(const std::exception& e)
                 {

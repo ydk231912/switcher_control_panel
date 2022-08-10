@@ -27,7 +27,7 @@ namespace seeder::rtp
     class rtp_st2110_output : public core::output
     {
       public:
-        rtp_st2110_output(rtp_context context);
+        rtp_st2110_output(rtp_context& context);
         ~rtp_st2110_output();
 
         /**
@@ -95,7 +95,7 @@ namespace seeder::rtp
         std::deque<std::shared_ptr<core::frame>> frame_buffer_;
         std::deque<std::shared_ptr<rtp::packet>> packet_buffer_;
         const std::size_t frame_capacity_ = 3;
-        const std::size_t packet_capacity_ = 11544; // 30k * 1.4k = 42M 
+        std::size_t packet_capacity_ = 11544; // 3frame 
 
         std::condition_variable frame_cv_;
         std::condition_variable packet_cv_;

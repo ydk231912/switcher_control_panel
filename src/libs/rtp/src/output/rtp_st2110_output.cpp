@@ -37,11 +37,13 @@ extern "C"
 using namespace seeder::core;
 namespace seeder::rtp
 {
-    rtp_st2110_output::rtp_st2110_output(rtp_context context)
+    rtp_st2110_output::rtp_st2110_output(rtp_context& context)
     :context_(context),
     udp_sender_(std::make_unique<net::udp_sender>())
     {
+        //udp_sender_->bind_ip("192.168.10.203", 20001);
         packets_per_frame_ = calc_packets_per_frame();
+        packet_capacity_ =  packets_per_frame_ * frame_capacity_;
     }
 
     rtp_st2110_output::~rtp_st2110_output()
@@ -365,6 +367,106 @@ namespace seeder::rtp
     }
 
     /**
+     * @brief push a frame into this output stream
+     * 
+     */
+    void rtp_st2110_output::set_frame(std::shared_ptr<core::frame> frm)
+    {
+        std::unique_lock<std::mutex> lock(frame_mutex_);
+        if(frame_buffer_.size() < frame_capacity_)
+        {
+            frame_buffer_.push_back(frm);
+            frame_cv_.notify_all();
+            return;
+        }
+        frame_cv_.wait(lock, [this](){return frame_buffer_.size() < frame_capacity_;}); // block until the buffer is not empty
+        frame_buffer_.push_back(frm);
+        frame_cv_.notify_all();
+        //logger->info("The frame buffer size is {}", frame_buffer_.size());
+
+        // std::lock_guard<std::mutex> lock(frame_mutex_);
+        // if(frame_buffer_.size() >= frame_capacity_)
+        // {
+        //     auto f = frame_buffer_[0];
+        //     frame_buffer_.pop_front(); // discard the last frame
+        //     logger->error("The frame is discarded");
+        // }
+        // frame_buffer_.push_back(frm);
+        // frame_cv_.notify_all();
+    }
+
+    /**
+     * @brief Get a frame from this output stream
+     * 
+     */
+    std::shared_ptr<core::frame> rtp_st2110_output::get_frame()
+    {
+        std::shared_ptr<core::frame> frm;
+        std::unique_lock<std::mutex> lock(frame_mutex_);
+        if(frame_buffer_.size() > 0)
+        {
+            frm = frame_buffer_[0];
+            frame_buffer_.pop_front();
+            frame_cv_.notify_all();
+            return frm;
+        }
+        frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); // block until the buffer is not empty
+        frm = frame_buffer_[0];
+        frame_buffer_.pop_front();
+        frame_cv_.notify_all();
+        return frm;
+    }
+
+    /**
+     * @brief Get the st2110 packet 
+     * 
+     * @return std::shared_ptr<packet> 
+     */
+    std::shared_ptr<packet> rtp_st2110_output::get_packet()
+    {
+        std::shared_ptr<rtp::packet> packet = nullptr;
+        std::unique_lock<std::mutex> lock(packet_mutex_);
+        if(packet_buffer_.size() > 0)
+        {
+            packet = packet_buffer_[0];
+            packet_buffer_.pop_front();
+            packet_cv_.notify_all();
+            return packet;
+        }
+        packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
+        packet = packet_buffer_[0];
+        packet_buffer_.pop_front();
+        packet_cv_.notify_all();
+
+        // if(packet_buffer_.size() > 0)
+        // {
+        //     packet = packet_buffer_[0];
+        //     packet_buffer_.pop_front();
+        //     packet_cv_.notify_all();
+        // }
+
+        return packet;
+    }
+
+    /**
+     * @brief Set the packet object
+     * 
+     */
+    void rtp_st2110_output::set_packet(std::shared_ptr<packet> packet)
+    {
+        std::unique_lock<std::mutex> lock(packet_mutex_);
+        if(packet_buffer_.size() < packet_capacity_)
+        {
+            packet_buffer_.push_back(packet);
+            packet_cv_.notify_all();
+            return;
+        }
+        packet_cv_.wait(lock, [this](){return packet_buffer_.size() < packet_capacity_;});
+        packet_buffer_.push_back(packet);
+        packet_cv_.notify_all();
+    }
+
+    /**
      * @brief calculate rtp packets number per frame
      * 
      * @return int 
@@ -426,73 +528,5 @@ namespace seeder::rtp
         }
 
         return packets;
-    }
-
-    /**
-     * @brief push a frame into this output stream
-     * 
-     */
-    void rtp_st2110_output::set_frame(std::shared_ptr<core::frame> frm)
-    {
-        // std::unique_lock<std::mutex> lock(frame_mutex_);
-        // frame_cv_.wait(lock, [this](){return frame_buffer_.size() < frame_capacity_;}); // block until the buffer is not empty
-        // frame_buffer_.push_back(frm);
-        // frame_cv_.notify_all();
-        //logger->info("The frame buffer size is {}", frame_buffer_.size());
-
-        std::lock_guard<std::mutex> lock(frame_mutex_);
-        if(frame_buffer_.size() >= frame_capacity_)
-        {
-            auto f = frame_buffer_[0];
-            frame_buffer_.pop_front(); // discard the last frame
-            logger->error("The frame is discarded");
-        }
-        frame_buffer_.push_back(frm);
-        frame_cv_.notify_all();
-    }
-
-    /**
-     * @brief Get a frame from this output stream
-     * 
-     */
-    std::shared_ptr<core::frame> rtp_st2110_output::get_frame()
-    {
-        std::shared_ptr<core::frame> frm;
-        std::unique_lock<std::mutex> lock(frame_mutex_);
-        frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); // block until the buffer is not empty
-        frm = frame_buffer_[0];
-        frame_buffer_.pop_front();
-        frame_cv_.notify_all();
-
-        return frm;
-    }
-
-    /**
-     * @brief Get the st2110 packet 
-     * 
-     * @return std::shared_ptr<packet> 
-     */
-    std::shared_ptr<packet> rtp_st2110_output::get_packet()
-    {
-        std::shared_ptr<rtp::packet> packet = nullptr;
-        std::unique_lock<std::mutex> lock(packet_mutex_);
-        packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
-        packet = packet_buffer_[0];
-        packet_buffer_.pop_front();
-        packet_cv_.notify_all();
-
-        return packet;
-    }
-
-    /**
-     * @brief Set the packet object
-     * 
-     */
-    void rtp_st2110_output::set_packet(std::shared_ptr<packet> packet)
-    {
-        std::unique_lock<std::mutex> lock(packet_mutex_);
-        packet_cv_.wait(lock, [this](){return packet_buffer_.size() < packet_capacity_;});
-        packet_buffer_.push_back(packet);
-        packet_cv_.notify_all();
     }
 }
