@@ -24,8 +24,8 @@ namespace seeder::core
 
     buffer::~buffer()
     {
-        // if(data_)
-        //     free(data_);
+        if(data_)
+            free(data_);
     }
 
     void buffer::free_buffer()

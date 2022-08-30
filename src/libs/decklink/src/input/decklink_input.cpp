@@ -29,13 +29,13 @@ namespace seeder::decklink
      * initialize deckllink device and start input stream
      */
     decklink_input::decklink_input(int device_id, video_format_desc& format_desc)
-    :decklink_index_(device_id)
+    :decklink_index_(device_id - 1)
     ,format_desc_(format_desc)
+    ,pixel_format_(bmdFormat8BitYUV)
+    ,video_flags_(bmdVideoInputFlagDefault)
     {
         HRESULT result;
-        pixel_format_ = bmdFormat8BitYUV;
         bmd_mode_ = get_decklink_video_format(format_desc_.format);
-        video_flags_ = 0;
         
         // get the decklink device
         decklink_ = get_decklink(decklink_index_);
@@ -94,6 +94,28 @@ namespace seeder::decklink
         HRESULT result = input_->EnableVideoInput(bmd_mode_, pixel_format_, video_flags_);
         if(result != S_OK)
         {
+            if(result == E_FAIL)
+            {
+                logger->error("E_FAIL");
+            }
+            else if(result == E_INVALIDARG)
+            {
+                logger->error("E_INVALIDARG");
+            }
+            else if(result == E_ACCESSDENIED)
+            {
+                logger->error("E_ACCESSDENIED");
+            }
+            else if(result == E_OUTOFMEMORY)
+            {
+                logger->error("E_OUTOFMEMORY");
+            }
+            else 
+            {
+                logger->error("unknow");
+            }
+            
+
             logger->error("Failed to enable DeckLink video input.");
             throw std::runtime_error("Failed to enable DeckLink video input.");
         }
@@ -184,7 +206,7 @@ namespace seeder::decklink
             avframe->key_frame        = 1;
 
             void* video_bytes = nullptr;
-            if(video->GetBytes(&video_bytes) && video_bytes)
+            if(video->GetBytes(&video_bytes) == S_OK && video_bytes)
             {
                 video->AddRef();
                 avframe = std::shared_ptr<AVFrame>(avframe.get(), [avframe, video](AVFrame* ptr) { video->Release(); });
@@ -217,6 +239,7 @@ namespace seeder::decklink
         {
             auto f = frame_buffer_[0];
             frame_buffer_.pop_front(); // discard the oldest frame
+            logger->error("The frame is discarded");
         }
         frame_buffer_.push_back(frm);
     }

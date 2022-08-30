@@ -20,7 +20,7 @@
 
 namespace seeder::core
 {
-    constexpr auto n_threads = 4;
+    constexpr auto n_threads = 3;
     constexpr auto high_water_mark = n_threads * 16;
 
     

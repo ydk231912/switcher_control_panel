@@ -16,12 +16,16 @@
 #include <deque>
 #include <condition_variable>
 #include <thread>
+#include <boost/lockfree/spsc_queue.hpp>
 
 #include "core/stream/output.h"
 #include "rtp/packet.h"
 #include "net/udp_sender.h"
 #include "rtp/rtp_context.h"
+#include "core/executor/executor.h"
+#include "rtp/packets_buffer.h"
 
+using namespace boost::lockfree;
 namespace seeder::rtp
 {
     class rtp_st2110_output : public core::output
@@ -47,7 +51,7 @@ namespace seeder::rtp
          * 
          */
         void encode();
-        void do_encode();
+        void do_encode(uint16_t queue_id, std::shared_ptr<core::frame> frm, uint16_t line, uint16_t height);
 
         /**
          * @brief calculate rtp packets number per frame
@@ -60,7 +64,7 @@ namespace seeder::rtp
          * @brief send the rtp packet by udp
          * 
          */
-        void send_packet();
+        void send_packet(uint16_t queue_id);
 
         /**
          * @brief push a frame into this output stream
@@ -90,28 +94,34 @@ namespace seeder::rtp
       private:
         rtp_context context_;
         bool abort = false;
-        uint16_t sequence_number_;
+        atomic<uint16_t> sequence_number_;
+        atomic<uint32_t> timestamp_;
+        atomic<bool> first_of_frame_;
+
+        //buffer and thread
         std::mutex frame_mutex_, packet_mutex_;
         std::deque<std::shared_ptr<core::frame>> frame_buffer_;
         std::deque<std::shared_ptr<rtp::packet>> packet_buffer_;
+        
         const std::size_t frame_capacity_ = 3;
         std::size_t packet_capacity_ = 11544; // 3frame 
 
         std::condition_variable frame_cv_;
         std::condition_variable packet_cv_;
         std::unique_ptr<std::thread> st2110_thread_;
-        std::unique_ptr<std::thread> udp_thread_;
-
-        uint16_t height_;
         
-        std::unique_ptr<net::udp_sender> udp_sender_ = nullptr;
-
-        int64_t start_time_;
-        int64_t packet_drain_interval_;
-        int64_t packet_drained_number_ = 0;
-        int64_t frame_number_ = 0;
-
+        // udp sender
+        std::vector<std::unique_ptr<rtp::packets_buffer>> packets_buffers_;
+        //int16_t qid_ = -1; // packets_buffers_ queue index
+        std::vector<std::unique_ptr<net::udp_sender>> udp_senders_;
+        std::vector<std::unique_ptr<std::thread>> udp_threads_;
+        std::vector<int64_t> drain_offsets_; // udp sender queues, send packet time offsets
+        uint64_t frame_time_;
+        uint64_t packet_drain_interval_;
         int packets_per_frame_ = 0;
+
+        //int64_t packet_drained_number_ = 0;
+        //int64_t frame_number_ = 0;
 
     };
 }

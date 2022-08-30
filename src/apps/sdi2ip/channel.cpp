@@ -25,14 +25,16 @@ namespace seeder
     channel::channel(channel_config& config)
     :config_(config)
     ,rtp_context_(config.format_desc, config.multicast_ip, config.multicast_port)
-    //,decklink_input_(std::make_unique<decklink::decklink_input>(config.device_id, config.format_desc))
+    ,decklink_input_(std::make_unique<decklink::decklink_input>(config.device_id, config.format_desc))
     //,rtp_output_(std::make_unique<rtp::rtp_st2110_output>(rtp_context_))
-    ,ffmpeg_input_(std::make_unique<ffmpeg::ffmpeg_input>("/home/seeder/c.MXF")) // for test
+    //,ffmpeg_input_(std::make_unique<ffmpeg::ffmpeg_input>("/home/seeder/c.MXF")) // for test
     {
+        rtp_output_ = std::make_unique<rtp::rtp_st2110_output>(rtp_context_);
+
         if(config.display_screen)
             sdl_output_ = std::make_unique<sdl::sdl_output>(config_.format_desc);
 
-        rtp_output_ = std::make_unique<rtp::rtp_st2110_output>(rtp_context_);
+        
     }
 
     channel::~channel()
@@ -61,18 +63,17 @@ namespace seeder
     {
         abort_ = false;
 
-        //decklink_input_->start();
+        if(decklink_input_)
+            decklink_input_->start();
 
         if(ffmpeg_input_)
-        {
             ffmpeg_input_->start();
-        }
-            
+        
+        if(rtp_output_)
+            rtp_output_->start();
 
-        rtp_output_->start();
-
-        if(sdl_output_)
-            sdl_output_->start();
+        // if(sdl_output_)
+        //     sdl_output_->start();
         
         // do main loop, capture sdi(decklink) input frame, encode to st2110 packets
         run();
@@ -120,16 +121,16 @@ namespace seeder
                 try
                 {
                     // capture sdi frame
-                    //auto frame = decklink_input_->get_frame();
-                    auto frame = ffmpeg_input_->get_frame(); //get_avframe()
+                    auto frame = decklink_input_->get_frame();
+                    // auto frame = ffmpeg_input_->get_frame(); // for test
                     if(frame)
                     {
                         // push to rtp
                         rtp_output_->set_frame(frame);
                         
-                        if(sdl_output_)
-                            // push to sdl screen display
-                            sdl_output_->set_frame(frame); //set_avframe(frame)
+                        // push to sdl screen display
+                        // if(sdl_output_)
+                        //     sdl_output_->set_frame(frame); //set_avframe(frame)
                     }
                     //boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
                 }

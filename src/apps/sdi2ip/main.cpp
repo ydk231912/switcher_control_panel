@@ -21,24 +21,13 @@
 #include "core/video_format.h"
 #include "config.h"
 #include "server.h"
-#include "core/util/timer.h"
 
 #include <malloc.h>
 
-// for test
-#include <time.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/time.h>
-#include <sys/select.h>
+// test
+#include <test.h>
 
-#include <net/udp_sender.h>
-#include <rtp/packet.h>
-#include <functional>
-#include <core/frame/frame.h>
-#include <memory>
-//#include <sdl/output/sdl_output.h>
-
+using namespace boost::lockfree;
 using namespace seeder::core;
 using namespace boost::property_tree;
 
@@ -137,8 +126,12 @@ namespace seeder
 
 } // namespace seeder
 
+
 int main(int argc, char* argv[])
 {
+    test();
+    return 0;
+
     auto start_time = std::chrono::steady_clock::now();
     int return_code = 0;
 
@@ -159,130 +152,4 @@ int main(int argc, char* argv[])
     }
     
     return return_code;
-}
-
-
-//-------------------------------------------------for test-------------------------------
-
-void frame_test()
-{
-    std::shared_ptr<frame> frm = std::make_shared<frame>();
-    frm->video->linesize[0] = 100;
-    std::cout << frm->video->linesize[0] <<std::endl;
-}
-
-void signal_hander(int signal_no)
-{
-    std::cout << timer::now() << std::endl;
-}
-
-// nanosleep test
-void test()
-{
-
-    // ///////////////////////////////////////////// setitimer (precision 1us)
-    // signal(SIGALRM, signal_hander);
-    // struct itimerval timer;
-    // timer.it_value.tv_sec = 0;	
-    // timer.it_value.tv_usec = 1;
-    // timer.it_interval.tv_sec = 0;
-    // timer.it_interval.tv_usec = 1;
-    // setitimer(ITIMER_REAL, &timer, 0);
-
-    // timespec delay;
-    // delay.tv_sec = 0;
-    // delay.tv_nsec = 10000;
-    struct timeval tv;
-    tv.tv_sec = 0;	
-    tv.tv_usec = 1000000;
-    struct timespec req;
-    req.tv_sec = 0;
-    req.tv_nsec = 1000;
-    while(true)
-    {
-        /////////////////////////////////////////// select
-        timer timer;
-        //auto ret = select(0, NULL, NULL, NULL, &tv);
-        //auto ret = pselect(0, NULL, NULL, NULL, &req, NULL);
-        auto e = timer.elapsed();
-        std::cout << e << std::endl;
-
-        ///////////////////////////////////////////nanosleep test
-        // timer timer;
-        // auto ret = nanosleep(&delay, NULL);
-        // auto e = timer.elapsed();
-        // std::cout << e << std::endl;
-
-        /////////////////////////////////////////// timer.elapsed test(30ns); std::cout test(1400ns)
-        // timer t1;
-        // timer t2;
-        // auto e2 = t2.elapsed();
-        // auto e1 = t1.elapsed();
-        // timer t3;
-        // std::cout << e1 << "   " << e2 << "  " << e1 - e2 <<std::endl;
-        // auto e3 = t3.elapsed();
-        // std::cout << e1 << "   " << e3 << std::endl;
-
-        ///////////////////////////////////////////// for test
-        // timer t;
-        // for(long i = 0; i < 1000; i++) // 300ns
-        // {}
-        // auto e = t.elapsed();
-        // std::cout << e << std::endl;
-
-        // timer t;
-        // auto e = t.elapsed();
-        // std::cout << e << std::endl;
-
-    }
-}
-
-void udp_send_test()
-{
-    seeder::rtp::packet p;
-    seeder::net::udp_sender sender;
-    sender.bind_ip("192.168.10.103", 20001);
-
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(23, &mask);
-    if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
-    {
-        std::cout << "bind udp thread to cpu failed" << std::endl;
-    }
-
-    while(1){
-        sender.send_to(p.get_data_ptr(), p.get_data_size(), "192.168.10.101", 20000);
-    }
-}
-
-void reference_test(std::shared_ptr<int>& p)
-{
-    std::cout << "p1 use count: " << p.use_count() << std::endl;
-}
-
-std::function<void()> shared_ptr_test()
-{
-    std::shared_ptr<int> p1(new int(1));
-    std::cout << "p1 use count: " << p1.use_count() << std::endl;
-
-    auto f([p1](){ // [&p1]
-        std::cout << "f::p1 use count: " << p1.use_count() << std::endl;
-    });
-
-    std::cout << "p1 use count: " << p1.use_count() << std::endl;
-
-    return f;
-
-    // auto p2 = p1;
-    // std::cout << "p1 use count: " << p1.use_count() << std::endl;
-    // std::cout << "p2 use count: " << p2.use_count() << std::endl;
-
-    // p2.reset();
-    // std::cout << "p1 use count: " << p1.use_count() << std::endl;
-    // std::cout << "p2 use count: " << p2.use_count() << std::endl;
-
-    // p2 = std::make_shared<int>(2);
-    // std::cout << "p1 use count: " << p1.use_count() << std::endl;
-    // std::cout << "p2 use count: " << p2.use_count() << std::endl;
 }
