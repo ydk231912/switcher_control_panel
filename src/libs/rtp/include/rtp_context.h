@@ -28,5 +28,9 @@ namespace seeder::rtp
         video_format_desc format_desc;
         std::string multicast_ip;
         short multicast_port;
+
+        uint8_t rtp_video_type;
+        uint8_t rtp_audio_type;
+        int32_t leap_seconds; 
     };
 }

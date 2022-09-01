@@ -17,12 +17,19 @@
                 1556p2398|1556p2400|1556p2500|dci1080p2398|dci1080p2400|dci1080p2500|
                 2160p2398|2160p2400|2160p2500|2160p2997|2160p3000|2160p5000|2160p5994|2160p6000|dci2160p2398|dci2160p2400|dci2160p2500]
             </video-mode -->
-            <video-mode>2160p5000</video-mode>
             <device-id>1</device-id>
+            <video-mode>2160p5000</video-mode>
+            <audio-samples>16</audio-samples>
+            <audio-rate>48000</audio-rate>
+            <audio-channels>8</audio-channels>
+            <rtp-video-type>96</rtp-video-type>
+            <rtp-audio-type>97</rtp-audio-type>
             <multicast-ip>239.0.20.28</multicast-ip>
             <multicast-port>20000</multicast-port>
             <bind-ip>192.168.10.103</bind-ip>
             <bind-port>20001</bind-port>
+            <leap-seconds>37</leap-seconds>
+            
             <display-screen>false</display-screen>
         </channel>
     </channels>

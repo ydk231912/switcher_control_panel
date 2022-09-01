@@ -28,6 +28,12 @@ namespace seeder
         short bind_port;
         bool display_screen;
         core::video_format_desc format_desc;
+        int audio_channels;
+        int audio_samples;
+        int audio_rate;
+        int rtp_video_type;
+        int rtp_audio_type;
+        int leap_seconds; // 37s: leap second, since 1970-01-01 to 2022-01-01
     };
 
     struct config

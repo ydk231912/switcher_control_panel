@@ -69,6 +69,13 @@ namespace seeder
                 channel.bind_port = xml_channel.second.get<short>("bind-port");
                 channel.display_screen = xml_channel.second.get<bool>("display-screen");
                 channel.format_desc = core::video_format_desc(channel.video_mode);
+                channel.format_desc.audio_channels = xml_channel.second.get<int>("audio-channels");
+                channel.format_desc.audio_sample_rate = xml_channel.second.get<int>("audio-rate");
+                channel.format_desc.audio_samples = xml_channel.second.get<int>("audio-samples");
+                channel.rtp_video_type = xml_channel.second.get<int>("video-type");
+                channel.rtp_audio_type = xml_channel.second.get<int>("audio-type");
+                channel.leap_seconds = xml_channel.second.get<int>("leap-seconds");
+                
                 config.channels.push_back(channel);
             }
         }

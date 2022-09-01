@@ -29,6 +29,10 @@ namespace seeder
     //,rtp_output_(std::make_unique<rtp::rtp_st2110_output>(rtp_context_))
     //,ffmpeg_input_(std::make_unique<ffmpeg::ffmpeg_input>("/home/seeder/c.MXF")) // for test
     {
+        rtp_context_.rtp_video_type = config.rtp_video_type;
+        rtp_context_.rtp_audio_type = config.rtp_audio_type;
+        rtp_context_.leap_seconds = config.leap_seconds;
+        
         rtp_output_ = std::make_unique<rtp::rtp_st2110_output>(rtp_context_);
 
         if(config.display_screen)

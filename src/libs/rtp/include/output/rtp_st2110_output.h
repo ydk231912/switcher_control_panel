@@ -48,10 +48,27 @@ namespace seeder::rtp
 
         /**
          * @brief encode the frame data into st2110 rtp packet
-         * 
+         * one frame may be divided into multiple fragment in multiple thread 
          */
         void encode();
-        void do_encode(uint16_t queue_id, std::shared_ptr<core::frame> frm, uint16_t line, uint16_t height);
+        
+        /**
+         * @brief encode the video frame data into st2110 rtp packet
+         * 
+         * @param queue_id  buffer queue/thread id
+         * @param frm vidoe data
+         * @param line frame start line number
+         * @param height frame end line number
+         */
+        void video_encode(uint16_t queue_id, std::shared_ptr<core::frame> frm, uint16_t line, uint16_t height);
+
+        /**
+         * @brief encode the audio data into st2110 rtp packet
+         * 
+         * @param queue_id buffer queue/thread id
+         * @param frm audio data
+         */
+        void audio_encode(uint16_t queue_id, std::shared_ptr<core::frame> frm);
 
         /**
          * @brief calculate rtp packets number per frame

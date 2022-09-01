@@ -73,6 +73,7 @@ namespace seeder::core
 
         int                  audio_channels = 8;
         int                  audio_sample_rate;
+        int                  audio_samples; // 16bit 24bit
         std::vector<int>     audio_cadence; // rotating optimal number of samples per frame
 
         video_format_desc(video_format           format,

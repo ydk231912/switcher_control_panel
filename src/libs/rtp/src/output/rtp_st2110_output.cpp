@@ -52,6 +52,7 @@ namespace seeder::rtp
         drain_offsets_[1] = packet_drain_interval_ / 2;
 
         sequence_number_ = 0;
+        timestamp_ = 0;
     }
 
     rtp_st2110_output::~rtp_st2110_output()
@@ -81,7 +82,7 @@ namespace seeder::rtp
 
     /**
      * @brief encode the frame data into st2110 rtp packet
-     * 
+     * one frame may be divided into multiple fragment in multiple thread 
      */
     void rtp_st2110_output::encode()
     {
@@ -102,26 +103,89 @@ namespace seeder::rtp
                 uint16_t height1 = line2;
                 uint16_t height2 = frame->video->height;
                 first_of_frame_ = true;
-                timestamp_   = 0;
                 
-                // rtp encode in two thread
+                // video frame encode in two thread
                 auto t1 = std::thread([&](){
-                    do_encode(1, frame, line1, height1);
+                    video_encode(0, frame, line1, height1);
                 });
 
                 auto t2 = std::thread([&](){
-                    do_encode(2, frame, line2, height2);
+                    video_encode(0, frame, line2, height2);
                 });
 
                 t1.join();
-                t2.join();                
+                t2.join();
+
+                // audio encode
+                audio_encode(0, frame);
+
             }
         }));
     }
 
-    void rtp_st2110_output::do_encode(uint16_t queue_id, std::shared_ptr<core::frame> frm, uint16_t line, uint16_t height)
+    /**
+     * @brief encode the audio data into st2110 rtp packet
+     * audio encode must after of video encode, 
+     * because some data (etc timestamp) from video encode
+     * @param queue_id buffer queue/thread id
+     * @param frm audio data, 8 channel, 16 bit, 48khz
+     */
+    void rtp_st2110_output::audio_encode(uint16_t queue_id, std::shared_ptr<core::frame> frm)
     {
-        
+        auto audio = frm->audio;
+
+        // one packet contains 1ms audio data, must be less than 1440 bytes
+        // 16bit * 8channels * 48000sample rate
+        auto packet_size = context_.format_desc.audio_samples / 8 * context_.format_desc.audio_channels * context_.format_desc.audio_sample_rate / 1000; 
+        auto left = packet_size * context_.format_desc.fps; // one frame audio data size
+        uint8_t* audio_ptr = audio->data[0];
+
+        while(left > 0)
+        {
+            int packet_idx = -1; // the packet index of the packets buffer
+            packet_idx = packets_buffers_[queue_id]->write();
+            while(packet_idx == -1)
+            {   // loop until get packet buffer
+                packet_idx = packets_buffers_[queue_id]->write();
+                logger->warn("rtp st2110 output: get packet buffer failed");
+            }
+            uint8_t* packet_ptr = packets_buffers_[queue_id]->get_packet_ptr(packet_idx);
+            packets_buffers_[queue_id]->set_header(packet_ptr, 97);
+            uint8_t* ptr = packets_buffers_[queue_id]->get_payload_ptr(packet_idx);
+
+            // one packet contains 1ms audio data
+            int sz = left < packet_size? left : packet_size;
+            memcpy(ptr, audio_ptr, sz);
+            ptr += sz;
+            
+            sequence_number_++;
+            packets_buffers_[queue_id]->set_sequence_number(packet_ptr, sequence_number_);
+
+            if (left <= packet_size) { //complete
+                packets_buffers_[queue_id]->set_marker(packet_ptr, context_.rtp_audio_type, 1);
+            }
+
+            int lf = packets_buffers_[queue_id]->get_payload_size() - sz;
+            packets_buffers_[queue_id]->set_packet_real_size(packet_idx, packets_buffers_[queue_id]->get_packet_size() - lf);
+
+            packets_buffers_[queue_id]->set_frame_time(packet_idx, frame_time_); // from video encode
+            packets_buffers_[queue_id]->set_timestamp(packet_ptr, timestamp_); // from video encode
+
+            left -= packet_size;
+            if(left > 0) audio_ptr -= packet_size;
+        }
+    }
+
+    /**
+     * @brief encode the video frame data into st2110 rtp packet
+     * 
+     * @param queue_id  buffer queue/thread id
+     * @param frm vidoe data
+     * @param line frame start line number
+     * @param height frame end line number
+     */
+    void rtp_st2110_output::video_encode(uint16_t queue_id, std::shared_ptr<core::frame> frm, uint16_t line, uint16_t height)
+    {
         timer timer; // for debug
 
         auto frame = frm;
@@ -174,6 +238,7 @@ namespace seeder::rtp
             // .                 Two (partial) lines of video data             .
             // .                                                               .
             // +---------------------------------------------------------------+
+            packets_buffers_[qid]->set_header(packet_ptr, context_.rtp_video_type);
             ptr[0] = 0;  // extender sequence number 16bit. same as: *ptr = 0; ptr = ptr + 1;
             ptr[1] = 0;
             ptr += 2;
@@ -307,7 +372,7 @@ namespace seeder::rtp
             //rtp_packet->set_timestamp(timestamp);
 
             if (line >= height && height == frame->video->height) { //complete
-                packets_buffers_[qid]->set_marker(packet_ptr, 96, 1);
+                packets_buffers_[qid]->set_marker(packet_ptr, context_.rtp_video_type, 1);
             } 
 
             if (left > 0) {
@@ -317,7 +382,7 @@ namespace seeder::rtp
             if(packets_buffers_[qid]->is_first_of_frame(packet_idx))
             {
                 frame_time_ = timer::now();
-                auto time_now = date::now() + LEAP_SECONDS * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
+                auto time_now = date::now() + context_.leap_seconds * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
                 auto video_time = static_cast<uint64_t>(round(time_now * RTP_VIDEO_RATE / 1000000));
                 timestamp_ = static_cast<uint32_t>(video_time % RTP_WRAP_AROUND);
             }
