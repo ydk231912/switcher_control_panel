@@ -52,6 +52,69 @@ using namespace seeder::core;
 using namespace boost::property_tree;
 
 
+
+/**
+ * @brief 
+ * 
+ */
+void logger_test()
+{
+    
+}
+void test(){
+    logger_test();
+}
+
+/**
+ * @brief pointer test
+ * uint8_t*, uint32_t* test
+ * bmdFormat10BitYUV : ‘v210’ 4:2:2 Representation test
+ */
+void pointer_test()
+{
+    uint32_t* p2 = (uint32_t*)malloc(16);
+
+    // bmdFormat10BitYUV
+    // 0 1 2 3 4 5 6 7|0 1 2 3 4 5 6 7|0 1 2 3 4 5 6 7|0 1 2 3 4 5 6 7|
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    // * * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 
+    // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    //1073741823  3fffffff
+    //4294967295  ffffffff
+
+    p2[0] = 0x3fffffff;
+    p2[1] = 0x3fffffff;
+    p2[2] = 0x3fffffff;
+    p2[3] = 0x3fffffff;
+
+    uint32_t* p3 = (uint32_t*)malloc(16);
+    timer t1;
+    // 100000loop spend 550us
+    for(int i = 0; i < 100000; i++)
+    {
+        p3[0] = p2[0] | p2[1] << 30;
+        p3[1] = p2[1] | p2[2] << 30;
+        p3[2] = p2[2] | p2[3] << 30;
+        p3[3] = p2[3];
+    }
+    std::cout << "loop 100000 spend time: " << t1.elapsed() << std::endl;
+
+    for(int i = 0; i < 4; i++)
+    {
+        std::cout << p3[i] << std::endl;
+    }
+
+    auto p1 = (uint8_t*)p3;
+    for(int i = 0; i < 16; i++)
+    {
+        std::cout << (int)p1[i] << std::endl;
+    }
+    
+}
+// void test(){
+//     pointer_test();
+// }
+
 /**
  * @brief thread speed test
  * loop 10000 async call spend time: 8.85016e+08
@@ -96,9 +159,9 @@ void thread_test()
     std::cout << "loop 1000 thread call spend time: " << t3.elapsed() << std::endl;
 }
 
-void test(){
-    thread_test();
-}
+// void test(){
+//     thread_test();
+// }
 
 /**
  * @brief packet allocate and free test

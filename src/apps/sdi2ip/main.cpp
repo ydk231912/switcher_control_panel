@@ -56,6 +56,7 @@ namespace seeder
             config.log_path = pt.get<std::string>("configuration.log.log-path");
             config.max_size = pt.get<int>("configuration.log.max-file-size");
             config.max_files = pt.get<int>("configuration.log.max-files");
+            config.leap_seconds = pt.get<int>("configuration.system.leap-seconds");
 
             auto child = pt.get_child("configuration.channels");
             for(auto xml_channel : child)
@@ -72,9 +73,9 @@ namespace seeder
                 channel.format_desc.audio_channels = xml_channel.second.get<int>("audio-channels");
                 channel.format_desc.audio_sample_rate = xml_channel.second.get<int>("audio-rate");
                 channel.format_desc.audio_samples = xml_channel.second.get<int>("audio-samples");
-                channel.rtp_video_type = xml_channel.second.get<int>("video-type");
-                channel.rtp_audio_type = xml_channel.second.get<int>("audio-type");
-                channel.leap_seconds = xml_channel.second.get<int>("leap-seconds");
+                channel.rtp_video_type = xml_channel.second.get<int>("rtp-video-type");
+                channel.rtp_audio_type = xml_channel.second.get<int>("rtp-audio-type");
+                channel.leap_seconds = config.leap_seconds;
                 
                 config.channels.push_back(channel);
             }
@@ -92,14 +93,14 @@ namespace seeder
         auto promise = std::make_shared<std::promise<bool>>();
         auto future =  promise->get_future();
         auto shutdown = [promise = std::move(promise)](bool restart){
-            promise->set_value(restart);
+                promise->set_value(restart);
             };
 
         print_info();
 
         // start sdi to st2110 server
         std::unique_ptr<server> main_server(new server(config));
-        main_server->start();
+        //main_server->start();
 
         // use separate thread for blocking console input
         std::thread([&]() mutable {
@@ -119,7 +120,7 @@ namespace seeder
                 {
                     logger->info("Received message from Console: {}", cmd);
                     shutdown(false);
-                    exit(0);
+                    //exit(0);
                     break;
                 }
             }
@@ -136,20 +137,17 @@ namespace seeder
 
 int main(int argc, char* argv[])
 {
-    test();
-    return 0;
-
     auto start_time = std::chrono::steady_clock::now();
     int return_code = 0;
 
+    // parse config file
+    auto config = seeder::parse_config("sdi2ip_config.xml");
+
+    // set logger config
+    logger = create_logger(config.console_level, config.file_level, config.log_path, config.max_size, config.max_files);
+
     try
     {
-        // parse config file
-        auto config = seeder::parse_config("sdi2ip_config.xml");
-
-        // set logger config
-        logger = create_logger(config.console_level, config.file_level, config.log_path, config.max_size, config.max_files);
-
         auto should_restart = seeder::run(config);
         return_code = should_restart ? 5 : 0; // restart or exit
     }

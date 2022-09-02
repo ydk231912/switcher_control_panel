@@ -38,7 +38,6 @@ namespace seeder
         if(config.display_screen)
             sdl_output_ = std::make_unique<sdl::sdl_output>(config_.format_desc);
 
-        
     }
 
     channel::~channel()

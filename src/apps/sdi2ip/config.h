@@ -44,6 +44,7 @@ namespace seeder
         int max_files;
         std::string log_path;
         std::vector<channel_config> channels;
+        int leap_seconds;
     };
 
 }// namespace seeder

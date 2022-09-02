@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <configuration>
+    <system>
+        <leap-seconds>37</leap-seconds>
+    </system>
     <log>
         <!-- log-level: [trace|debug|info|warning|error|critical|off]-->
         <console-log-level>info</console-log-level>
@@ -28,7 +31,6 @@
             <multicast-port>20000</multicast-port>
             <bind-ip>192.168.10.103</bind-ip>
             <bind-port>20001</bind-port>
-            <leap-seconds>37</leap-seconds>
             
             <display-screen>false</display-screen>
         </channel>

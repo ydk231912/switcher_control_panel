@@ -23,6 +23,9 @@ namespace seeder::rtp
             format_desc = desc;
             multicast_ip = ip;
             multicast_port = port;
+            rtp_video_type = 96;
+            rtp_audio_type = 97;
+            leap_seconds = 37;
         }
         
         video_format_desc format_desc;
