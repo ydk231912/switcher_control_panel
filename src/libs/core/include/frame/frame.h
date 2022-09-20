@@ -37,6 +37,10 @@ namespace seeder::core
         std::shared_ptr<AVFrame> video;
         std::shared_ptr<AVFrame> audio;
 
+        uint32_t timestamp;
+        uint32_t frame_id = 1;
+
+
       private:
             
         

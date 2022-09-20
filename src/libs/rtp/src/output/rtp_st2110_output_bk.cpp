@@ -171,7 +171,7 @@ namespace seeder::rtp
                 }
                 else {
                     pixels    = (left / pgroup) * xinc;
-                    length    = left; //left;//pixels * pgroup / xinc;
+                    length    = (pixels * pgroup) / xinc; //left;//pixels * pgroup / xinc;
                     next_line = false;
                 }
                 left -= length;
@@ -373,8 +373,8 @@ namespace seeder::rtp
                         packet->set_timestamp(timestamp);
 
                         // send data synchronously
-                        // udp_sender_->send_to(packet->get_data_ptr(), packet->get_data_size(), 
-                        //                      context_.multicast_ip, context_.multicast_port);
+                        udp_sender_->send_to(packet->get_data_ptr(), packet->get_data_size(), 
+                                             context_.multicast_ip, context_.multicast_port);
 
                         //send data asynchronously
                         // auto udp_sender = udp_senders_.at(sender_ptr_); // use multiple udp sender(socket) to accelerate send speed

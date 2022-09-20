@@ -52,6 +52,47 @@ using namespace seeder::core;
 using namespace boost::property_tree;
 
 
+/**
+ * @brief executor execute speed test
+ * 10000 loop execute spend 2.02274e+07 ns
+ * 1 call spend: 2 us
+ */
+void executor_speed_test()
+{
+    executor executor_;
+    auto f = [](){};
+    seeder::core::timer timer2;
+    for(int i = 0; i < 1000000; i++)
+    {
+        executor_.execute(std::move(f));
+    }
+    std::cout << "10000 loop executor.execute: " << timer2.elapsed() << std::endl;
+    return;
+}
+
+void test(){
+    executor_speed_test();
+}
+
+/**
+ * @brief 
+ * 10000 loop spend 1.44795e+07 ns
+ * 1 cout spend 1.45us
+ */
+void cout_speed_test()
+{
+    timer t1;
+    for(long i = 0; i < 10000; i++)
+    {
+        std::cout << "a = " << 1 << " b = " << 2 << std::endl;
+    }
+    std::cout << "loop 10000 spend time: " << t1.elapsed() << std::endl;
+}
+
+// void test(){
+//     cout_speed_test();
+// }
+
 
 /**
  * @brief 
@@ -61,9 +102,9 @@ void logger_test()
 {
     
 }
-void test(){
-    logger_test();
-}
+// void test(){
+//     logger_test();
+// }
 
 /**
  * @brief pointer test
@@ -118,6 +159,7 @@ void pointer_test()
 /**
  * @brief thread speed test
  * loop 10000 async call spend time: 8.85016e+08
+ * 1 async call spend 88us
  * 1 thread call spend time: 65us
  */
 void thread_test()
@@ -167,9 +209,9 @@ void thread_test()
  * @brief packet allocate and free test
  * 2.622 ms: allocate and free 15376 packet
  * 1.8ms: memcpy 15376 packet
- * 14.26ms: deque.push and pop 15376 packet the two thread
+ * 14.26ms: deque.push and pop 15376 packet the two thread, 1us once
  * 20.05ms: spsc_queue push and pop 15376 packet the two thread
- * 0.3ms: atomic int ++/-- in two thread
+ * 0.3ms: atomic int ++/-- in two thread, 10ns once
  * 0.27s: 1000000000 simple loop, 3 times in 1 ns
  */
 void pakcet_test()
@@ -292,7 +334,7 @@ void queue_test()
 /**
  * @brief udp send speed test
  * 700MB/s one thread/socket
- * 26ms: send 15376 packet on one socket
+ * 26ms: send 15376 packet on one socket  1.7us per packet
  * 68ms: send 15376 packet by executor asynchronous
  */
 void udp_send_test()
@@ -304,24 +346,26 @@ void udp_send_test()
     std::shared_ptr<seeder::net::udp_sender> sender4 = std::make_shared<seeder::net::udp_sender>();
     std::shared_ptr<seeder::net::udp_sender> sender5 = std::make_shared<seeder::net::udp_sender>();
 
-    // send 15376 packet speed test: 30ms
+    // send 15376 packet speed test: 30ms, 
+    // connect whether, the send speed is same
+    //sender1->connect_host("239.0.20.28", 20000);
     seeder::core::timer t;
-    for(int i = 0; i < 15376; i++)
+    for(int i = 0; i < 153760; i++)
     {
        sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);
     }
-    std::cout << "send 15376 packet: " << t.elapsed() << std::endl;
+    std::cout << "send 153760 packet: " << t.elapsed() << std::endl;
 
-    // send 15376 packet in executor: 68ms
-    executor executor_;
-    seeder::core::timer timer2;
-    for(int i = 0; i < 15376; i++)
-    {
-        auto f = [&]() mutable { sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);};
-        executor_.execute(std::move(f));
-    }
-    std::cout << "send 15376 packet by executor: " << timer2.elapsed() << std::endl;
-    return;
+    // // send 15376 packet in executor: 68ms
+    // executor executor_;
+    // seeder::core::timer timer2;
+    // for(int i = 0; i < 15376; i++)
+    // {
+    //     auto f = [&]() mutable { sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);};
+    //     executor_.execute(std::move(f));
+    // }
+    // std::cout << "send 15376 packet by executor: " << timer2.elapsed() << std::endl;
+    // return;
 
     // cpu_set_t mask;
     // CPU_ZERO(&mask);
@@ -331,17 +375,17 @@ void udp_send_test()
     //     std::cout << "bind udp thread to cpu failed" << std::endl;
     // }
 
-    auto t1 = std::thread([sender1, p](){
-                  while(1){
-                      sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);
-                  }
-              });
+    // auto t1 = std::thread([sender1, p](){
+    //               while(1){
+    //                   sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);
+    //               }
+    //           });
 
-    auto t2 = std::thread([sender1, p](){
-                  while(1){
-                      sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);
-                  }
-              });
+    // auto t2 = std::thread([sender1, p](){
+    //               while(1){
+    //                   sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);
+    //               }
+    //           });
 
     // auto t3 = std::thread([sender1, p](){
     //               while(1){
@@ -361,12 +405,16 @@ void udp_send_test()
     //               }
     //           });
     
-    t1.join();
-    t2.join();
+    // t1.join();
+    // t2.join();
     // t3.join();
     // t4.join();
     // t5.join();
 }
+// void test()
+// {
+//     udp_send_test();
+// }
 
 // avframe test
 void frame_test()

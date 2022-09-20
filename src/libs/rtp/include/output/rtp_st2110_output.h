@@ -75,13 +75,14 @@ namespace seeder::rtp
          * 
          * @return int 
          */
-        int calc_packets_per_frame();
+        int calc_packets_per_frame(int line, int height);
 
         /**
          * @brief send the rtp packet by udp
          * 
          */
         void send_packet(uint16_t queue_id);
+        void send(uint16_t queue_id);
 
         /**
          * @brief push a frame into this output stream
@@ -111,9 +112,14 @@ namespace seeder::rtp
       private:
         rtp_context context_;
         bool abort = false;
-        atomic<uint16_t> sequence_number_;
-        atomic<uint32_t> timestamp_;
+        atomic<uint16_t> sequence_number_; //video rtp sequence number
+        std::vector<uint16_t> sequences_; // video rtp sequence number, per thread
+        std::vector<int> packets_number_; // packets number per frame per thread
+        atomic<uint32_t> timestamp_; // video rtp timestamp
         atomic<bool> first_of_frame_;
+        uint64_t time_now_; // frame timestamp
+        uint16_t audio_sequence_number_; //audio rtp sequence number
+        uint32_t audio_timestamp_; // audio rtp timestamp
 
         //buffer and thread
         std::mutex frame_mutex_, packet_mutex_;
@@ -126,14 +132,16 @@ namespace seeder::rtp
         std::condition_variable frame_cv_;
         std::condition_variable packet_cv_;
         std::unique_ptr<std::thread> st2110_thread_;
+        //std::unique_ptr<core::executor> executor_;
         
         // udp sender
-        std::vector<std::unique_ptr<rtp::packets_buffer>> packets_buffers_;
+        std::vector<std::shared_ptr<rtp::packets_buffer>> packets_buffers_;
         //int16_t qid_ = -1; // packets_buffers_ queue index
-        std::vector<std::unique_ptr<net::udp_sender>> udp_senders_;
-        std::vector<std::unique_ptr<std::thread>> udp_threads_;
+        std::vector<std::shared_ptr<net::udp_sender>> udp_senders_;
+        std::vector<std::shared_ptr<std::thread>> udp_threads_;
         std::vector<int64_t> drain_offsets_; // udp sender queues, send packet time offsets
         uint64_t frame_time_;
+        uint32_t frame_id_ = 1;
         uint64_t packet_drain_interval_;
         int packets_per_frame_ = 0;
 

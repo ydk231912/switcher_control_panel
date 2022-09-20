@@ -39,20 +39,36 @@ namespace seeder::rtp
 {
     rtp_st2110_output::rtp_st2110_output(rtp_context& context)
     :context_(context)
+    //,executor_(std::make_unique<core::executor>())
     {
-        udp_senders_[0] = std::make_unique<net::udp_sender>();
-        udp_senders_[1] = std::make_unique<net::udp_sender>();
-        packets_buffers_[0] = std::make_unique<packets_buffer>();
-        packets_buffers_[1] = std::make_unique<packets_buffer>();
+        udp_senders_.push_back(std::make_shared<net::udp_sender>());
+        udp_senders_.push_back(std::make_shared<net::udp_sender>());
+        //udp_senders_[0]->bind_ip("192.168.10.103", 20001);
+        //udp_senders_[1]->bind_ip("192.168.10.103", 20001);
+        packets_buffers_.push_back(std::make_shared<packets_buffer>());
+        packets_buffers_.push_back(std::make_shared<packets_buffer>());
 
-        packets_per_frame_ = calc_packets_per_frame();
+        uint16_t line1 = 0;
+        uint16_t line2 = context_.format_desc.height / 2;
+        uint16_t height1 = line2;
+        uint16_t height2 = context_.format_desc.height;
+
+        packets_number_.push_back(calc_packets_per_frame(line1, height1));
+        packets_number_.push_back(calc_packets_per_frame(line2, height2));
+        packets_per_frame_ = packets_number_[0] + packets_number_[1];
         int64_t frame_duration  = 1000000000 / context_.format_desc.fps; //nanosecond
-        packet_drain_interval_ = static_cast<int64_t>((frame_duration / packets_per_frame_) / PACKET_DRAIN_RATE * 2); //two send queue
-        drain_offsets_[0] = 0;
-        drain_offsets_[1] = packet_drain_interval_ / 2;
+        packet_drain_interval_ = static_cast<int64_t>((frame_duration / packets_per_frame_) / PACKET_DRAIN_RATE); //two send queue
+        packet_drain_interval_ = packet_drain_interval_ * 2;
+        drain_offsets_.push_back(0);
+        drain_offsets_.push_back(packet_drain_interval_ / 2);
 
         sequence_number_ = 0;
         timestamp_ = 0;
+        audio_sequence_number_ = 0;
+        audio_timestamp_ = 0;
+        frame_id_ = 1;
+        sequences_.push_back(0);
+        sequences_.push_back(packets_number_[0]);
     }
 
     rtp_st2110_output::~rtp_st2110_output()
@@ -67,8 +83,8 @@ namespace seeder::rtp
     {
         abort = false;
         encode();
-        send_packet(0);
-        send_packet(1);
+        // send_packet(0);
+        // send_packet(1);
     }
         
     /**
@@ -91,6 +107,11 @@ namespace seeder::rtp
             {
                 //get frame from buffer
                 auto frame = get_frame();
+                if(!frame->video)
+                {
+                    continue;
+                }
+                
                 if (frame->video->format != AV_PIX_FMT_YUV422P && frame->video->format != AV_PIX_FMT_UYVY422)
                 {
                     //currently,only YUV422P UYVY422 format is supported
@@ -105,19 +126,33 @@ namespace seeder::rtp
                 first_of_frame_ = true;
                 
                 // video frame encode in two thread
+                // executor_->execute(std::move([this, frame, line1, height2](){
+                //     //timer timer;
+                //     video_encode(0, frame, line1, height2);
+                //     //std::cout << "thread1 video frame encode ns: " << timer.elapsed() << "  buffer size: " << packets_buffers_[0]->get_buffer_size() << std::endl;
+                // }));
+
+                time_now_ = date::now() + context_.leap_seconds * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
+                auto video_time = static_cast<uint64_t>(round(time_now_ * RTP_VIDEO_RATE / 1000000));
+                timestamp_ = static_cast<uint32_t>(video_time % RTP_WRAP_AROUND);
+                frame->timestamp = timestamp_;
+                frame->frame_id = frame_id_;
+                frame_id_ ++;
+
                 auto t1 = std::thread([&](){
                     video_encode(0, frame, line1, height1);
                 });
+                t1.join();
+                send(0);
 
                 auto t2 = std::thread([&](){
-                    video_encode(0, frame, line2, height2);
+                    video_encode(1, frame, line2, height2);
                 });
-
-                t1.join();
                 t2.join();
+                send(1);
 
                 // audio encode
-                audio_encode(0, frame);
+                //audio_encode(0, frame);
 
             }
         }));
@@ -134,11 +169,16 @@ namespace seeder::rtp
     {
         auto audio = frm->audio;
 
+        if(!audio || !audio->data[0])
+            return;
+
         // one packet contains 1ms audio data, must be less than 1440 bytes
         // 16bit * 8channels * 48000sample rate
         auto packet_size = context_.format_desc.audio_samples / 8 * context_.format_desc.audio_channels * context_.format_desc.audio_sample_rate / 1000; 
         auto left = packet_size * context_.format_desc.fps; // one frame audio data size
         uint8_t* audio_ptr = audio->data[0];
+
+        uint32_t packet_number = 0;
 
         while(left > 0)
         {
@@ -150,29 +190,34 @@ namespace seeder::rtp
                 logger->warn("rtp st2110 output: get packet buffer failed");
             }
             uint8_t* packet_ptr = packets_buffers_[queue_id]->get_packet_ptr(packet_idx);
-            packets_buffers_[queue_id]->set_header(packet_ptr, 97);
+            packets_buffers_[queue_id]->set_header(packet_ptr, context_.rtp_audio_type);
             uint8_t* ptr = packets_buffers_[queue_id]->get_payload_ptr(packet_idx);
 
             // one packet contains 1ms audio data
-            int sz = left < packet_size? left : packet_size;
-            memcpy(ptr, audio_ptr, sz);
-            ptr += sz;
+            int size = left < packet_size? left : packet_size;
+            memcpy(ptr, audio_ptr, size);
+            ptr += size;
             
-            sequence_number_++;
-            packets_buffers_[queue_id]->set_sequence_number(packet_ptr, sequence_number_);
+            audio_sequence_number_++;
+            packets_buffers_[queue_id]->set_sequence_number(packet_ptr, audio_sequence_number_);
 
             if (left <= packet_size) { //complete
                 packets_buffers_[queue_id]->set_marker(packet_ptr, context_.rtp_audio_type, 1);
             }
 
-            int lf = packets_buffers_[queue_id]->get_payload_size() - sz;
-            packets_buffers_[queue_id]->set_packet_real_size(packet_idx, packets_buffers_[queue_id]->get_packet_size() - lf);
+            int truncate = packets_buffers_[queue_id]->get_payload_size() - size;
+            packets_buffers_[queue_id]->set_packet_real_size(packet_idx, packets_buffers_[queue_id]->get_packet_size() - truncate);
 
             packets_buffers_[queue_id]->set_frame_time(packet_idx, frame_time_); // from video encode
-            packets_buffers_[queue_id]->set_timestamp(packet_ptr, timestamp_); // from video encode
-
+            // audio timestamp, each packet timestamp increase 1ms
+            // time_now_ from video encode
+            auto audio_time = static_cast<uint64_t>(round((time_now_ + packet_number * 1000) * context_.format_desc.audio_sample_rate / 1000000));
+            audio_timestamp_ = static_cast<uint32_t>(audio_time % RTP_WRAP_AROUND);
+            packets_buffers_[queue_id]->set_timestamp(packet_ptr, audio_timestamp_); // from video encode
+            packet_number++;
+            
             left -= packet_size;
-            if(left > 0) audio_ptr -= packet_size;
+            if(left > 0) audio_ptr += packet_size;
         }
     }
 
@@ -210,11 +255,11 @@ namespace seeder::rtp
             while(packet_idx == -1)
             {   // loop until get packet buffer
                 packet_idx = packets_buffers_[qid]->write();
-                logger->warn("rtp st2110 output: get packet buffer failed");
+                //logger->warn("rtp st2110 output: get packet buffer failed {}",packets_buffers_[qid]->get_buffer_size());
             }
             uint8_t* packet_ptr = packets_buffers_[qid]->get_packet_ptr(packet_idx);
 
-            if(first_of_frame_)
+            if(first_of_frame_ && line == 0)
             {
                 first_of_frame_ = false;
                 packets_buffers_[qid]->set_first_of_frame(packet_idx);
@@ -258,7 +303,7 @@ namespace seeder::rtp
                 }
                 else {
                     pixels    = (left / pgroup) * xinc;
-                    length    = left; //left;//pixels * pgroup / xinc;
+                    length    = (pixels * pgroup) / xinc; //left;//;
                     next_line = false;
                 }
                 left -= length;
@@ -367,11 +412,12 @@ namespace seeder::rtp
             }
 
             //// 3 write rtp header
-            sequence_number_++;
-            packets_buffers_[qid]->set_sequence_number(packet_ptr, sequence_number_);
-            //rtp_packet->set_timestamp(timestamp);
-
-            if (line >= height && height == frame->video->height) { //complete
+            //sequence_number_++;
+            //packets_buffers_[qid]->set_sequence_number(packet_ptr, sequence_number_);
+            sequences_[qid] += 1;
+            packets_buffers_[qid]->set_sequence_number(packet_ptr, sequences_[qid]);
+            
+            if (line >= height && height == frame->video->height) { //complete 
                 packets_buffers_[qid]->set_marker(packet_ptr, context_.rtp_video_type, 1);
             } 
 
@@ -382,17 +428,20 @@ namespace seeder::rtp
             if(packets_buffers_[qid]->is_first_of_frame(packet_idx))
             {
                 frame_time_ = timer::now();
-                auto time_now = date::now() + context_.leap_seconds * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
-                auto video_time = static_cast<uint64_t>(round(time_now * RTP_VIDEO_RATE / 1000000));
-                timestamp_ = static_cast<uint32_t>(video_time % RTP_WRAP_AROUND);
+                // frame_id_ ++;
+                // time_now_ = date::now() + context_.leap_seconds * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
+                // auto video_time = static_cast<uint64_t>(round(time_now_ * RTP_VIDEO_RATE / 1000000));
+                // timestamp_ = static_cast<uint32_t>(video_time % RTP_WRAP_AROUND);
             }
             packets_buffers_[qid]->set_frame_time(packet_idx, frame_time_);
-            packets_buffers_[qid]->set_timestamp(packet_ptr, timestamp_);
+            packets_buffers_[qid]->set_frame_id(packet_idx, frame->frame_id);
+            packets_buffers_[qid]->set_timestamp(packet_ptr, frame->timestamp);
+            packets_buffers_[qid]->write_complete();
 
             //packet_count++;
         }
         //// for debug
-        //std::cout << "st2110 encode ns:" << timer.elapsed() << std::endl;
+        //std::cout << "st2110 encode ns:" << timer.elapsed() << "  packet buffer size: " << packets_buffers_[qid]->get_buffer_size() << std::endl;
         //std::cout << "packet count of per frame: " << packet_count << std::endl;
         //logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
     }
@@ -403,31 +452,36 @@ namespace seeder::rtp
      */
     void rtp_st2110_output::send_packet(uint16_t queue_id)
     {
-        udp_threads_[queue_id] = std::make_unique<std::thread>(std::thread([&](){
-            // bind thread to one fixed cpu core
-            // cpu_set_t mask;
-            // CPU_ZERO(&mask);
-            // CPU_SET(23, &mask);
-            // if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
-            // {
-            //     logger->error("bind udp thread to cpu failed");
-            // }
-
+        auto id = queue_id;
+        udp_threads_.push_back(std::make_shared<std::thread>(std::thread([this, queue_id](){
+            //bind thread to one fixed cpu core
+            cpu_set_t mask;
+            CPU_ZERO(&mask);
+            CPU_SET(queue_id, &mask);
+            if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
+            {
+                logger->error("bind udp thread to cpu failed");
+            }
+            
             uint64_t local_frame_time = 0;
+            uint32_t frame_id = 0;
             uint64_t packet_time = 0;
             while(!abort)
             {
                 try
                 {
+                    //timer timer; // for debug
+                    
                     auto packet_idx = packets_buffers_[queue_id]->read();
-
                     if(packet_idx != -1)
-                    {   // get frame start time and queue offset time(keep the send interval between the queues)
-                        auto frame_time =  packets_buffers_[queue_id]->get_frame_time(packet_idx) + drain_offsets_[queue_id];
-                        if(local_frame_time != frame_time) // new frame
+                    {   
+                        uint8_t* packet_ptr = packets_buffers_[queue_id]->get_packet_ptr(packet_idx);
+                        // get frame start time and queue offset time(keep the send interval between the queues)
+                        auto id =  packets_buffers_[queue_id]->get_frame_id(packet_idx);
+                        if(frame_id != id) // new frame
                         {
-                            local_frame_time = frame_time;
-                            packet_time = frame_time;
+                            frame_id = id;
+                            packet_time = timer::now() + drain_offsets_[queue_id]; //frame_time;
                         }
                         
                         auto elapse = timer::now() - packet_time;
@@ -438,9 +492,12 @@ namespace seeder::rtp
                         packet_time = timer::now();
 
                         // send data synchronously
-                        udp_senders_[queue_id]->send_to(packets_buffers_[queue_id]->get_packet_ptr(packet_idx), 
+                        udp_senders_[0]->send_to(packet_ptr, 
                                              packets_buffers_[queue_id]->get_packet_real_size(packet_idx), 
                                              context_.multicast_ip, context_.multicast_port);
+                        packets_buffers_[queue_id]->read_complete();
+                    
+                        //std::cout << "send udp packet: " << timer.elapsed() << std::endl;
                     }
                 }
                 catch(const std::exception& e)
@@ -448,7 +505,63 @@ namespace seeder::rtp
                     logger->error("send rtp packet to {}:{} error {}", context_.multicast_ip, context_.multicast_port, e.what());
                 }
             }
-        }));
+        })));
+    }
+
+    /**
+     * @brief send the rtp packet by udp
+     * for debug
+     */
+    void rtp_st2110_output::send(uint16_t queue_id)
+    {
+        auto id = queue_id;
+            
+        uint64_t local_frame_time = 0;
+        uint32_t frame_id = 0;
+        uint64_t packet_time = 0;
+        while(!abort)
+        {
+            try
+            {
+                //timer timer; // for debug
+                
+                auto packet_idx = packets_buffers_[queue_id]->read();
+                if(packet_idx != -1)
+                {   
+                    uint8_t* packet_ptr = packets_buffers_[queue_id]->get_packet_ptr(packet_idx);
+                    // get frame start time and queue offset time(keep the send interval between the queues)
+                    auto id =  packets_buffers_[queue_id]->get_frame_id(packet_idx);
+                    if(frame_id != id) // new frame
+                    {
+                        frame_id = id;
+                        packet_time = timer::now() + drain_offsets_[queue_id]; //frame_time;
+                    }
+                    
+                    auto elapse = timer::now() - packet_time;
+                    while(elapse < packet_drain_interval_) // wait until send time point arrive
+                    {
+                        elapse = timer::now() - packet_time;
+                    }
+                    packet_time = timer::now();
+
+                    // send data synchronously
+                    udp_senders_[0]->send_to(packet_ptr, 
+                                            packets_buffers_[queue_id]->get_packet_real_size(packet_idx), 
+                                            context_.multicast_ip, context_.multicast_port);
+                    packets_buffers_[queue_id]->read_complete();
+                
+                    //std::cout << "send udp packet: " << timer.elapsed() << std::endl;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            catch(const std::exception& e)
+            {
+                logger->error("send rtp packet to {}:{} error {}", context_.multicast_ip, context_.multicast_port, e.what());
+            }
+        }
     }
 
     /**
@@ -569,12 +682,12 @@ namespace seeder::rtp
      * 
      * @return int 
      */
-    int rtp_st2110_output::calc_packets_per_frame()
+    int rtp_st2110_output::calc_packets_per_frame(int line, int height)
     {
         int packets = 0;
-        auto height = context_.format_desc.height;
+        //auto height = context_.format_desc.height;
         auto width = context_.format_desc.width;
-        int line = 0;
+        //int line = 0;
         auto payload_size = d10::STANDARD_UDP_SIZE_LIMIT - sizeof(raw_header);
         uint16_t pgroup = 5; // uyvy422 10bit, 5bytes
         uint16_t xinc   = 2;
@@ -601,7 +714,7 @@ namespace seeder::rtp
                 }
                 else {
                     pixels    = (left / pgroup) * xinc;
-                    length    = left; //left;//pixels * pgroup / xinc;
+                    length    = (pixels * pgroup) / xinc; //left;//pixels * pgroup / xinc;
                     next_line = false;
                 }
                 left -= length;

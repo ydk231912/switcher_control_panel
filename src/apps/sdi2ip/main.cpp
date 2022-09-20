@@ -100,7 +100,7 @@ namespace seeder
 
         // start sdi to st2110 server
         std::unique_ptr<server> main_server(new server(config));
-        //main_server->start();
+        main_server->start();
 
         // use separate thread for blocking console input
         std::thread([&]() mutable {
@@ -137,14 +137,25 @@ namespace seeder
 
 int main(int argc, char* argv[])
 {
+    test();
+    return 0;
+
     auto start_time = std::chrono::steady_clock::now();
     int return_code = 0;
 
-    // parse config file
-    auto config = seeder::parse_config("sdi2ip_config.xml");
+    seeder::config config;
+    try{
+        // parse config file
+        config = seeder::parse_config("sdi2ip_config.xml");
 
-    // set logger config
-    logger = create_logger(config.console_level, config.file_level, config.log_path, config.max_size, config.max_files);
+        // set logger config
+        logger = create_logger(config.console_level, config.file_level, config.log_path, config.max_size, config.max_files);
+    }
+    catch(std::exception& e)
+    {
+        std::cout << e.what() << std::endl;
+        return 0;
+    }
 
     try
     {

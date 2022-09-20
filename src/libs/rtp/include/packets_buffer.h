@@ -1,8 +1,8 @@
 /**
  * @file packets_buffer.h
  * @author 
- * @brief rtp packets ring buffer
- * one write thread, one read thread, lock free
+ * @brief rtp packets ring buffer, lock free
+ * make sure that only one write thread and only one read thread
  * @version 1
  * @date 2022-08-23
  * 
@@ -21,6 +21,7 @@ namespace seeder::rtp
       uint32_t size; // packet real size
       bool first_of_frame; // is first packet of the frame
       uint64_t frame_time; 
+      uint32_t frame_id; // frame sequence id, start with 1
     };
 
     //                   packets buffer(one packet 1452 bytes)
@@ -43,13 +44,15 @@ namespace seeder::rtp
          * @return uint32_t the write packet position, -1: failed
          */
         int write();
+        void write_complete();
 
         /**
-         * @brief read the data to buffer
+         * @brief read the data from buffer
          * 
          * @return uint32_t the read packet position, -1: failed
          */
         int read();
+        void read_complete();
 
         /**
          * @brief Get the packet pointer 
@@ -129,6 +132,11 @@ namespace seeder::rtp
 
         void set_frame_time(int index, uint64_t time);
         uint64_t get_frame_time(int index);
+
+        void set_frame_id(int index, uint32_t id);
+        uint32_t get_frame_id(int index);
+
+        uint64_t get_buffer_size();
 
       private:
         void init();

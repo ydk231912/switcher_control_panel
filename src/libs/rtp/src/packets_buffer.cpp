@@ -68,14 +68,19 @@ namespace seeder::rtp
             packet_info_[index].first_of_frame = false;
             in_++;
             if(in_ == capacity_) in_ = 0;
-            size_++;
+            //size_++;
         }
         
         return index;
     }
 
+    void packets_buffer::write_complete()
+    {   
+        size_++;
+    }
+
     /**
-     * @brief read the data to buffer
+     * @brief read the data from buffer
      * 
      * @return uint32_t the read packet position, -1: failed
      */
@@ -87,9 +92,14 @@ namespace seeder::rtp
             index = out_;
             out_++;
             if(out_ == capacity_) out_ = 0;
-            size_--;
+            //size_--;
         }
         return index;
+    }
+
+    void packets_buffer::read_complete()
+    {
+        size_--;
     }
 
     /**
@@ -255,6 +265,21 @@ namespace seeder::rtp
     uint64_t packets_buffer::get_frame_time(int index)
     {
         return packet_info_[index].frame_time;
+    }
+
+    void packets_buffer::set_frame_id(int index, uint32_t id)
+    {
+        packet_info_[index].frame_id = id;
+    }
+
+    uint32_t packets_buffer::get_frame_id(int index)
+    {
+        return packet_info_[index].frame_id;
+    }
+
+    uint64_t packets_buffer::get_buffer_size()
+    {
+        return size_;
     }
 
 }

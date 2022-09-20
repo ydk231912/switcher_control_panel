@@ -34,6 +34,11 @@ namespace seeder::decklink
     ,pixel_format_(bmdFormat8BitYUV)
     ,video_flags_(bmdVideoInputFlagDefault)
     {
+        sample_type_ = bmdAudioSampleType16bitInteger;
+        if(format_desc_.audio_samples == 32)
+            sample_type_ = bmdAudioSampleType32bitInteger;
+        
+
         HRESULT result;
         bmd_mode_ = get_decklink_video_format(format_desc_.format);
         
@@ -94,37 +99,37 @@ namespace seeder::decklink
         HRESULT result = input_->EnableVideoInput(bmd_mode_, pixel_format_, video_flags_);
         if(result != S_OK)
         {
-            if(result == E_FAIL)
-            {
-                logger->error("E_FAIL");
-            }
-            else if(result == E_INVALIDARG)
-            {
-                logger->error("E_INVALIDARG");
-            }
-            else if(result == E_ACCESSDENIED)
-            {
-                logger->error("E_ACCESSDENIED");
-            }
-            else if(result == E_OUTOFMEMORY)
-            {
-                logger->error("E_OUTOFMEMORY");
-            }
-            else 
-            {
-                logger->error("unknow");
-            }
-            
+            ///// for debug 
+            // if(result == E_FAIL)
+            // {
+            //     logger->error("E_FAIL");
+            // }
+            // else if(result == E_INVALIDARG)
+            // {
+            //     logger->error("E_INVALIDARG");
+            // }
+            // else if(result == E_ACCESSDENIED)
+            // {
+            //     logger->error("E_ACCESSDENIED");
+            // }
+            // else if(result == E_OUTOFMEMORY)
+            // {
+            //     logger->error("E_OUTOFMEMORY");
+            // }
+            // else 
+            // {
+            //     logger->error("unknow");
+            // }
 
             logger->error("Failed to enable DeckLink video input.");
             throw std::runtime_error("Failed to enable DeckLink video input.");
         }
         // TODO parameters from config file
-        result = input_->EnableAudioInput(bmdAudioSampleRate48kHz, bmdAudioSampleType16bitInteger, 8);
+        result = input_->EnableAudioInput(bmdAudioSampleRate48kHz, sample_type_, format_desc_.audio_channels);
         if(result != S_OK)
         {
-         logger->error("Failed to enable DeckLink audio input.");
-         throw std::runtime_error("Failed to enable DeckLink audio input.");
+            logger->error("Failed to enable DeckLink audio input.");
+            throw std::runtime_error("Failed to enable DeckLink audio input.");
         }
 
         result = input_->StartStreams();
@@ -174,7 +179,7 @@ namespace seeder::decklink
         display_mode_ = mode;
         input_->StopStreams();
         input_->EnableVideoInput(mode->GetDisplayMode(), pixel_format_, video_flags_);
-        input_->EnableAudioInput(bmdAudioSampleRate48kHz, bmdAudioSampleType16bitInteger, 8);
+        input_->EnableAudioInput(bmdAudioSampleRate48kHz, sample_type_, format_desc_.audio_channels);
         input_->FlushStreams();
         input_->StartStreams();
         
@@ -228,6 +233,8 @@ namespace seeder::decklink
         {
             auto aframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
             aframe->format = AV_SAMPLE_FMT_S16;
+            if(format_desc_.audio_samples == 32)
+                aframe->format = AV_SAMPLE_FMT_S32;
             aframe->channels = format_desc_.audio_channels;
             aframe->sample_rate = format_desc_.audio_sample_rate;
 
@@ -247,7 +254,7 @@ namespace seeder::decklink
                     aframe->pts = in_audio_pts; //need bugging to ditermine the in_audio_pts meets the requirement
                 }
             }
-            frm->video = aframe;
+            frm->audio = aframe;
         }
 
         this->set_frame(frm);
@@ -269,6 +276,7 @@ namespace seeder::decklink
             logger->error("The frame is discarded");
         }
         frame_buffer_.push_back(frm);
+        frame_cv_.notify_all();
     }
 
     /**
@@ -277,18 +285,31 @@ namespace seeder::decklink
      */
     std::shared_ptr<frame> decklink_input::get_frame()
     {
-        std::shared_ptr<frame> frm;
+        std::shared_ptr<core::frame> frm;
+        std::unique_lock<std::mutex> lock(frame_mutex_);
+        if(frame_buffer_.size() > 0)
         {
-            std::lock_guard<std::mutex> lock(frame_mutex_);
-            if(frame_buffer_.size() < 1)
-                return last_frame_;
-
             frm = frame_buffer_[0];
             frame_buffer_.pop_front();
-            last_frame_ = frm;
+            return frm;
         }
-
+        frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); // block until the buffer is not empty
+        frm = frame_buffer_[0];
+        frame_buffer_.pop_front();
         return frm;
+
+        // std::shared_ptr<frame> frm;
+        // {
+        //     std::lock_guard<std::mutex> lock(frame_mutex_);
+        //     if(frame_buffer_.size() < 1)
+        //         return last_frame_;
+
+        //     frm = frame_buffer_[0];
+        //     frame_buffer_.pop_front();
+        //     last_frame_ = frm;
+        // }
+
+        // return frm;
     }
 
 }

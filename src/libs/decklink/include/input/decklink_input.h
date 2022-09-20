@@ -14,6 +14,7 @@
 #include <mutex>
 #include <memory>
 #include <deque>
+#include <condition_variable>
 
 #include "../interop/DeckLinkAPI.h"
 
@@ -92,11 +93,15 @@ namespace seeder::decklink
         IDeckLink* decklink_;
         IDeckLinkInput*	input_;
 
+        //audio
+        _BMDAudioSampleType sample_type_;
+
         //buffer
         std::mutex frame_mutex_;
         std::deque<std::shared_ptr<frame>> frame_buffer_;
         const size_t frame_capacity_ = 3;
         std::shared_ptr<frame> last_frame_;
+        std::condition_variable frame_cv_;
 
     };
 }

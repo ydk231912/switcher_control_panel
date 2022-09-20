@@ -85,17 +85,17 @@ namespace seeder { namespace net {
         auto addr = inet_addr(ip.data());
         auto ret = setsockopt(socket_, IPPROTO_IP, IP_MULTICAST_IF, (char*)&addr, sizeof(addr));
 
-        // struct sockaddr_in addr;
-        // memset(&addr, 0, sizeof(addr));
-        // addr.sin_family = AF_INET;
-        // addr.sin_addr.s_addr = inet_addr(ip.data());
-        // addr.sin_port = htons(port);
+        struct sockaddr_in ad;
+        memset(&addr, 0, sizeof(addr));
+        ad.sin_family = AF_INET;
+        ad.sin_addr.s_addr = inet_addr(ip.data());
+        ad.sin_port = htons(port);
 
-        // if(bind(socket_, (struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0)
-        // {
-        //     logger->error("bind to ip {}:{} failed!", ip, port);
-        //     return -1;
-        // }
+        if(bind(socket_, (struct sockaddr *)&ad, sizeof(struct sockaddr)) < 0)
+        {
+            logger->error("bind to ip {}:{} failed!", ip, port);
+            return -1;
+        }
 
         // return 1;
 
