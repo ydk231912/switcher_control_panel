@@ -46,9 +46,18 @@ list(APPEND LINKER_LIBS
 /usr/lib/libDeckLinkAPI.so
 /usr/lib/libDeckLinkPreviewAPI.so)
 
+# DPDK Media Tranport Library
+list(APPEND LINKER_LIBS 
+/usr/local/lib/x86_64-linux-gnu/libst_dpdk.so)
+include_directories(/usr/include/x86_64-linux-gnu/st_dpdk)
+
+# json
+list(APPEND LINKER_LIBS 
+/usr/lib/x86_64-linux-gnu/libjson-c.so)
+include_directories(/usr/include/json-c)
+
 # SPDLog
 # list(APPEND LINKER_LIBS ${SYSTEM_LIB_PATH}/libspdlog.so)
-
 
 add_subdirectory(libs)
 add_subdirectory(apps)

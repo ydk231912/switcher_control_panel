@@ -27,12 +27,12 @@
             <audio-channels>8</audio-channels>
             <rtp-video-type>96</rtp-video-type>
             <rtp-audio-type>97</rtp-audio-type>
-            <multicast-ip>239.0.20.28</multicast-ip>
+            <multicast-ip>239.0.20.25</multicast-ip>
             <multicast-port>20000</multicast-port>
             <bind-ip>192.168.10.103</bind-ip>
             <bind-port>20001</bind-port>
             
-            <display-screen>true</display-screen>
+            <display-screen>false</display-screen>
         </channel>
     </channels>
 </configuration>

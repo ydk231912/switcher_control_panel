@@ -44,13 +44,66 @@
 #include <boost/lockfree/spsc_queue.hpp>
 #include "rtp/packet.h"
 #include "core/executor/executor.h"
+#include "core/util/date.h"
+#include "net/udp_receiver.h"
+#include "rtp/packet.h"
 
 #include <atomic>
+
+// st_dpdk 
+#include "/usr/include/x86_64-linux-gnu/st_dpdk/st20_dpdk_api.h"
 
 using namespace boost::lockfree;
 using namespace seeder::core;
 using namespace boost::property_tree;
 
+using namespace seeder;
+
+/**
+ * @brief 
+ * 
+ */
+void st_dpdk_test()
+{
+    auto size = st20_frame_size(ST20_FMT_YUV_422_10BIT, 1920, 1080);
+    std::cout << "frame size: " << size << std::endl;
+
+}
+void test(){
+    st_dpdk_test();
+}
+
+void udp_receive_test()
+{
+
+    auto receiver = net::udp_receiver("239.0.10.21");
+    receiver.bind_ip("192.168.10.103", 20000);
+    while(true)
+    {
+
+        //auto packet = std::make_shared<rtp::packet>(1900);
+        //auto len = receiver.receive(packet->get_data_ptr(), packet->get_size());
+        // if(len > 0)
+        //     auto l = len;
+    }
+
+}
+// void test(){
+//     udp_receive_test();
+// }
+/**
+ * @brief 
+ * 
+ */
+void timestamp_test()
+{
+    auto time_now = date::now();
+    std::cout << time_now/1000000 << std::endl;
+
+}
+// void test(){
+//     timestamp_test();
+// }
 
 /**
  * @brief executor execute speed test
@@ -70,9 +123,9 @@ void executor_speed_test()
     return;
 }
 
-void test(){
-    executor_speed_test();
-}
+// void test(){
+//     executor_speed_test();
+// }
 
 /**
  * @brief 
@@ -208,7 +261,7 @@ void thread_test()
 /**
  * @brief packet allocate and free test
  * 2.622 ms: allocate and free 15376 packet
- * 1.8ms: memcpy 15376 packet
+ * 1.8ms: memcpy 15376 packet, 117ns
  * 14.26ms: deque.push and pop 15376 packet the two thread, 1us once
  * 20.05ms: spsc_queue push and pop 15376 packet the two thread
  * 0.3ms: atomic int ++/-- in two thread, 10ns once
@@ -242,8 +295,6 @@ void pakcet_test()
     t2.join();
     std::cout << "15376 atomit int ++ :" << t0.elapsed() << std::endl;
     return;
-
-
 
     // shared_ptr test
     // seeder::core::timer t;
@@ -336,6 +387,7 @@ void queue_test()
  * 700MB/s one thread/socket
  * 26ms: send 15376 packet on one socket  1.7us per packet
  * 68ms: send 15376 packet by executor asynchronous
+ * send 1M packets, max spend time is 150us, average 1.7us per packet
  */
 void udp_send_test()
 {
@@ -349,10 +401,22 @@ void udp_send_test()
     // send 15376 packet speed test: 30ms, 
     // connect whether, the send speed is same
     //sender1->connect_host("239.0.20.28", 20000);
-    seeder::core::timer t;
-    for(int i = 0; i < 153760; i++)
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(23, &mask);
+    if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
     {
-       sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);
+        std::cout << "bind udp thread to cpu failed" << std::endl;
+    }
+
+    // send 1M packets, max spend time is 150us, average 1.7us per packet
+    seeder::core::timer t;
+    for(int i = 0; i < 1537600000; i++)
+    {
+        auto send_time = timer::now();
+        sender1->send_to(p->get_data_ptr(), p->get_data_size(), "239.0.20.28", 20000);
+        auto send_elapse = timer::now() - send_time;
+        if(send_elapse > 30000 ) std::cout << "packets: " << i << " udp send time spend: " << send_elapse << std::endl;
     }
     std::cout << "send 153760 packet: " << t.elapsed() << std::endl;
 

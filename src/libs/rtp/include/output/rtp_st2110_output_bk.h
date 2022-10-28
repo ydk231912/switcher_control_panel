@@ -99,6 +99,7 @@ namespace seeder::rtp
         std::deque<std::shared_ptr<rtp::packet>> packet_buffer_;
         const std::size_t frame_capacity_ = 3;
         std::size_t packet_capacity_ = 11544; // 3frame 
+        uint32_t frame_period_; // one frame times in RTP_VIDEO_RATE(90khz)
 
         std::condition_variable frame_cv_;
         std::condition_variable packet_cv_;

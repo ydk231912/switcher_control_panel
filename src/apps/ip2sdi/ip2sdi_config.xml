@@ -19,7 +19,7 @@
             </video-mode -->
             <video-mode>1080p5000</video-mode>
             <device-id>1</device-id>
-            <multicast-ip>239.0.20.3</multicast-ip>
+            <multicast-ip>239.0.20.17</multicast-ip>
             <multicast-port>20000</multicast-port>
             <bind-ip>192.168.10.103</bind-ip>
             <bind-port>20002</bind-port>

@@ -39,9 +39,24 @@ namespace seeder::rtp
             leap_seconds = leap;
         }
 
+        rtp_context(video_format_desc desc, std::string ip, short port, std::string bindip, short bindport
+        ,uint8_t video_type, uint8_t audio_type, uint32_t leap)
+        {
+            format_desc = desc;
+            multicast_ip = ip;
+            multicast_port = port;
+            bind_ip = bindip;
+            bind_port = bindport;
+            rtp_video_type = video_type;
+            rtp_audio_type = audio_type;
+            leap_seconds = leap;
+        }
+
         video_format_desc format_desc;
         std::string multicast_ip;
         short multicast_port;
+        std::string bind_ip;
+        short bind_port;
 
         uint8_t rtp_video_type;
         uint8_t rtp_audio_type;

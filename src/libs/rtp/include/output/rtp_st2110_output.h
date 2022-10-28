@@ -21,6 +21,7 @@
 #include "core/stream/output.h"
 #include "rtp/packet.h"
 #include "net/udp_sender.h"
+#include "net/async_sender.h"
 #include "rtp/rtp_context.h"
 #include "core/executor/executor.h"
 #include "rtp/packets_buffer.h"
@@ -116,6 +117,7 @@ namespace seeder::rtp
         std::vector<uint16_t> sequences_; // video rtp sequence number, per thread
         std::vector<int> packets_number_; // packets number per frame per thread
         atomic<uint32_t> timestamp_; // video rtp timestamp
+        uint32_t frame_period_; // one frame times in RTP_VIDEO_RATE(90khz)
         atomic<bool> first_of_frame_;
         uint64_t time_now_; // frame timestamp
         uint16_t audio_sequence_number_; //audio rtp sequence number
@@ -138,6 +140,7 @@ namespace seeder::rtp
         std::vector<std::shared_ptr<rtp::packets_buffer>> packets_buffers_;
         //int16_t qid_ = -1; // packets_buffers_ queue index
         std::vector<std::shared_ptr<net::udp_sender>> udp_senders_;
+        std::vector<std::shared_ptr<net::async_sender>> async_senders_;
         std::vector<std::shared_ptr<std::thread>> udp_threads_;
         std::vector<int64_t> drain_offsets_; // udp sender queues, send packet time offsets
         uint64_t frame_time_;

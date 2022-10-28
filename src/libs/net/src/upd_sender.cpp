@@ -42,9 +42,11 @@ namespace seeder { namespace net {
             throw std::runtime_error("Create udp socket client failed!");
         }
 
-        // set socketopt, SO_REUSEADDR true, send buffer
+        // set socketopt, SO_REUSEADDR true, SO_REUSEPORT true, send buffer
         bool bReuseaddr = true;
         setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, (const char*)&bReuseaddr, sizeof(bool));
+        int on = 1;
+        setsockopt(socket_, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
         int buffer_size = 60000000;
         auto ret = setsockopt(socket_, SOL_SOCKET, SO_SNDBUF, &buffer_size, sizeof(buffer_size));
         setsockopt(socket_, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));

@@ -26,6 +26,7 @@
 
 // test
 #include <test.h>
+#include "net/udp_receiver.h"
 
 using namespace boost::lockfree;
 using namespace seeder::core;
@@ -139,6 +140,8 @@ int main(int argc, char* argv[])
 {
     test();
     return 0;
+    // auto receiver = seeder::net::udp_receiver("239.0.10.21");
+    // receiver.bind_ip("192.168.10.103", 20000);
 
     auto start_time = std::chrono::steady_clock::now();
     int return_code = 0;

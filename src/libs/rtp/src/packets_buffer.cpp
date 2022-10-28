@@ -61,7 +61,7 @@ namespace seeder::rtp
     int packets_buffer::write()
     {
         int index = -1;
-        if(size_ < capacity_)
+        if(size_ < (capacity_ - 2))
         {
             index = in_;
             packet_info_[index].size = d10::STANDARD_UDP_SIZE_LIMIT;

@@ -31,7 +31,8 @@ namespace seeder
         rtp_context_.rtp_video_type = config.rtp_video_type;
         rtp_context_.rtp_audio_type = config.rtp_audio_type;
         rtp_context_.leap_seconds = config.leap_seconds;
-        
+        rtp_context_.bind_ip = config.bind_ip;
+        rtp_context_.bind_port = config.bind_port;
         
         //rtp_output2_ = std::make_unique<rtp::rtp_st2110_output2>(rtp_context_);
         rtp_output_ = std::make_unique<rtp::rtp_st2110_output>(rtp_context_);
@@ -119,13 +120,13 @@ namespace seeder
     void channel::run()
     {
         channel_thread_ = std::make_unique<std::thread>([&](){
-            // cpu_set_t mask;
-            // CPU_ZERO(&mask);
-            // CPU_SET(5, &mask);
-            // if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
-            // {
-            //     logger->error("bind udp thread to cpu failed");
-            // }
+            cpu_set_t mask;
+            CPU_ZERO(&mask);
+            CPU_SET(1, &mask);
+            if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
+            {
+                logger->error("bind udp thread to cpu failed");
+            }
 
             while(!abort_)
             {
@@ -137,14 +138,14 @@ namespace seeder
                     if(frame)
                     {
                         // push to rtp
-                        //rtp_output_bk_->set_frame(frame);
-                        rtp_output_->set_frame(frame);
+                        rtp_output_bk_->set_frame(frame);
+                        //rtp_output_->set_frame(frame);
                         
                         // push to sdl screen display
                         if(sdl_output_)
                             sdl_output_->set_frame(frame); //set_avframe(frame)
                     }
-                    boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
+                    //boost::this_thread::sleep_for(boost::chrono::milliseconds(int(1000/config_.format_desc.fps)));  // 25 frames per second
                 }
                 catch(const std::exception& e)
                 {

@@ -31,6 +31,7 @@ extern "C"
 #include "st2110/d10/network.h"
 #include "rtp/header.h"
 #include "rtp/rtp_constant.h"
+#include "rtp/util.h"
 
 #include "output/rtp_st2110_output_bk.h"
 
@@ -44,7 +45,9 @@ namespace seeder::rtp
     {
         //udp_sender_->bind_ip("192.168.10.203", 20001);
         packets_per_frame_ = calc_packets_per_frame();
-        packet_capacity_ =  packets_per_frame_ * frame_capacity_;
+        packet_capacity_ =  packets_per_frame_ * frame_capacity_ ;
+
+        frame_period_ = static_cast<uint32_t>(1 / context_.format_desc.fps * RTP_VIDEO_RATE);
     }
 
     rtp_st2110_output_bk::~rtp_st2110_output_bk()
@@ -111,7 +114,7 @@ namespace seeder::rtp
         bool first_of_frame = true;
 
         uint16_t line   = 0;
-        uint16_t pgroup = 5; // uyvy422 10bit, 5bytes
+        uint16_t pgroup = 5; //5; uyvy422 10bit, 5bytes; 4 uyvy422 8bit
         uint16_t xinc   = 2;
         uint16_t yinc   = 1;
         uint16_t offset = 0;
@@ -230,6 +233,7 @@ namespace seeder::rtp
                         // +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
                         for (i = 0; i < pgs; i++) 
                         {
+                            ////////////////// 10 bit
                             // 8bit yuv to 10bit ycbcr(CbY0CrY1)
                             //      Cb         Y0        Cr         Y1
                             // xxxxxxxx 00++++++ ++00xxxx xxxx00++ ++++++00
@@ -244,6 +248,21 @@ namespace seeder::rtp
                             ++uvp1;
                             ++yp;
                             ++uvp2;
+
+                            ///////////////// 8 bit
+                            // 8bit yuv to 8bit ycbcr(CbY0CrY1)
+                            //    Cb       Y0        Cr      Y1
+                            // xxxxxxxx ++++++++ xxxxxxxx ++++++++
+                            //     0        1        2        3 
+                            // ptr[0] = uvp1[0];
+                            // ptr[1] = yp[0];
+                            // ptr[2] = uvp2[0];
+                            // ptr[3] = yp[1];
+
+                            // ++uvp1;
+                            // ++uvp2;
+                            // yp += 2;
+                            // ptr +=4;
                         }
                         break;
                     }
@@ -296,7 +315,7 @@ namespace seeder::rtp
             //packet_count++;
         }
         //// for debug
-        std::cout << "st2110 encode ns:" << timer.elapsed() << std::endl;
+        //std::cout << "st2110 encode ns:" << timer.elapsed() << std::endl;
         //std::cout << "packet count of per frame: " << packet_count << std::endl;
         //logger->debug("process one frame(sequence number{}) need time:{} ms", sequence_number_, timer.elapsed());
     }
@@ -309,15 +328,16 @@ namespace seeder::rtp
     {
         udp_thread_ = std::make_unique<std::thread>(std::thread([&](){
             // bind thread to one fixed cpu core
-            // cpu_set_t mask;
-            // CPU_ZERO(&mask);
-            // CPU_SET(23, &mask);
-            // if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
-            // {
-            //     logger->error("bind udp thread to cpu failed");
-            // }
+            cpu_set_t mask;
+            CPU_ZERO(&mask);
+            CPU_SET(23, &mask);
+            if(pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0)
+            {
+                logger->error("bind udp thread to cpu failed");
+            }
 
-            int timestamp = 0;
+            uint32_t timestamp = 0;
+            //int timestamp = 0;
             frame_number_ = 0;
             packet_drained_number_ = 0;
             int64_t p_start_time = 0;
@@ -341,16 +361,29 @@ namespace seeder::rtp
                         if(packet->is_first_of_frame())
                         {
                             // wait until the frame time point arrive
-                            auto played_time = timer::now() - start_time_;
+                            int64_t played_time = timer::now() - start_time_;
                             total_duration = frame_duration * frame_number_;
                             while(played_time < total_duration) // wait until time point arrive
                             {
                                 played_time = timer::now() - start_time_;
                             }
 
-                            auto time_now = date::now() + LEAP_SECONDS * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
-                            auto video_time = static_cast<uint64_t>(round(time_now * RTP_VIDEO_RATE / 1000000));
-                            timestamp = static_cast<uint32_t>(video_time % RTP_WRAP_AROUND);
+                            // auto time_now = date::now() + LEAP_SECONDS * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
+                            // auto video_time = static_cast<uint64_t>(round(time_now * RTP_VIDEO_RATE / 1000000));
+                            // timestamp = static_cast<uint32_t>(video_time % RTP_WRAP_AROUND);
+
+                            // auto time_now = date::now() ;//+ LEAP_SECONDS * 1000000; //microsecond. 37s: leap second, since 1970-01-01 to 2022-01-01
+                            // auto video_time = static_cast<uint64_t>(round(time_now * 0.09));  //(RTP_VIDEO_RATE / 1000000)));
+                            // timestamp = static_cast<uint32_t>(video_time % RTP_WRAP_AROUND);
+                            if(timestamp == 0)
+                            {
+                                timestamp = get_video_timestamp(context_.leap_seconds);
+                            }
+                            else
+                            {
+                                timestamp += frame_period_;
+                            }
+                            
                             frame_number_++;
                         }
 
@@ -363,7 +396,7 @@ namespace seeder::rtp
                             packet_duration = packet_drain_duration;
                         }
 
-                        auto elapse = timer::now() - p_start_time;
+                        int64_t elapse = timer::now() - p_start_time;
                         while(elapse < packet_duration) // wait until time point arrive
                         {
                             elapse = timer::now() - p_start_time;
@@ -373,8 +406,11 @@ namespace seeder::rtp
                         packet->set_timestamp(timestamp);
 
                         // send data synchronously
+                        //auto send_time = timer::now(); 
                         udp_sender_->send_to(packet->get_data_ptr(), packet->get_data_size(), 
                                              context_.multicast_ip, context_.multicast_port);
+                        // auto send_elapse = timer::now() - send_time;
+                        // if(send_elapse > 5000 && packet_drained_number_ < 40000) std::cout << "packets: " << packet_drained_number_<< " udp send time spend: " << send_elapse << std::endl;
 
                         //send data asynchronously
                         // auto udp_sender = udp_senders_.at(sender_ptr_); // use multiple udp sender(socket) to accelerate send speed
@@ -452,18 +488,18 @@ namespace seeder::rtp
     std::shared_ptr<packet> rtp_st2110_output_bk::get_packet()
     {
         std::shared_ptr<rtp::packet> packet = nullptr;
-        // std::unique_lock<std::mutex> lock(packet_mutex_);
-        // if(packet_buffer_.size() > 0)
-        // {
-        //     packet = packet_buffer_[0];
-        //     packet_buffer_.pop_front();
-        //     packet_cv_.notify_all();
-        //     return packet;
-        // }
-        // packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
-        // packet = packet_buffer_[0];
-        // packet_buffer_.pop_front();
-        // packet_cv_.notify_all();
+        std::unique_lock<std::mutex> lock(packet_mutex_);
+        if(packet_buffer_.size() > 0)
+        {
+            packet = packet_buffer_[0];
+            packet_buffer_.pop_front();
+            packet_cv_.notify_all();
+            return packet;
+        }
+        packet_cv_.wait(lock, [this](){return !packet_buffer_.empty();});
+        packet = packet_buffer_[0];
+        packet_buffer_.pop_front();
+        packet_cv_.notify_all();
 
         // if(packet_buffer_.size() > 0)
         // {
@@ -472,8 +508,8 @@ namespace seeder::rtp
         //     packet_cv_.notify_all();
         // }
 
-        // boost lockfree spsc_queue
-        auto ret = packet_bf_.pop(packet);
+        ///////// boost lockfree spsc_queue
+        //auto ret = packet_bf_.pop(packet);
         //if(!ret) logger->error("get packet failed");
 
         return packet;
@@ -485,24 +521,24 @@ namespace seeder::rtp
      */
     void rtp_st2110_output_bk::set_packet(std::shared_ptr<packet> packet)
     {
-        // std::unique_lock<std::mutex> lock(packet_mutex_);
-        // if(packet_buffer_.size() < packet_capacity_)
-        // {
-        //     packet_buffer_.push_back(packet);
-        //     packet_cv_.notify_all();
-        //     return;
-        // }
+        std::unique_lock<std::mutex> lock(packet_mutex_);
+        if(packet_buffer_.size() < packet_capacity_)
+        {
+            packet_buffer_.push_back(packet);
+            packet_cv_.notify_all();
+            return;
+        }
         // else{
         //     packet.reset();
         //     logger->error("packet was discarded");
         //     return;
         // }
-        // packet_cv_.wait(lock, [this](){return packet_buffer_.size() < packet_capacity_;});
-        // packet_buffer_.push_back(packet);
-        // packet_cv_.notify_all();
+        packet_cv_.wait(lock, [this](){return packet_buffer_.size() < packet_capacity_;});
+        packet_buffer_.push_back(packet);
+        packet_cv_.notify_all();
 
-        // boost lockfree spsc_queue
-        auto ret = packet_bf_.push(packet);
+        /////// boost lockfree spsc_queue
+        //auto ret = packet_bf_.push(packet);
         //if(!ret) logger->error("packet was discarded");
     }
 
@@ -518,7 +554,7 @@ namespace seeder::rtp
         auto width = context_.format_desc.width;
         int line = 0;
         auto payload_size = d10::STANDARD_UDP_SIZE_LIMIT - sizeof(raw_header);
-        uint16_t pgroup = 5; // uyvy422 10bit, 5bytes
+        uint16_t pgroup = 5; // 5 uyvy422 10bit, 5bytes, 4 8bit
         uint16_t xinc   = 2;
         uint16_t yinc   = 1;
         uint16_t offset = 0;

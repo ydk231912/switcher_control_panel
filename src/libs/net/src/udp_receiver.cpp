@@ -31,6 +31,7 @@ namespace seeder { namespace net {
     udp_receiver::udp_receiver(std::string multicast_ip)
     :mulicast_ip_(multicast_ip)
     {
+        int ret;
         socket_ = socket(AF_INET, SOCK_DGRAM, 0);
         if(socket_ == -1)
         {
@@ -39,13 +40,28 @@ namespace seeder { namespace net {
         }
 
         int buffer_size = 4000000;
-        setsockopt(socket_, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
+        ret = setsockopt(socket_, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
+        if(ret == -1)
+        {
+            logger->error("Set SO_RCVBUF {} failed!", mulicast_ip_);
+            throw std::runtime_error("Set SO_RCVBUF failed!");
+        }
+
+        //set address reuse
+        int reuse = 1;
+        ret = setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+        if(ret == -1)
+        {
+            logger->error("Set SO_REUSEADDR {} failed!", mulicast_ip_);
+            throw std::runtime_error("Set SO_REUSEADDR failed!");
+        }
+
 
         // join multicast group
         struct ip_mreq multi_adr;
         multi_adr.imr_multiaddr.s_addr = inet_addr(multicast_ip.data());
-        multi_adr.imr_interface.s_addr = htonl(INADDR_ANY);
-        auto ret = setsockopt(socket_, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *)&multi_adr, sizeof(multi_adr));
+        multi_adr.imr_interface.s_addr = inet_addr("192.168.10.103"); //htonl(INADDR_ANY); //
+        ret = setsockopt(socket_, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *)&multi_adr, sizeof(multi_adr));
         if(ret == -1)
         {
             logger->error("Join udp multicast group {} failed!", mulicast_ip_);
@@ -70,7 +86,7 @@ namespace seeder { namespace net {
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = inet_addr(ip.data());
+        addr.sin_addr.s_addr = INADDR_ANY; //inet_addr(ip.data());
         addr.sin_port = htons(port);
 
         if(bind(socket_, (struct sockaddr *)&addr, sizeof(struct sockaddr)) < 0)
@@ -91,7 +107,8 @@ namespace seeder { namespace net {
      */
     int udp_receiver::receive(uint8_t* buffer, size_t buffer_size)
     {
-        auto len = recvfrom(socket_, buffer, buffer_size, 0, NULL, 0);
+        auto len = read(socket_, buffer, buffer_size);
+        //auto len = recvfrom(socket_, buffer, buffer_size, 0, NULL, 0);
         return len;
     }
 
