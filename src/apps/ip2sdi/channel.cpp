@@ -25,7 +25,7 @@ namespace seeder
     :config_(config)
     ,rtp_context_(config.format_desc, config.multicast_ip, config.multicast_port)
     ,decklink_output_(std::make_unique<decklink::decklink_output>(config.device_id, config.format_desc))
-    ,rtp_input_(std::make_unique<rtp::rtp_st2110_input>(rtp_context_))
+    //,rtp_input_(std::make_unique<rtp::rtp_st2110_input>(rtp_context_))
     ,ffmpeg_input_(std::make_unique<ffmpeg::ffmpeg_input>("/home/seeder/c.MXF")) // for test
     {
         if(config.display_screen)

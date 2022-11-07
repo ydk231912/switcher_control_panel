@@ -17,7 +17,7 @@
 
 namespace seeder::core
 {
-    enum class video_format
+    enum class video_fmt
     {
         pal,
         ntsc,
@@ -58,7 +58,7 @@ namespace seeder::core
 
     struct video_format_desc
     {
-        video_format         format;
+        video_fmt         format;
         int                  width;
         int                  height;
         int                  square_width;
@@ -76,7 +76,7 @@ namespace seeder::core
         int                  audio_samples; // 16bit 24bit
         std::vector<int>     audio_cadence; // rotating optimal number of samples per frame
 
-        video_format_desc(video_format           format,
+        video_format_desc(video_fmt           format,
                         int              field_count,
                         int              width,
                         int              height,

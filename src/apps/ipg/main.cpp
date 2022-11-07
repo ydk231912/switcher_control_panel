@@ -17,14 +17,19 @@
 #include <functional>
 
 #include "core/util/logger.h"
+#include "core/video_format.h"
+#include "decklink/input/decklink_input.h"
+#include "ffmpeg/input/ffmpeg_input.h"
 
 
 #include "args.h"
 
 #include "app_base.h"
+#include "tx_video.h"
+#include "tx_audio.h"
+
 extern "C"
 {
-    
     #include "test.h"
 }
 
@@ -159,8 +164,87 @@ static void st_app_ctx_init(struct st_app_context *ctx)
     }
 }
 
+// initialize video source 
+static int st_tx_video_source_init(struct st_app_context* ctx)
+{
+    st_json_context_t* c = ctx->json_ctx;
+    try
+    {
+        for(int i = 0; i < c->tx_source_cnt; i++)
+        {
+            st_app_tx_source* s = &c->tx_sources[i];
+            if(s->type == "decklink")
+            {
+                auto format_desc = seeder::core::video_format_desc(s->video_format);
+                auto decklink = std::make_shared<seeder::decklink::decklink_input>(s->device_id, format_desc);
+                ctx->tx_sources[i] = decklink;
+                ctx->source_info[i] = s;
+            }
+            else if(s->type == "file")
+            {
+                auto format_desc = seeder::core::video_format_desc(s->video_format);
+                auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s->file_url,format_desc);
+                ctx->tx_sources[i] = ffmpeg;
+                ctx->source_info[i] = s;
+            }
+        }
+    }
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
+    
+    return 0;
+}
+
+static int st_tx_video_source_start(struct st_app_context* ctx)
+{
+    try
+    {
+        for(auto s : ctx->tx_sources)
+        {
+            if(s) s->start();        
+        }
+    }
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
 static void st_app_ctx_free(struct st_app_context* ctx)
 {
+    st_app_tx_video_sessions_uinit(ctx);
+    st_app_tx_audio_sessions_uinit(ctx);
+
+    if(ctx->runtime_session)
+        if(ctx->st) st_stop(ctx->st);
+    
+    if(ctx->json_ctx)
+    {
+        st_app_free_json(ctx->json_ctx);
+        st_app_free(ctx->json_ctx);
+    }
+
+    if(ctx->st) 
+    {
+        for(int i = 0; i < ST_APP_MAX_LCORES; i++) 
+        {
+            if(ctx->lcore[i] >= 0) {
+                st_put_lcore(ctx->st, ctx->lcore[i]);
+                ctx->lcore[i] = -1;
+            }
+            if(ctx->rtp_lcore[i] >= 0) {
+                st_put_lcore(ctx->st, ctx->rtp_lcore[i]);
+                ctx->rtp_lcore[i] = -1;
+            }
+        }
+        st_uninit(ctx->st);
+        ctx->st = NULL;
+    }
+
     st_app_free(ctx);
 }
 
@@ -204,7 +288,7 @@ int main(int argc, char *argv[])
     }
 
     st_app_ctx_init(ctx);
-    st_app_parse_args(ctx, &ctx->para, argc, argv);
+    ret = st_app_parse_args(ctx, &ctx->para, argc, argv);
     if(ret < 0)
     {
         logger->error("{}, parse arguments fail", __func__);
@@ -266,10 +350,30 @@ int main(int argc, char *argv[])
         return -EIO;
     }
 
-    //ret = st_app_tx_video_session_init(ctx);
+    // tx video
+    ret = st_app_tx_video_sessions_init(ctx);
     if(ret < 0)
     {
         logger->error("{}, st_tx_video_session_init fail", __func__);
+        st_app_ctx_free(ctx);
+        return -EIO;
+    }
+
+    // tx audio
+    ret = st_app_tx_audio_sessions_init(ctx);
+    if(ret < 0)
+    {
+        logger->error("{}, st_tx_audio_session_init fail", __func__);
+        st_app_ctx_free(ctx);
+        return -EIO;
+    }
+
+
+    // init tx video source
+    ret = st_tx_video_source_init(ctx);
+    if(ret < 0)
+    {
+        logger->error("{}, st_tx_video_source_init fail", __func__);
         st_app_ctx_free(ctx);
         return -EIO;
     }
@@ -285,9 +389,17 @@ int main(int argc, char *argv[])
         }
     }
 
+    // start video source input stream
+    ret = st_tx_video_source_start(ctx);
+    {
+        logger->error("{}, st_tx_video_source_start fail", __func__);
+        st_app_ctx_free(ctx);
+        return -EIO;
+    }
+
     // wait for stop
     int test_time_s = ctx->test_time_s;
-    logger->debug("{}, app lunch succ, test time {}", __func__, test_time_s);
+    logger->debug("{}, app lunch success, test time {}", __func__, test_time_s);
     while(!ctx->stop) {
         sleep(1);
     }

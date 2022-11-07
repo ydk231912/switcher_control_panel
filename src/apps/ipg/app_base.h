@@ -21,9 +21,16 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <vector>
+#include <memory>
+
+#include <string>
+
 #include "app_platform.h"
 #include "fmt.h"
 #include "parse_json.h"
+
+#include "core/stream/input.h"
 
 #ifndef _ST_APP_BASE_HEAD_H_
 #define _ST_APP_BASE_HEAD_H_
@@ -82,6 +89,14 @@ struct st_app_frameinfo {
   bool used;
   bool second_field;
   uint16_t lines_ready;
+};
+
+struct st_app_tx_source
+{
+  std::string type; // decklink, file
+  int device_id; // decklink
+  std::string file_url;
+  std::string video_format;
 };
 
 struct st_app_tx_video_session {
@@ -144,6 +159,10 @@ struct st_app_tx_video_session {
 
   struct st_display* display;
   int lcore;
+
+  // video source
+  std::shared_ptr<seeder::core::input> tx_source;
+  st_app_tx_source* source_info;
 };
 
 struct st_app_tx_audio_session {
@@ -174,6 +193,10 @@ struct st_app_tx_audio_session {
   pthread_mutex_t st30_wake_mutex;
   uint32_t st30_rtp_tmstamp;
   uint16_t st30_seq_id;
+
+    // audio source
+  std::shared_ptr<seeder::core::input> tx_source;
+  st_app_tx_source* source_info;
 };
 
 struct st_app_tx_anc_session {
@@ -529,6 +552,10 @@ struct st_app_context {
   uint32_t pcapng_max_pkts;
   char ttf_file[ST_APP_URL_MAX_LEN];
   int utc_offset;
+
+  // tx_source handle;
+  std::vector<std::shared_ptr<seeder::core::input>> tx_sources;
+  std::vector<st_app_tx_source*> source_info;
 };
 
 static inline void* st_app_malloc(size_t sz) { return malloc(sz); }

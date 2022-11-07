@@ -1,7 +1,10 @@
 
+#include <memory>
 
 #include "tx_video.h"
 #include "core/util/logger.h"
+#include "core/stream/input.h"
+#include "core/frame/frame.h"
 
 using namespace seeder::core;
 
@@ -69,16 +72,33 @@ static int app_tx_video_frame_done(void* priv, uint16_t frame_idx,
 static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* frame,
                                      size_t frame_size) 
 {
-    // uint8_t* src = s->st20_frame_cursor;
+    int ret = 0;
+    auto f = s->tx_source->get_video_frame();
+    if(!f) return;
 
-    // if(!s->ctx->tx_copy_once || !s->st20_frames_copied) st_memcpy(frame, src, frame_size);
-    // /* point to next frame */
-    // s->st20_frame_cursor += frame_size;
-    // if(s->st20_frame_cursor + frame_size > s->st20_source_end) 
-    // {
-    //     s->st20_frame_cursor = s->st20_source_begin;
-    //     s->st20_frames_copied = true;
-    // }
+    // convert pixel format
+    if(s->source_info->type == "decklink")
+    {
+        // convert v210 to yuv10be
+        ret = st20_v210_to_rfc4175_422be10(f->data[0], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
+        if(ret < 0)
+        {
+            logger->error("{}, convet v210 to yuv422be10 fail", __func__);
+            return;
+        }
+    }
+    else if(s->source_info->type == "file")
+    {
+        // video file pixel format must be AV_PIX_FMT_YUV422P10LE
+        ret = st20_yuv422p10le_to_rfc4175_422be10((uint16_t*)f->data[0], (uint16_t*)f->data[1], 
+                    (uint16_t*)f->data[2], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
+        if(ret < 0)
+        {
+            logger->error("{}, convet yuvp42210le to yuv422be10 fail", __func__);
+            return;
+        }
+    }
+    return;
 }
 
 static void app_tx_video_thread_bind(struct st_app_tx_video_session* s) 
@@ -205,7 +225,7 @@ static void* app_tx_video_frame_thread(void* arg)
             //app_tx_video_build_slice(s, framebuff, frame_addr);
         }
     }
-    logger->debug("{}({}), stop", __func__, idx);
+    logger->info("{}({}), stop", __func__, idx);
 
     return NULL;
 }
@@ -228,8 +248,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     memcpy(ops.dip_addr[ST_PORT_P],
             video ? video->base.ip[ST_PORT_P] : ctx->tx_dip_addr[ST_PORT_P], ST_IP_ADDR_LEN);
     strncpy(ops.port[ST_PORT_P],
-            video ? video->base.inf[ST_PORT_P]->name : ctx->para.port[ST_PORT_P],
-            ST_PORT_MAX_LEN);
+            video ? video->base.inf[ST_PORT_P]->name : ctx->para.port[ST_PORT_P], ST_PORT_MAX_LEN);
     ops.udp_port[ST_PORT_P] = video ? video->base.udp_port : (10000 + s->idx);
     if(ctx->has_tx_dst_mac[ST_PORT_P]) 
     {
@@ -239,11 +258,9 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     if(ops.num_port > 1)
     {
         memcpy(ops.dip_addr[ST_PORT_R],
-            video ? video->base.ip[ST_PORT_R] : ctx->tx_dip_addr[ST_PORT_R],
-            ST_IP_ADDR_LEN);
+            video ? video->base.ip[ST_PORT_R] : ctx->tx_dip_addr[ST_PORT_R], ST_IP_ADDR_LEN);
         strncpy(ops.port[ST_PORT_R],
-                video ? video->base.inf[ST_PORT_R]->name : ctx->para.port[ST_PORT_R],
-                ST_PORT_MAX_LEN);
+                video ? video->base.inf[ST_PORT_R]->name : ctx->para.port[ST_PORT_R], ST_PORT_MAX_LEN);
         ops.udp_port[ST_PORT_R] = video ? video->base.udp_port : (10000 + s->idx);
         if(ctx->has_tx_dst_mac[ST_PORT_R]) 
         {
@@ -315,13 +332,17 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     bool rtp = false;
     if (ops.type == ST20_TYPE_RTP_LEVEL) rtp = true;
 
+    // tx video source
+    s->tx_source = ctx->tx_sources[video->tx_source_id];
+    s->source_info = ctx->source_info[video->tx_source_id];
+
     if(!ctx->app_thread) 
     {
         ret = st_app_video_get_lcore(ctx, s->handle_sch_idx, rtp, &lcore);
         if (ret >= 0) s->lcore = lcore;
     }
 
-    // start frame thread to build frame 
+    // start frame thread to build frame
     ret = pthread_create(&s->st20_app_thread, NULL, app_tx_video_frame_thread, s);
     if(ret < 0)
     {

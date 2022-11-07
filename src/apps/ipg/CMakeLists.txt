@@ -16,3 +16,4 @@ ${LINKER_LIBS}
 )
 
 # file(COPY ./ipg_config.xml DESTINATION  ${PROJECT_SOURCE_DIR}/build/bin)
+file(COPY ./test_tx_1port_1v_1a_1anc.json DESTINATION  ${PROJECT_SOURCE_DIR}/build/bin)

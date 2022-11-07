@@ -167,6 +167,9 @@ typedef struct st_json_video_session {
   st_json_session_base_t base;
   st_json_video_info_t info;
 
+  // tx only
+  int tx_source_id; // video source handle id
+
   /* rx only items */
   enum user_pg_fmt user_pg_format;
   bool display;
@@ -176,6 +179,10 @@ typedef struct st_json_video_session {
 typedef struct st_json_audio_session {
   st_json_session_base_t base;
   st_json_audio_info_t info;
+
+  // audio source handle id
+  int tx_source_id;
+  
 } st_json_audio_session_t;
 
 typedef struct st_json_ancillary_session {
@@ -225,6 +232,9 @@ typedef struct st_json_context {
   int rx_st22p_session_cnt;
   st_json_st20p_session_t* rx_st20p_sessions;
   int rx_st20p_session_cnt;
+
+  struct st_app_tx_source* tx_sources;
+  int tx_source_cnt;
 } st_json_context_t;
 
 int st_app_parse_json(st_json_context_t* ctx, const char* filename);

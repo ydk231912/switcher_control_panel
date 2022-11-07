@@ -76,12 +76,17 @@ namespace seeder::decklink
          * 
          */
         void set_frame(std::shared_ptr<frame> frm);
+        void set_video_frame(std::shared_ptr<AVFrame> vframe);
+        void set_audio_frame(std::shared_ptr<AVFrame> aframe);
+
 
         /**
          * @brief Get a frame from this input stream
          * 
          */
         std::shared_ptr<frame> get_frame();
+        std::shared_ptr<AVFrame> get_video_frame();
+        std::shared_ptr<AVFrame> get_audio_frame();
 
       private:
         int decklink_index_;
@@ -102,6 +107,21 @@ namespace seeder::decklink
         const size_t frame_capacity_ = 3;
         std::shared_ptr<frame> last_frame_;
         std::condition_variable frame_cv_;
+
+        // video buffer
+        std::mutex vframe_mutex_;
+        std::deque<std::shared_ptr<AVFrame>> vframe_buffer_;
+        const size_t vframe_capacity_ = 5;
+        std::shared_ptr<frame> last_vframe_;
+        std::condition_variable vframe_cv_;
+
+        // audio buffer
+        std::mutex aframe_mutex_;
+        std::deque<std::shared_ptr<AVFrame>> aframe_buffer_;
+        const size_t aframe_capacity_ = 5;
+        std::shared_ptr<frame> last_aframe_;
+        std::condition_variable aframe_cv_;
+
 
     };
 }

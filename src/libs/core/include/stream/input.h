@@ -43,10 +43,34 @@ namespace seeder::core
         virtual void set_frame(std::shared_ptr<frame> frm) = 0;
 
         /**
+         * @brief push a video frame into this input stream
+         * 
+         */
+        virtual void set_video_frame(std::shared_ptr<AVFrame> vframe) = 0;
+
+        /**
+         * @brief push a audio frame into this input stream
+         * 
+         */
+        virtual void set_audio_frame(std::shared_ptr<AVFrame> aframe) = 0;
+
+        /**
          * @brief Get a frame from this input stream
          * 
          */
         virtual std::shared_ptr<frame> get_frame() = 0;
+
+        /**
+         * @brief Get a video frame from this input stream
+         * 
+         */
+        virtual std::shared_ptr<AVFrame> get_video_frame() = 0;
+
+        /**
+         * @brief Get a audio frame from this input stream
+         * 
+         */
+        virtual std::shared_ptr<AVFrame> get_audio_frame() = 0;
 
     };
 } 

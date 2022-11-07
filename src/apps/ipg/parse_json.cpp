@@ -1405,6 +1405,12 @@ void st_app_free_json(st_json_context_t* ctx) {
     st_app_free(ctx->rx_st20p_sessions);
     ctx->rx_st20p_sessions = NULL;
   }
+  // free tx_scoure
+  if(ctx->tx_sources)
+  {
+    st_app_free(ctx->tx_sources);
+    ctx->tx_sources = NULL;
+  }
 }
 
 int error(int ret, st_json_context_t* ctx, json_object* root_object)
@@ -1463,6 +1469,9 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
   /* parse tx sessions  */
   json_object* tx_group_array = st_json_object_object_get(root_object, "tx_sessions");
   if (tx_group_array != NULL && json_object_get_type(tx_group_array) == json_type_array) {
+    /* allocate tx source config*/
+    ctx->tx_sources = (st_app_tx_source*)st_app_zmalloc(json_object_array_length(tx_group_array)*sizeof(st_app_tx_source));
+
     /* parse session numbers for array allocation */
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
       json_object* tx_group = json_object_array_get_idx(tx_group_array, i);
@@ -1492,7 +1501,15 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
       num = parse_session_num(tx_group, "st20p");
       if (num < 0) return error(ret, ctx, root_object);
       ctx->tx_st20p_session_cnt += num;
+
+      // parse tx source config
+      json_object* source = st_json_object_object_get(tx_group, "source");
+      ctx->tx_sources[i].type = json_object_get_string(st_json_object_object_get(source, "type"));
+      ctx->tx_sources[i].device_id = json_object_get_int(st_json_object_object_get(source, "device_id"));
+      ctx->tx_sources[i].file_url = json_object_get_string(st_json_object_object_get(source, "file_url"));
+      ctx->tx_sources[i].video_format = json_object_get_string(st_json_object_object_get(source, "video_format"));
     }
+    ctx->tx_source_cnt = json_object_array_length(tx_group_array);
 
     /* allocate tx sessions */
     ctx->tx_video_sessions = (st_json_video_session_t*)st_app_zmalloc(
@@ -1624,6 +1641,10 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
             ret = st_json_parse_tx_video(k, video_session,
                                          &ctx->tx_video_sessions[num_video]);
             if (ret) return error(ret, ctx, root_object);
+
+            // video source handle id
+            ctx->tx_video_sessions[num_video].tx_source_id = i;
+
             num_video++;
           }
         }
@@ -1654,6 +1675,10 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
             ret = st_json_parse_tx_audio(k, audio_session,
                                          &ctx->tx_audio_sessions[num_audio]);
             if (ret) return error(ret, ctx, root_object);
+
+            // audio source handle id
+            ctx->tx_audio_sessions[num_audio].tx_source_id = i;
+            
             num_audio++;
           }
         }

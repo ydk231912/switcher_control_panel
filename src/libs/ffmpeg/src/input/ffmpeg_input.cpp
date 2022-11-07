@@ -14,6 +14,14 @@ namespace seeder::ffmpeg
     {
     }
 
+    ffmpeg_input::ffmpeg_input(std::string filename, core::video_format_desc& format_desc)
+    :filename_(filename),
+    format_desc_(format_desc)
+    {
+        
+
+    }
+
     ffmpeg_input::~ffmpeg_input()
     {
     }
@@ -114,9 +122,9 @@ namespace seeder::ffmpeg
                 }
 
                 //auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
-                auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+                auto vframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
 
-                ret = avcodec_receive_frame(codec_ctx, avframe.get()); //avframe.get()
+                ret = avcodec_receive_frame(codec_ctx, vframe.get()); //avframe.get()
                 if(ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
                 {
                     continue;
@@ -126,13 +134,40 @@ namespace seeder::ffmpeg
                     logger->error("avcode_receive_frame() failed {}", ret);
                     throw std::runtime_error("avcode_receive_frame() failed");
                 }
-                auto frm = std::make_shared<core::frame>();
+
+                if(!sws_ctx_)
+                {
+                    buf_size_ = av_image_get_buffer_size(AV_PIX_FMT_YUV422P10LE, format_desc_.width, 
+                                                            format_desc_.height, 1);
+                    sws_ctx_ = sws_getContext(format_desc_.width, format_desc_.height, (AVPixelFormat)vframe->format,//AV_PIX_FMT_UYVY422,//(AVPixelFormat)format_desc_.format,
+                                    format_desc_.width, format_desc_.height, AV_PIX_FMT_YUV422P10LE, SWS_BICUBIC, NULL, NULL, NULL);
+                }
+
+                if(vframe->format != AV_PIX_FMT_YUV422P10LE)
+                {
+                    // convert pixel format
+                    auto buffer = (uint8_t*)av_malloc(buf_size_);
+                    auto f = std::shared_ptr<AVFrame>(av_frame_alloc(), [&buffer](AVFrame* ptr) { 
+                        av_frame_free(&ptr); 
+                        //av_free(buffer);
+                        });
+                    av_image_fill_arrays(f->data, f->linesize, buffer, AV_PIX_FMT_YUV422P10LE, 
+                        format_desc_.width, format_desc_.height, 1);
+                    sws_scale(sws_ctx_, (const uint8_t *const *)vframe->data,  //frm->data,
+                                    vframe->linesize, 0, vframe->height, f->data, f->linesize);
+                    set_video_frame(f);
+                }
+                else
+                {
+                    set_video_frame(vframe);
+                }
+
+                //auto frm = std::make_shared<core::frame>();
                 //frm->set_video_data(avframe);
-                frm->video = avframe;
-                set_frame(frm);
+                //frm->video = avframe;
+                //set_frame(frm);
                 //logger->info("frame buffer number {}", frame_buffer_.size());
                 //set_avframe(avframe);
-
             }
             av_packet_unref(packet);
         }
@@ -154,9 +189,75 @@ namespace seeder::ffmpeg
     }
 
     /**
-     * @brief Get a frame from this output stream
+     * @brief push a video frame into this output stream
      * 
      */
+    void ffmpeg_input::set_video_frame(std::shared_ptr<AVFrame> vframe)
+    {
+        std::unique_lock<std::mutex> lock(vframe_mutex_);
+        vframe_cv_.wait(lock, [this](){return vframe_buffer_.size() < vframe_capacity_;}); // block until the buffer is not full
+        vframe_buffer_.push_back(vframe);
+        vframe_cv_.notify_all();
+    }
+
+    /**
+     * @brief push a audio frame into this output stream
+     * 
+     */
+    void ffmpeg_input::set_audio_frame(std::shared_ptr<AVFrame> aframe)
+    {
+        std::unique_lock<std::mutex> lock(aframe_mutex_);
+        aframe_cv_.wait(lock, [this](){return aframe_buffer_.size() < aframe_capacity_;}); // block until the buffer is not full
+        aframe_buffer_.push_back(aframe);
+        aframe_cv_.notify_all();
+    }
+
+    /**
+     * @brief Get a video frame from this output stream
+     * 
+     */
+    std::shared_ptr<AVFrame> ffmpeg_input::get_video_frame()
+    {
+        std::shared_ptr<AVFrame> vframe;
+        {
+            std::unique_lock<std::mutex> lock(vframe_mutex_);
+
+            if(vframe_buffer_.size() > 0)
+            {
+                vframe = vframe_buffer_[0];
+                vframe_buffer_.pop_front();
+                vframe_cv_.notify_all();
+            }
+        }
+
+        return vframe;
+    }
+    
+    /**
+     * @brief Get a audio frame from this output stream
+     * 
+     */
+    std::shared_ptr<AVFrame> ffmpeg_input::get_audio_frame()
+    {
+        std::shared_ptr<AVFrame> aframe;
+        {
+            std::unique_lock<std::mutex> lock(aframe_mutex_);
+
+            if(aframe_buffer_.size() > 0)
+            {
+                aframe = aframe_buffer_[0];
+                aframe_buffer_.pop_front();
+                aframe_cv_.notify_all();
+            }
+        }
+
+        return aframe;
+    }
+
+    // /**
+    //  * @brief Get a frame from this output stream
+    //  * 
+    //  */
     std::shared_ptr<core::frame> ffmpeg_input::get_frame()
     {
         std::shared_ptr<core::frame> frm;
@@ -180,34 +281,34 @@ namespace seeder::ffmpeg
         return frm;
     }
 
-    void ffmpeg_input::set_avframe(std::shared_ptr<AVFrame> frm)
-    {
-        std::unique_lock<std::mutex> lock(frame_mutex_);
-        frame_cv_.wait(lock, [this](){return avframe_buffer_.size() < frame_capacity_;}); // block until the buffer is not full
-        avframe_buffer_.push_back(frm);
-        frame_cv_.notify_all();
-    }
+    // void ffmpeg_input::set_avframe(std::shared_ptr<AVFrame> frm)
+    // {
+    //     std::unique_lock<std::mutex> lock(frame_mutex_);
+    //     frame_cv_.wait(lock, [this](){return avframe_buffer_.size() < frame_capacity_;}); // block until the buffer is not full
+    //     avframe_buffer_.push_back(frm);
+    //     frame_cv_.notify_all();
+    // }
 
-    std::shared_ptr<AVFrame> ffmpeg_input::get_avframe()
-    {
-        std::shared_ptr<AVFrame> frm;
-        {
-            std::unique_lock<std::mutex> lock(frame_mutex_);
-            // if(frame_buffer_.size() < 1)
-            //     return last_frame_;
-            // frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); 
-            // frm = frame_buffer_[0];
-            // frame_buffer_.pop_front();
-            // last_frame_ = frm;
+    // std::shared_ptr<AVFrame> ffmpeg_input::get_avframe()
+    // {
+    //     std::shared_ptr<AVFrame> frm;
+    //     {
+    //         std::unique_lock<std::mutex> lock(frame_mutex_);
+    //         // if(frame_buffer_.size() < 1)
+    //         //     return last_frame_;
+    //         // frame_cv_.wait(lock, [this](){return !(frame_buffer_.empty());}); 
+    //         // frm = frame_buffer_[0];
+    //         // frame_buffer_.pop_front();
+    //         // last_frame_ = frm;
 
-            if(avframe_buffer_.size() > 0)
-            {
-                frm = avframe_buffer_[0];
-                avframe_buffer_.pop_front();
-                frame_cv_.notify_all();
-            }
-        }
+    //         if(avframe_buffer_.size() > 0)
+    //         {
+    //             frm = avframe_buffer_[0];
+    //             avframe_buffer_.pop_front();
+    //             frame_cv_.notify_all();
+    //         }
+    //     }
 
-        return frm;
-    }
+    //     return frm;
+    // }
 }

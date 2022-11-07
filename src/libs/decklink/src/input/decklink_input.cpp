@@ -31,7 +31,7 @@ namespace seeder::decklink
     decklink_input::decklink_input(int device_id, video_format_desc& format_desc)
     :decklink_index_(device_id - 1)
     ,format_desc_(format_desc)
-    ,pixel_format_(bmdFormat8BitYUV)
+    ,pixel_format_(bmdFormat10BitYUV) //bmdFormat8BitYUV
     ,video_flags_(bmdVideoInputFlagDefault)
     {
         sample_type_ = bmdAudioSampleType16bitInteger;
@@ -226,7 +226,8 @@ namespace seeder::decklink
                     vframe->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
                 }
             }
-            frm->video = vframe;
+            this->set_video_frame(vframe);
+            //frm->video = vframe;
         }
 
         if(audio)
@@ -249,15 +250,16 @@ namespace seeder::decklink
                                        av_get_bytes_per_sample(static_cast<AVSampleFormat>(aframe->format));
 
                 BMDTimeValue duration;
-                if (audio->GetPacketTime(&in_audio_pts, AV_TIME_BASE)) 
+                if (audio->GetPacketTime(&in_audio_pts, AV_TIME_BASE))
                 {
                     aframe->pts = in_audio_pts; //need bugging to ditermine the in_audio_pts meets the requirement
                 }
             }
-            frm->audio = aframe;
+            this->set_audio_frame(aframe);
+            //frm->audio = aframe;
         }
 
-        this->set_frame(frm);
+        //this->set_frame(frm);
 
         return S_OK;
     }
@@ -280,9 +282,43 @@ namespace seeder::decklink
     }
 
     /**
-     * @brief Get a frame from this input stream
-     * 
+     * @brief push the video frame into the stream buffer,
+     * if the buffer is full, discard the oldest frame
      */
+    void decklink_input::set_video_frame(std::shared_ptr<AVFrame> vframe)
+    {
+        std::lock_guard<std::mutex> lock(vframe_mutex_);
+        if(vframe_buffer_.size() >= vframe_capacity_)
+        {
+            auto f = vframe_buffer_[0];
+            vframe_buffer_.pop_front(); // discard the oldest frame
+            logger->error("{}, The video frame is discarded", __func__);
+        }
+        vframe_buffer_.push_back(vframe);
+        vframe_cv_.notify_all();
+    }
+
+    /**
+     * @brief push the audio frame into the stream buffer,
+     * if the buffer is full, discard the oldest frame
+     */
+    void decklink_input::set_audio_frame(std::shared_ptr<AVFrame> aframe)
+    {
+        std::lock_guard<std::mutex> lock(aframe_mutex_);
+        if(aframe_buffer_.size() >= aframe_capacity_)
+        {
+            auto f = aframe_buffer_[0];
+            aframe_buffer_.pop_front(); // discard the oldest frame
+            logger->error("{}, The audio frame is discarded", __func__);
+        }
+        aframe_buffer_.push_back(aframe);
+        aframe_cv_.notify_all();
+    }
+
+    // /**
+    //  * @brief Get a frame from this input stream
+    //  * 
+    //  */
     std::shared_ptr<frame> decklink_input::get_frame()
     {
         std::shared_ptr<core::frame> frm;
@@ -310,6 +346,46 @@ namespace seeder::decklink
         // }
 
         // return frm;
+    }
+
+    /**
+     * @brief Get a video frame from this input stream
+     * 
+     */
+    std::shared_ptr<AVFrame> decklink_input::get_video_frame()
+    {
+        std::shared_ptr<AVFrame> vframe;
+        std::unique_lock<std::mutex> lock(vframe_mutex_);
+        if(vframe_buffer_.size() > 0)
+        {
+            vframe = vframe_buffer_[0];
+            vframe_buffer_.pop_front();
+            return vframe;
+        }
+        vframe_cv_.wait(lock, [this](){return !(vframe_buffer_.empty());}); // block until the buffer is not empty
+        vframe = vframe_buffer_[0];
+        vframe_buffer_.pop_front();
+        return vframe;
+    }
+
+    /**
+     * @brief Get a audio frame from this input stream
+     * 
+     */
+    std::shared_ptr<AVFrame> decklink_input::get_audio_frame()
+    {
+        std::shared_ptr<AVFrame> aframe;
+        std::unique_lock<std::mutex> lock(aframe_mutex_);
+        if(aframe_buffer_.size() > 0)
+        {
+            aframe = aframe_buffer_[0];
+            aframe_buffer_.pop_front();
+            return aframe;
+        }
+        aframe_cv_.wait(lock, [this](){return !(aframe_buffer_.empty());}); // block until the buffer is not empty
+        aframe = vframe_buffer_[0];
+        aframe_buffer_.pop_front();
+        return aframe;
     }
 
 }
