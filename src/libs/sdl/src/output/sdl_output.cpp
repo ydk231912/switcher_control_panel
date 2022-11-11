@@ -181,4 +181,40 @@ namespace seeder::sdl
 
         return frm;
     }
+
+    /**
+     * @brief push a video frame into this output stream
+     * 
+     */
+    void sdl_output::set_video_frame(std::shared_ptr<AVFrame> vframe){}
+
+    /**
+     * @brief push a audio frame into this output stream
+     * 
+     */
+    void sdl_output::set_audio_frame(std::shared_ptr<AVFrame> aframe){}
+
+    /**
+     * @brief Get a video frame from this output stream
+     * 
+     */
+    std::shared_ptr<AVFrame> sdl_output::get_video_frame(){}
+
+    /**
+     * @brief Get a audio frame from this output stream
+     * 
+     */
+    std::shared_ptr<AVFrame> sdl_output::get_audio_frame(){}
+
+    /**
+     * @brief push a video frame into this output stream
+     * 
+     */
+    void sdl_output::display_video_frame(uint8_t* vframe){}
+
+    /**
+     * @brief push a audio frame into this output stream
+     * 
+     */
+    void sdl_output::display_audio_frame(uint8_t* aframe){}
 }

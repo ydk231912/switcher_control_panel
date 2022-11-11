@@ -8,8 +8,7 @@
 
 using namespace seeder::core;
 
-static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx,
-                                   struct st20_tx_frame_meta* meta) 
+static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx, struct st20_tx_frame_meta* meta) 
 {
     struct st_app_tx_video_session* s = (st_app_tx_video_session*)priv;
     int ret;
@@ -40,8 +39,7 @@ static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx,
     return ret;
 }
 
-static int app_tx_video_frame_done(void* priv, uint16_t frame_idx,
-                                   struct st20_tx_frame_meta* meta) 
+static int app_tx_video_frame_done(void* priv, uint16_t frame_idx, struct st20_tx_frame_meta* meta) 
 {
     struct st_app_tx_video_session* s = (st_app_tx_video_session*)priv;
     int ret;
@@ -69,8 +67,7 @@ static int app_tx_video_frame_done(void* priv, uint16_t frame_idx,
     return ret;
 }
 
-static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* frame,
-                                     size_t frame_size) 
+static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* frame, size_t frame_size) 
 {
     int ret = 0;
     auto f = s->tx_source->get_video_frame();

@@ -169,11 +169,13 @@ typedef struct st_json_video_session {
 
   // tx only
   int tx_source_id; // video source handle id
-
+  
   /* rx only items */
   enum user_pg_fmt user_pg_format;
   bool display;
   bool measure_latency;
+
+  int rx_output_id; // ip stream output device handle id
 } st_json_video_session_t;
 
 typedef struct st_json_audio_session {
@@ -182,7 +184,9 @@ typedef struct st_json_audio_session {
 
   // audio source handle id
   int tx_source_id;
-  
+  // audio output handle id
+  int rx_output_id;
+
 } st_json_audio_session_t;
 
 typedef struct st_json_ancillary_session {
@@ -235,6 +239,8 @@ typedef struct st_json_context {
 
   struct st_app_tx_source* tx_sources;
   int tx_source_cnt;
+  struct st_app_rx_output* rx_output;
+  int rx_output_cnt;
 } st_json_context_t;
 
 int st_app_parse_json(st_json_context_t* ctx, const char* filename);

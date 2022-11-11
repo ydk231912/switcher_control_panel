@@ -72,6 +72,42 @@ namespace seeder::sdl
         void set_avframe(std::shared_ptr<AVFrame> frm);
         std::shared_ptr<AVFrame> get_avframe();
 
+        /**
+         * @brief push a video frame into this output stream
+         * 
+         */
+        void set_video_frame(std::shared_ptr<AVFrame> vframe);
+
+        /**
+         * @brief push a audio frame into this output stream
+         * 
+         */
+        void set_audio_frame(std::shared_ptr<AVFrame> aframe);
+
+        /**
+         * @brief Get a video frame from this output stream
+         * 
+         */
+        std::shared_ptr<AVFrame> get_video_frame();
+
+        /**
+         * @brief Get a audio frame from this output stream
+         * 
+         */
+        std::shared_ptr<AVFrame> get_audio_frame();
+
+        /**
+         * @brief push a video frame into this output stream
+         * 
+         */
+        void display_video_frame(uint8_t* vframe);
+
+        /**
+         * @brief push a audio frame into this output stream
+         * 
+         */
+        void display_audio_frame(uint8_t* aframe);
+
       private:
         core::video_format_desc format_desc_;
 

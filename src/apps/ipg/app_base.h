@@ -31,6 +31,7 @@
 #include "parse_json.h"
 
 #include "core/stream/input.h"
+#include "core/stream/output.h"
 
 #ifndef _ST_APP_BASE_HEAD_H_
 #define _ST_APP_BASE_HEAD_H_
@@ -92,6 +93,14 @@ struct st_app_frameinfo {
 };
 
 struct st_app_tx_source
+{
+  std::string type; // decklink, file
+  int device_id; // decklink
+  std::string file_url;
+  std::string video_format;
+};
+
+struct st_app_rx_output
 {
   std::string type; // decklink, file
   int device_id; // decklink
@@ -272,6 +281,10 @@ struct st_app_rx_video_session {
 
   bool measure_latency;
   uint64_t stat_latency_us_sum;
+
+  // video output handle
+  std::shared_ptr<seeder::core::output> rx_output;
+  st_app_rx_output* output_info;
 };
 
 struct st_app_rx_audio_session {
@@ -292,10 +305,19 @@ struct st_app_rx_audio_session {
   pthread_mutex_t st30_wake_mutex;
   bool st30_app_thread_stop;
 
+    /* frame info */
+  uint16_t framebuff_producer_idx;
+  uint16_t framebuff_consumer_idx;
+  struct st_rx_frame* framebuffs;
+
   /* stat */
   int stat_frame_total_received;
   uint64_t stat_frame_frist_rx_time;
   double expect_fps;
+
+  // audio output handle
+  std::shared_ptr<seeder::core::output> rx_output;
+  st_app_rx_output* output_info;
 };
 
 struct st_app_rx_anc_session {
@@ -556,6 +578,9 @@ struct st_app_context {
   // tx_source handle;
   std::vector<std::shared_ptr<seeder::core::input>> tx_sources;
   std::vector<st_app_tx_source*> source_info;
+  // rx_output handle;
+  std::vector<std::shared_ptr<seeder::core::output>> rx_output;
+  std::vector<st_app_rx_output*> output_info;
 };
 
 static inline void* st_app_malloc(size_t sz) { return malloc(sz); }

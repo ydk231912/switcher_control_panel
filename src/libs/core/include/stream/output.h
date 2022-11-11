@@ -48,5 +48,45 @@ namespace seeder::core
          */
         virtual std::shared_ptr<frame> get_frame() = 0;
 
+        /**
+         * @brief push a video frame into this output stream
+         * 
+         */
+        virtual void set_video_frame(std::shared_ptr<AVFrame> vframe) = 0;
+
+        /**
+         * @brief push a audio frame into this output stream
+         * 
+         */
+        virtual void set_audio_frame(std::shared_ptr<AVFrame> aframe) = 0;
+
+        /**
+         * @brief Get a video frame from this output stream
+         * 
+         */
+        virtual std::shared_ptr<AVFrame> get_video_frame() = 0;
+
+        /**
+         * @brief Get a audio frame from this output stream
+         * 
+         */
+        virtual std::shared_ptr<AVFrame> get_audio_frame() = 0;
+
+        /**
+         * @brief push a video frame into this output stream
+         * 
+         */
+        virtual void display_video_frame(uint8_t* vframe) = 0;
+
+        /**
+         * @brief push a audio frame into this output stream
+         * 
+         */
+        virtual void display_audio_frame(uint8_t* aframe) = 0;
+
+        // frame buffer pointer
+        uint8_t* vframe_buffer;
+
+
     };
 } 

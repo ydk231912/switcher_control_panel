@@ -19,6 +19,7 @@
 #include "core/util/logger.h"
 #include "core/video_format.h"
 #include "decklink/input/decklink_input.h"
+#include "decklink/output/decklink_output.h"
 #include "ffmpeg/input/ffmpeg_input.h"
 
 
@@ -27,6 +28,8 @@
 #include "app_base.h"
 #include "tx_video.h"
 #include "tx_audio.h"
+#include "rx_video.h"
+#include "rx_audio.h"
 
 extern "C"
 {
@@ -214,10 +217,98 @@ static int st_tx_video_source_start(struct st_app_context* ctx)
     return 0;
 }
 
+static int st_tx_video_source_stop(struct st_app_context* ctx)
+{
+    try
+    {
+        for(auto s : ctx->tx_sources)
+        {
+            if(s) s->stop();        
+        }
+    }
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+// initialize video output 
+static int st_rx_output_init(struct st_app_context* ctx)
+{
+    st_json_context_t* c = ctx->json_ctx;
+    try
+    {
+        for(int i = 0; i < c->rx_output_cnt; i++)
+        {
+            st_app_rx_output* s = &c->rx_output[i];
+            if(s->type == "decklink")
+            {
+                auto format_desc = seeder::core::video_format_desc(s->video_format);
+                auto decklink = std::make_shared<seeder::decklink::decklink_output>(s->device_id, format_desc);
+                ctx->rx_output[i] = decklink;
+                ctx->output_info[i] = s;
+            }
+            else if(s->type == "file")
+            {
+                // auto format_desc = seeder::core::video_format_desc(s->video_format);
+                // auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s->file_url,format_desc);
+                // ctx->tx_sources[i] = ffmpeg;
+                // ctx->source_info[i] = s;
+            }
+        }
+    }
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
+    
+    return 0;
+}
+
+static int st_rx_output_start(struct st_app_context* ctx)
+{
+    try
+    {
+        for(auto s : ctx->rx_output)
+        {
+            if(s) s->start();        
+        }
+    }
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int st_rx_output_stop(struct st_app_context* ctx)
+{
+    try
+    {
+        for(auto s : ctx->rx_output)
+        {
+            if(s) s->stop();        
+        }
+    }
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
 static void st_app_ctx_free(struct st_app_context* ctx)
 {
+    st_tx_video_source_stop(ctx);
+    st_rx_output_stop(ctx);
     st_app_tx_video_sessions_uinit(ctx);
     st_app_tx_audio_sessions_uinit(ctx);
+    st_app_rx_video_sessions_uinit(ctx);
+    st_app_rx_audio_sessions_uinit(ctx);
 
     if(ctx->runtime_session)
         if(ctx->st) st_stop(ctx->st);
@@ -354,7 +445,7 @@ int main(int argc, char *argv[])
     ret = st_app_tx_video_sessions_init(ctx);
     if(ret < 0)
     {
-        logger->error("{}, st_tx_video_session_init fail", __func__);
+        logger->error("{}, st_app_tx_video_session_init fail", __func__);
         st_app_ctx_free(ctx);
         return -EIO;
     }
@@ -363,11 +454,28 @@ int main(int argc, char *argv[])
     ret = st_app_tx_audio_sessions_init(ctx);
     if(ret < 0)
     {
-        logger->error("{}, st_tx_audio_session_init fail", __func__);
+        logger->error("{}, st_app_tx_audio_session_init fail", __func__);
         st_app_ctx_free(ctx);
         return -EIO;
     }
 
+    // rx video
+    ret = st_app_rx_video_sessions_init(ctx);
+    if(ret < 0)
+    {
+        logger->error("{}, st_app_rx_video_sessions_init fail", __func__);
+        st_app_ctx_free(ctx);
+        return -EIO;
+    }
+
+    // rx audio
+    ret = st_app_rx_audio_sessions_init(ctx);
+    if(ret < 0)
+    {
+        logger->error("{}, st_app_rx_audio_sessions_init fail", __func__);
+        st_app_ctx_free(ctx);
+        return -EIO;
+    }
 
     // init tx video source
     ret = st_tx_video_source_init(ctx);
@@ -400,7 +508,8 @@ int main(int argc, char *argv[])
     // wait for stop
     int test_time_s = ctx->test_time_s;
     logger->debug("{}, app lunch success, test time {}", __func__, test_time_s);
-    while(!ctx->stop) {
+    while(!ctx->stop)
+    {
         sleep(1);
     }
     logger->debug("{}, start to ending", __func__);

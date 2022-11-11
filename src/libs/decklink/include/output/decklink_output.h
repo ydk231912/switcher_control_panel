@@ -54,18 +54,33 @@ namespace seeder::decklink
          * 
          */
         void set_frame(std::shared_ptr<core::frame> frm);
+        void set_video_frame(std::shared_ptr<AVFrame> vframe);
+        void set_audio_frame(std::shared_ptr<AVFrame> aframe);
 
         /**
          * @brief Get a frame from this output stream buffer
          * 
          */
         std::shared_ptr<core::frame> get_frame();
+        std::shared_ptr<AVFrame> get_video_frame();
+        std::shared_ptr<AVFrame> get_audio_frame();
+        /**
+         * @brief push a video frame into this output stream
+         * 
+         */
+        void display_video_frame(uint8_t* vframe);
+
+        /**
+         * @brief push a audio frame into this output stream
+         * 
+         */
+        void display_audio_frame(uint8_t* aframe);
 
       private:
         int decklink_index_;
         core::video_format_desc format_desc_;
         BMDVideoInputFlags video_flags_;
-        BMDPixelFormat pixel_format_ = bmdFormat8BitBGRA;
+        BMDPixelFormat pixel_format_ = bmdFormat10BitYUV;//bmdFormat8BitBGRA;
         BMDDisplayMode bmd_mode_;
         IDeckLinkDisplayMode* display_mode_;
         IDeckLink* decklink_;
@@ -85,6 +100,20 @@ namespace seeder::decklink
         std::condition_variable frame_cv_;
 
         std::unique_ptr<std::thread> decklink_thread_;
+
+        // video buffer
+        std::mutex vframe_mutex_;
+        std::deque<std::shared_ptr<AVFrame>> vframe_buffer_;
+        const size_t vframe_capacity_ = 5;
+        std::shared_ptr<frame> last_vframe_;
+        std::condition_variable vframe_cv_;
+
+        // audio buffer
+        std::mutex aframe_mutex_;
+        std::deque<std::shared_ptr<AVFrame>> aframe_buffer_;
+        const size_t aframe_capacity_ = 5;
+        std::shared_ptr<frame> last_aframe_;
+        std::condition_variable aframe_cv_;
 
     };
 }

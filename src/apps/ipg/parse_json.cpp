@@ -1411,6 +1411,12 @@ void st_app_free_json(st_json_context_t* ctx) {
     st_app_free(ctx->tx_sources);
     ctx->tx_sources = NULL;
   }
+  // free rx_output
+  if(ctx->rx_output)
+  {
+    st_app_free(ctx->rx_output);
+    ctx->rx_output = NULL;
+  }
 }
 
 int error(int ret, st_json_context_t* ctx, json_object* root_object)
@@ -1470,7 +1476,8 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
   json_object* tx_group_array = st_json_object_object_get(root_object, "tx_sessions");
   if (tx_group_array != NULL && json_object_get_type(tx_group_array) == json_type_array) {
     /* allocate tx source config*/
-    ctx->tx_sources = (st_app_tx_source*)st_app_zmalloc(json_object_array_length(tx_group_array)*sizeof(st_app_tx_source));
+    ctx->tx_source_cnt = json_object_array_length(tx_group_array);
+    ctx->tx_sources = (st_app_tx_source*)st_app_zmalloc(ctx->tx_source_cnt*sizeof(st_app_tx_source));
 
     /* parse session numbers for array allocation */
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
@@ -1509,8 +1516,7 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
       ctx->tx_sources[i].file_url = json_object_get_string(st_json_object_object_get(source, "file_url"));
       ctx->tx_sources[i].video_format = json_object_get_string(st_json_object_object_get(source, "video_format"));
     }
-    ctx->tx_source_cnt = json_object_array_length(tx_group_array);
-
+    
     /* allocate tx sessions */
     ctx->tx_video_sessions = (st_json_video_session_t*)st_app_zmalloc(
         ctx->tx_video_session_cnt * sizeof(st_json_video_session_t));
@@ -1678,7 +1684,7 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
 
             // audio source handle id
             ctx->tx_audio_sessions[num_audio].tx_source_id = i;
-            
+
             num_audio++;
           }
         }
@@ -1778,6 +1784,10 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
   /* parse rx sessions */
   json_object* rx_group_array = st_json_object_object_get(root_object, "rx_sessions");
   if (rx_group_array != NULL && json_object_get_type(rx_group_array) == json_type_array) {
+    /* allocate rx output config*/
+    ctx->rx_output_cnt = json_object_array_length(rx_group_array);
+    ctx->rx_output = (st_app_rx_output*)st_app_zmalloc(ctx->rx_output_cnt*sizeof(st_app_rx_output));
+
     /* parse session numbers for array allocation */
     for (int i = 0; i < json_object_array_length(rx_group_array); ++i) {
       json_object* rx_group = json_object_array_get_idx(rx_group_array, i);
@@ -1807,6 +1817,13 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
       num = parse_session_num(rx_group, "st20p");
       if (num < 0) return error(ret, ctx, root_object);
       ctx->rx_st20p_session_cnt += num;
+
+      // parse rx output config
+      json_object* output = st_json_object_object_get(rx_group, "output");
+      ctx->rx_output[i].type = json_object_get_string(st_json_object_object_get(output, "type"));
+      ctx->rx_output[i].device_id = json_object_get_int(st_json_object_object_get(output, "device_id"));
+      ctx->rx_output[i].file_url = json_object_get_string(st_json_object_object_get(output, "file_url"));
+      ctx->rx_output[i].video_format = json_object_get_string(st_json_object_object_get(output, "video_format"));
     }
 
     /* allocate tx sessions */
@@ -1939,6 +1956,10 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
             ret = st_json_parse_rx_video(k, video_session,
                                          &ctx->rx_video_sessions[num_video]);
             if (ret) return error(ret, ctx, root_object);
+
+            // video output handle id
+            ctx->rx_video_sessions[num_video].rx_output_id = i;
+
             num_video++;
           }
         }
@@ -1969,6 +1990,10 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
             ret = st_json_parse_rx_audio(k, audio_session,
                                          &ctx->rx_audio_sessions[num_audio]);
             if (ret) return error(ret, ctx, root_object);
+
+            // video output handle id
+            ctx->rx_audio_sessions[num_video].rx_output_id = i;
+
             num_audio++;
           }
         }

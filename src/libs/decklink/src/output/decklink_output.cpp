@@ -64,7 +64,7 @@ namespace seeder::decklink
         }
 
         // create display frame
-        auto outputBytesPerRow = display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
+        auto outputBytesPerRow = ((display_mode_->GetWidth() + 47) / 48) * 128; //display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
         result = output_->CreateVideoFrame((int32_t)display_mode_->GetWidth(),
 													  (int32_t)display_mode_->GetHeight(),
 													  outputBytesPerRow,
@@ -75,6 +75,12 @@ namespace seeder::decklink
         {
            logger->error("Unable to create video frame.");
            throw std::runtime_error("Unable to create video frame.");
+        }
+
+        // frame buffer pointer
+        if (playbackFrame_->GetBytes((void**)&vframe_buffer) != S_OK)
+        {
+            logger->error("Could not get DeckLinkVideoFrame buffer pointer");
         }
 
         // // ffmpeg sws context, AV_PIX_FMT_UYVY422 to AV_PIX_FMT_RGBA
@@ -118,19 +124,20 @@ namespace seeder::decklink
         decklink_thread_ = std::make_unique<std::thread>(std::thread([&](){
             while(!abort_)
             {
-                auto frm = get_frame();
+                auto frm = get_video_frame();
 
                 // convert frame format
                 // sws_scale(sws_ctx_, (const uint8_t *const *)frm->data,
                 //                         frm->linesize, 0, format_desc_.height, dst_frame_->data, dst_frame_->linesize);
                 // convert uyvy422 10bit to decklink bgra 8 bit
-                auto bgra_frame = ycbcr422_to_bgra(frm->video->data[0], format_desc_);
+                auto bgra_frame = ycbcr422_to_bgra(frm->data[0], format_desc_);
 
                 // fill playback frame
                 uint8_t* deckLinkBuffer = nullptr;
                 if (playbackFrame_->GetBytes((void**)&deckLinkBuffer) != S_OK)
                 {
                     logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+                    continue;
                 }
                 //deckLinkBuffer = reinterpret_cast<uint8_t*>(dst_frame_->data[0]);
                 memset(deckLinkBuffer, 0, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
@@ -184,5 +191,104 @@ namespace seeder::decklink
         frm = frame_buffer_[0];
         frame_buffer_.pop_front();
         return frm;
+    }
+
+    /**
+     * @brief push a video frame into this output stream buffer
+     * 
+     */
+    void decklink_output::set_video_frame(std::shared_ptr<AVFrame> vframe)
+    {
+        std::lock_guard<std::mutex> lock(vframe_mutex_);
+        if(vframe_buffer_.size() >= vframe_capacity_)
+        {
+            auto f = vframe_buffer_[0];
+            frame_buffer_.pop_front(); // discard the last frame
+            logger->error("The video frame be discarded");
+        }
+        vframe_buffer_.push_back(vframe);
+        vframe_cv_.notify_all();
+    }
+
+    /**
+     * @brief push a audio frame into this output stream buffer
+     * 
+     */
+    void decklink_output::set_audio_frame(std::shared_ptr<AVFrame> aframe)
+    {
+        std::lock_guard<std::mutex> lock(aframe_mutex_);
+        if(aframe_buffer_.size() >= aframe_capacity_)
+        {
+            auto f = aframe_buffer_[0];
+            aframe_buffer_.pop_front(); // discard the last frame
+            logger->error("The audio frame be discarded");
+        }
+        aframe_buffer_.push_back(aframe);
+        aframe_cv_.notify_all();
+    }
+
+    /**
+     * @brief Get a video frame from this output stream buffer
+     * 
+     */
+    std::shared_ptr<AVFrame> decklink_output::get_video_frame()
+    {
+        std::shared_ptr<AVFrame> vframe;
+        std::unique_lock<std::mutex> lock(vframe_mutex_);
+        vframe_cv_.wait(lock, [this](){return !vframe_buffer_.empty();});
+        vframe = vframe_buffer_[0];
+        vframe_buffer_.pop_front();
+        return vframe;
+    }
+
+    /**
+     * @brief Get a audio frame from this output stream buffer
+     * 
+     */
+    std::shared_ptr<AVFrame> decklink_output::get_audio_frame()
+    {
+        std::shared_ptr<AVFrame> aframe;
+        std::unique_lock<std::mutex> lock(aframe_mutex_);
+        aframe_cv_.wait(lock, [this](){return !aframe_buffer_.empty();});
+        aframe = aframe_buffer_[0];
+        aframe_buffer_.pop_front();
+        return aframe;
+    }
+
+    /**
+     * @brief push a video frame into this output stream
+     * 
+     */
+    void decklink_output::display_video_frame(uint8_t* vframe)
+    {
+        HRESULT result;
+        abort_ = false;
+
+        //auto bgra_frame = ycbcr422_to_bgra(vframe->data[0], format_desc_);
+
+        // fill playback frame
+        uint8_t* deckLinkBuffer = nullptr;
+        if (playbackFrame_->GetBytes((void**)&deckLinkBuffer) != S_OK)
+        {
+            logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+        }
+        //deckLinkBuffer = reinterpret_cast<uint8_t*>(dst_frame_->data[0]);
+        memset(deckLinkBuffer, 0, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
+        memcpy(deckLinkBuffer, vframe, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
+
+        result = output_->DisplayVideoFrameSync(playbackFrame_);
+        if (result != S_OK)
+        {
+            logger->error("Unable to display video output");
+        }
+    }
+
+    /**
+     * @brief push a audio frame into this output stream
+     * 
+     */
+    void decklink_output::display_audio_frame(uint8_t* aframe)
+    {
+
     }
 }
