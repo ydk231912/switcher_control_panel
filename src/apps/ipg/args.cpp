@@ -278,7 +278,7 @@ int st_app_parse_args(struct st_app_context* ctx, struct st_init_params* p, int 
     if(cmd == -2) break;
     cmd = ST_ARG_CONFIG_FILE;
     if (cmd == -1) break;
-    logger->debug("{}, cmd {} {}", __func__, cmd, optarg);
+    //logger->debug("{}, cmd {} {}", __func__, cmd, optarg);
 
     switch (cmd) {
       case ST_ARG_P_PORT:

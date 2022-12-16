@@ -286,7 +286,7 @@ static int st_json_parse_interfaces(json_object* interface_obj,
   const char* name =
       json_object_get_string(st_json_object_object_get(interface_obj, "name"));
   REQUIRED_ITEM(name);
-  snprintf(interface->name, sizeof(interface->name), "{}", name);
+  snprintf(interface->name, sizeof(interface->name), "%s", name);
 
   const char* ip = json_object_get_string(st_json_object_object_get(interface_obj, "ip"));
   if (ip) inet_pton(AF_INET, ip, interface->ip_addr);
@@ -437,7 +437,7 @@ static int parse_video_pg_format(json_object* video_obj, st_json_video_session_t
 static int parse_url(json_object* obj, const char* name, char* url) {
   const char* url_src = json_object_get_string(st_json_object_object_get(obj, name));
   REQUIRED_ITEM(url_src);
-  snprintf(url, ST_APP_URL_MAX_LEN, "{}", url_src);
+  snprintf(url, ST_APP_URL_MAX_LEN, "%s", url_src);
   return -ST_JSON_SUCCESS;
 }
 
@@ -1427,7 +1427,7 @@ int error(int ret, st_json_context_t* ctx, json_object* root_object)
 }
 
 int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
-  logger->info("{}, using json-c version: {}", __func__, json_c_version());
+  //logger->info("{}, using json-c version: {}", __func__, json_c_version());
   int ret = ST_JSON_SUCCESS;
 
   json_object* root_object = json_object_from_file(filename);
@@ -1822,7 +1822,8 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
       json_object* output = st_json_object_object_get(rx_group, "output");
       ctx->rx_output[i].type = json_object_get_string(st_json_object_object_get(output, "type"));
       ctx->rx_output[i].device_id = json_object_get_int(st_json_object_object_get(output, "device_id"));
-      ctx->rx_output[i].file_url = json_object_get_string(st_json_object_object_get(output, "file_url"));
+      std::string fu = json_object_get_string(st_json_object_object_get(output, "file_url"));
+      if(!(fu.empty())) ctx->rx_output[i].file_url = fu;
       ctx->rx_output[i].video_format = json_object_get_string(st_json_object_object_get(output, "video_format"));
     }
 
@@ -1992,7 +1993,7 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
             if (ret) return error(ret, ctx, root_object);
 
             // video output handle id
-            ctx->rx_audio_sessions[num_video].rx_output_id = i;
+            ctx->rx_audio_sessions[num_audio].rx_output_id = i;
 
             num_audio++;
           }

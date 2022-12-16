@@ -1,1 +1,2 @@
 [2022-11-01 14:49:00.401] [SEEDER ST2110] [error] main, st_init fail
+[2022-12-15 13:38:40.298] [SEEDER ST2110] [error] main, st_init fail

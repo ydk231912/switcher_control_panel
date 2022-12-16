@@ -318,6 +318,7 @@ struct st_app_rx_audio_session {
   // audio output handle
   std::shared_ptr<seeder::core::output> rx_output;
   st_app_rx_output* output_info;
+  int sample_num; // audio sample number per frame
 };
 
 struct st_app_rx_anc_session {

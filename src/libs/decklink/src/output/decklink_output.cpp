@@ -83,6 +83,18 @@ namespace seeder::decklink
             logger->error("Could not get DeckLinkVideoFrame buffer pointer");
         }
 
+        // enable audio output
+        result = output_->EnableAudioOutput(format_desc.audio_sample_rate, format_desc.audio_samples, 
+                                            format_desc.audio_channels, bmdAudioOutputStreamTimestamped);
+        if (result != S_OK)
+        {
+            logger->error("Unable to enable video output");
+            throw std::runtime_error("Unable to enable video output");
+        }
+
+        // create audio frame buffer
+        aframe_buffer = (uint8_t*)malloc(format_desc_.st30_frame_size);
+
         // // ffmpeg sws context, AV_PIX_FMT_UYVY422 to AV_PIX_FMT_RGBA
         // sws_ctx_ = sws_getContext(format_desc.width, format_desc.height, AV_PIX_FMT_UYVY422,
         //                     format_desc.width, format_desc.height, AV_PIX_FMT_BGRA, 
@@ -110,6 +122,8 @@ namespace seeder::decklink
         if(dst_frame_)  av_frame_free(&dst_frame_);
 
         if(dst_frame_buffer_) av_free(dst_frame_buffer_);
+
+        if(aframe_buffer) free(aframe_buffer);
     }
 
     /**
@@ -262,7 +276,6 @@ namespace seeder::decklink
     void decklink_output::display_video_frame(uint8_t* vframe)
     {
         HRESULT result;
-        abort_ = false;
 
         //auto bgra_frame = ycbcr422_to_bgra(vframe->data[0], format_desc_);
 
@@ -272,9 +285,7 @@ namespace seeder::decklink
         {
             logger->error("Could not get DeckLinkVideoFrame buffer pointer");
         }
-        //deckLinkBuffer = reinterpret_cast<uint8_t*>(dst_frame_->data[0]);
-        memset(deckLinkBuffer, 0, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
-        memcpy(deckLinkBuffer, vframe, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
+        deckLinkBuffer = vframe;
 
         result = output_->DisplayVideoFrameSync(playbackFrame_);
         if (result != S_OK)
@@ -289,6 +300,12 @@ namespace seeder::decklink
      */
     void decklink_output::display_audio_frame(uint8_t* aframe)
     {
-
+        HRESULT result;
+        uint32_t n;
+        result = output_->WriteAudioSamplesSync(aframe, format_desc_.sample_num, &n);
+        if (result != S_OK)
+        {
+            logger->error("Unable to display audio output");
+        }
     }
 }

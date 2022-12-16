@@ -86,6 +86,7 @@ namespace seeder::core
 
         // frame buffer pointer
         uint8_t* vframe_buffer;
+        uint8_t* aframe_buffer;
 
 
     };

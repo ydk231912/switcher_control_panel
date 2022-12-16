@@ -5,6 +5,7 @@
 
 #include "input/ffmpeg_input.h"
 #include "core/util/logger.h"
+#include "core/util/timer.h"
 
 using namespace seeder::core;
 namespace seeder::ffmpeg
@@ -24,6 +25,7 @@ namespace seeder::ffmpeg
 
     ffmpeg_input::~ffmpeg_input()
     {
+        if(!sws_ctx_) sws_freeContext(sws_ctx_);
     }
 
     /**
@@ -110,8 +112,11 @@ namespace seeder::ffmpeg
         }
 
         AVPacket* packet = (AVPacket*)av_malloc(sizeof(AVPacket));
-        while(av_read_frame(fmt_ctx, packet) == 0)
+        while(1)
         {
+            timer t1;
+            if(av_read_frame(fmt_ctx, packet) != 0) break;
+
             if(packet->stream_index == v_idx)
             {
                 ret =  avcodec_send_packet(codec_ctx, packet);
@@ -146,21 +151,21 @@ namespace seeder::ffmpeg
                 if(vframe->format != AV_PIX_FMT_YUV422P10LE)
                 {
                     // convert pixel format
-                    auto buffer = (uint8_t*)av_malloc(buf_size_);
-                    auto f = std::shared_ptr<AVFrame>(av_frame_alloc(), [&buffer](AVFrame* ptr) { 
-                        av_frame_free(&ptr); 
-                        //av_free(buffer);
-                        });
-                    av_image_fill_arrays(f->data, f->linesize, buffer, AV_PIX_FMT_YUV422P10LE, 
-                        format_desc_.width, format_desc_.height, 1);
+                    auto f = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr){av_frame_free(&ptr);});
+                    f->width = format_desc_.width;
+                    f->height = format_desc_.height;
+                    f->format = AV_PIX_FMT_YUV422P10LE;
+                    av_frame_get_buffer(f.get(), 1);
                     sws_scale(sws_ctx_, (const uint8_t *const *)vframe->data,  //frm->data,
                                     vframe->linesize, 0, vframe->height, f->data, f->linesize);
-                    set_video_frame(f);
+                    //set_video_frame(f);
                 }
                 else
                 {
-                    set_video_frame(vframe);
+                    //set_video_frame(vframe);
                 }
+
+                std::cout << "10000 loop executor.execute: " << t1.elapsed() << std::endl;
 
                 //auto frm = std::make_shared<core::frame>();
                 //frm->set_video_data(avframe);

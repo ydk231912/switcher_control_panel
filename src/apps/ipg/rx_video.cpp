@@ -353,9 +353,8 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
 
     s->st20_frame_size = st20_rx_get_framebuffer_size(handle);
     // rx output handle
-    s->rx_output = ctx->rx_output[video->rx_output_id];
-    s->output_info = ctx->output_info[video->rx_output_id];
-
+    // s->rx_output = ctx->rx_output[video->rx_output_id];
+    // s->output_info = ctx->output_info[video->rx_output_id];
 
     ret = app_rx_video_init_frame_thread(s);
     if(ret < 0)

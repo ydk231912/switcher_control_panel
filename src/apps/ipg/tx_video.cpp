@@ -39,14 +39,14 @@ static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx, struct 
     return ret;
 }
 
-static int app_tx_video_frame_done(void* priv, uint16_t frame_idx, struct st20_tx_frame_meta* meta) 
+static int app_tx_video_frame_done(void* priv, uint16_t frame_idx, struct st20_tx_frame_meta* meta)
 {
     struct st_app_tx_video_session* s = (st_app_tx_video_session*)priv;
     int ret;
     struct st_tx_frame* framebuff = &s->framebuffs[frame_idx];
 
     st_pthread_mutex_lock(&s->st20_wake_mutex);
-    if(ST_TX_FRAME_IN_TRANSMITTING == framebuff->stat) 
+    if(ST_TX_FRAME_IN_TRANSMITTING == framebuff->stat)
     {
         ret = 0;
         framebuff->stat = ST_TX_FRAME_FREE;

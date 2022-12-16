@@ -468,16 +468,16 @@ int main(int argc, char *argv[])
         return -EINVAL;
     }
 
-    // ctx->st = st_init(&ctx->para);
-    // if(!ctx->st)
-    // {
-    //     logger->error("{}, st_init fail", __func__);
-    //     st_app_ctx_free(ctx);
-    //     return -ENOMEM;
-    // }
+    ctx->st = st_init(&ctx->para);
+    if(!ctx->st)
+    {
+        logger->error("{}, st_init fail", __func__);
+        st_app_ctx_free(ctx);
+        return -ENOMEM;
+    }
     
     g_app_ctx = ctx;
-    if(signal(SIGINT, st_app_sig_handler) == SIG_ERR)
+    if(signal(SIGINT, st_app_sig_handler) == SIG_ERR) 
     {
         logger->error("{}, cat SIGINT fail", __func__);
         st_app_ctx_free(ctx);
@@ -493,25 +493,61 @@ int main(int argc, char *argv[])
         return -EIO;
     }
 
-    // // tx video
-    // ret = st_app_tx_video_sessions_init(ctx);
+    // // init rx output
+    // ret = st_rx_output_init(ctx);
     // if(ret < 0)
     // {
-    //     logger->error("{}, st_app_tx_video_session_init fail", __func__);
+    //     logger->error("{}, st_rx_output_init fail", __func__);
     //     st_app_ctx_free(ctx);
     //     return -EIO;
     // }
 
-    // if(!ctx->runtime_session)
+    // tx video
+    ret = st_app_tx_video_sessions_init(ctx);
+    if(ret < 0)
+    {
+        logger->error("{}, st_app_tx_video_session_init fail", __func__);
+        st_app_ctx_free(ctx);
+        return -EIO;
+    }
+
+    // // tx audio
+    // ret = st_app_tx_audio_sessions_init(ctx);
+    // if(ret < 0)
     // {
-    //     ret = st_start(ctx->st);
-    //     if(ret < 0 )
-    //     {
-    //         logger->error("{}, start device fail", __func__);
-    //         st_app_ctx_free(ctx);
-    //         return -EIO;
-    //     }
+    //     logger->error("{}, st_app_tx_audio_session_init fail", __func__);
+    //     st_app_ctx_free(ctx);
+    //     return -EIO;
     // }
+
+    // // rx video
+    // ret = st_app_rx_video_sessions_init(ctx);
+    // if(ret < 0)
+    // {
+    //     logger->error("{}, st_app_rx_video_sessions_init fail", __func__);
+    //     st_app_ctx_free(ctx);
+    //     return -EIO;
+    // }
+
+    // // rx audio
+    // ret = st_app_rx_audio_sessions_init(ctx);
+    // if(ret < 0)
+    // {
+    //     logger->error("{}, st_app_rx_audio_sessions_init fail", __func__);
+    //     st_app_ctx_free(ctx);
+    //     return -EIO;
+    // }
+
+    if(!ctx->runtime_session)
+    {
+        ret = st_start(ctx->st);
+        if(ret < 0 )
+        {
+            logger->error("{}, start device fail", __func__);
+            st_app_ctx_free(ctx);
+            return -EIO;
+        }
+    }
 
     // start video source input stream
     ret = st_tx_video_source_start(ctx);

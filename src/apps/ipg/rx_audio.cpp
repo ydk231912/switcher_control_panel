@@ -36,7 +36,9 @@ static void app_rx_audio_consume_frame(struct st_app_rx_audio_session* s, void* 
     auto output = s->rx_output;
     if(output)
     {
-        output->display_video_frame((uint8_t*)frame);
+        memset(output->aframe_buffer, 0, frame_size);
+        memcpy(output->aframe_buffer, frame, frame_size);
+        output->display_audio_frame((uint8_t*)frame);
     }
 }
 
@@ -79,7 +81,7 @@ static void* app_rx_audio_frame_thread(void* arg)
     return NULL;
 }
 
-static int app_rx_audio_init_frame_thread(struct st_app_rx_audio_session* s) 
+static int app_rx_audio_init_frame_thread(struct st_app_rx_audio_session* s)
 {
     int ret, idx = s->idx;
 
@@ -171,11 +173,13 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
         s->st30_frame_size = ops.sample_size * st30_get_sample_num(ST30_PTIME_1MS, ops.sampling) * ops.channel;
         s->expect_fps = 1000.0;
     }
-
+    
     ops.framebuff_size = s->st30_frame_size;
     ops.framebuff_cnt = s->framebuff_cnt;
     ops.rtp_ring_size = ctx->rx_audio_rtp_ring_size ? ctx->rx_audio_rtp_ring_size : 16;
     
+    // audio sample number per frame
+    s->sample_num = ops.sample_num;
     s->framebuff_producer_idx = 0;
     s->framebuff_consumer_idx = 0;
     s->framebuffs = (struct st_rx_frame*)st_app_zmalloc(sizeof(*s->framebuffs) * s->framebuff_cnt);
@@ -197,8 +201,8 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
         return -EIO;
     }
     s->handle = handle;
-    s->rx_output = ctx->rx_output[audio->rx_output_id];
-    s->output_info = ctx->output_info[audio->rx_output_id];
+    // s->rx_output = ctx->rx_output[audio->rx_output_id];
+    // s->output_info = ctx->output_info[audio->rx_output_id];
     
     ret = app_rx_audio_init_frame_thread(s);
     if(ret < 0)

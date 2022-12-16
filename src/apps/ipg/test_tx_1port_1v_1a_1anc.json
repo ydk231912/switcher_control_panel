@@ -1,24 +1,24 @@
 {
     "interfaces": [
         {
-            "name": "0000:af:00.0",
-            "ip": "192.168.68.188"
+            "name": "0000:0b:00.0",
+            "ip": "192.168.10.103"
         }
     ],
     "tx_sessions": [
         {
             "dip": [
-                "239.168.68.189"
+                "239.0.20.17"
             ],
             "interface": [
                 0
             ],
             "source": {
                 "//type": "decklink, file",
-                "type": "decklink",
+                "type": "file",
                 "device_id": 1,
-                "file_url": "/home/seeder/c.MXF",
-                "video_format": "1080p5000"
+                "file_url": "/home/seeder/4k1.mp4",
+                "video_format": "2160p5000"
             },
             "video": [
                 {
@@ -27,9 +27,9 @@
                     "pacing": "gap",
                     "packing": "BPM",
                     "start_port": 20000,
-                    "payload_type": 112,
+                    "payload_type": 96,
                     "tr_offset": "default",
-                    "video_format": "i1080p59",
+                    "video_format": "i2160p50",
                     "pg_format": "YUV_422_10bit",
                     "video_url": "./test.yuv"
                 }
