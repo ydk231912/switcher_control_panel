@@ -476,13 +476,13 @@ int main(int argc, char *argv[])
     //     return -ENOMEM;
     // }
     
-    g_app_ctx = ctx;
-    if(signal(SIGINT, st_app_sig_handler) == SIG_ERR)
-    {
-        logger->error("{}, cat SIGINT fail", __func__);
-        st_app_ctx_free(ctx);
-        return -EIO;
-    }
+    // g_app_ctx = ctx;
+    // if(signal(SIGINT, st_app_sig_handler) == SIG_ERR)
+    // {
+    //     logger->error("{}, cat SIGINT fail", __func__);
+    //     st_app_ctx_free(ctx);
+    //     return -EIO;
+    // }
 
     // init tx video source
     ret = st_tx_video_source_init(ctx);

@@ -23,6 +23,7 @@ extern "C"
     #include <libavformat/avformat.h>
     #include <libswscale/swscale.h>
     #include <libavutil/imgutils.h>
+    #include <libavutil/opt.h>
 }
 
 #include "core/stream/input.h"

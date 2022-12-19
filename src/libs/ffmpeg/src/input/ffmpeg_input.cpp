@@ -103,6 +103,7 @@ namespace seeder::ffmpeg
             logger->error("avcodec_parameters_to_context() failed");
             throw std::runtime_error("avcodec_parameters_to_context() failed");
         }
+        av_opt_set_int(codec_ctx, "threads", 12, 0);
         
         ret = avcodec_open2(codec_ctx, codec, NULL);
         if(ret < 0)
@@ -165,7 +166,7 @@ namespace seeder::ffmpeg
                     //set_video_frame(vframe);
                 }
 
-                std::cout << "10000 loop executor.execute: " << t1.elapsed() << std::endl;
+                std::cout << "ffmpeg decode 1 frame : " << t1.elapsed() << std::endl;
 
                 //auto frm = std::make_shared<core::frame>();
                 //frm->set_video_data(avframe);

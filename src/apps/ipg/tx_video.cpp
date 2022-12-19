@@ -5,6 +5,7 @@
 #include "core/util/logger.h"
 #include "core/stream/input.h"
 #include "core/frame/frame.h"
+#include "core/util/timer.h"
 
 using namespace seeder::core;
 
@@ -86,9 +87,11 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
     }
     else if(s->source_info->type == "file")
     {
+        timer t1;
         // video file pixel format must be AV_PIX_FMT_YUV422P10LE
         ret = st20_yuv422p10le_to_rfc4175_422be10((uint16_t*)f->data[0], (uint16_t*)f->data[1], 
                     (uint16_t*)f->data[2], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
+        std::cout << "422 to st2110 1 frame : " << t1.elapsed() << std::endl;
         if(ret < 0)
         {
             logger->error("{}, convet yuvp42210le to yuv422be10 fail", __func__);
