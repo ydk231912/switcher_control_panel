@@ -73,21 +73,21 @@ static void app_tx_audio_build_frame(struct st_app_tx_audio_session* s, void* fr
                                      size_t frame_size) 
 {
     int ret = 0;
-    auto f = s->tx_source->get_audio_frame();
+    auto f = s->tx_source->get_audio_frame_slice();
     if(!f) return;
 
     uint8_t* dst = (uint8_t*)frame;
-    uint8_t* src = f->data[0];
+    uint8_t* src = f->begin();
 
     st_memcpy(dst, src, s->st30_frame_size);
 }
 
-static int app_tx_audio_uinit(struct st_app_tx_audio_session* s) 
+static int app_tx_audio_uinit(struct st_app_tx_audio_session* s)
 {
     int ret;
 
     //app_tx_audio_stop_source(s);
-    if(s->handle) 
+    if(s->handle)
     {
         ret = st30_tx_free(s->handle);
         if (ret < 0) 
@@ -96,7 +96,7 @@ static int app_tx_audio_uinit(struct st_app_tx_audio_session* s)
     }
 
     //app_tx_audio_close_source(s);
-    if(s->framebuffs) 
+    if(s->framebuffs)
     {
         st_app_free(s->framebuffs);
         s->framebuffs = NULL;
@@ -148,7 +148,7 @@ static void* app_tx_audio_frame_thread(void* arg)
 }
 
 static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t* audio,
-                             struct st_app_tx_audio_session* s) 
+                             struct st_app_tx_audio_session* s)
 {
     int idx = s->idx, ret;
     struct st30_tx_ops ops;

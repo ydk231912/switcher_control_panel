@@ -9,6 +9,7 @@ set(PROGRAM_INCLUDE_PATH ${PROJECT_SOURCE_DIR}/build/include)
 # ffmpeg
 set(FFMPEG_INCLUDE_PATH /usr/include)
 set(FFMPEG_LIB_PATH /usr/lib/x86_64-linux-gnu)
+set(X86_LIB_PATH /usr/lib/x86_64-linux-gnu)
 include_directories(SYSTEM ${FFMPEG_INCLUDE_PATH})
 
 list(APPEND LINKER_LIBS 
@@ -24,14 +25,21 @@ list(APPEND LINKER_LIBS
 
 
 # Boost
-find_package(Boost REQUIRED COMPONENTS filesystem thread timer chrono iostreams)
-if (NOT Boost_FOUND)
-    message("Boost lib can not be found")
-endif()
-#message("boost inlcude ${Boost_INCLUDE_DIRS} ${Boost_LIBRARIES}")
+# find_package(Boost REQUIRED COMPONENTS filesystem thread timer chrono iostreams)
+# if (NOT Boost_FOUND)
+#     message("Boost lib can not be found")
+# endif()
+# #message("boost inlcude ${Boost_INCLUDE_DIRS} ${Boost_LIBRARIES}")
 
-include_directories(${Boost_INCLUDE_DIRS})
-list(APPEND LINKER_LIBS ${Boost_LIBRARIES})
+# include_directories(${Boost_INCLUDE_DIRS})
+# list(APPEND LINKER_LIBS ${Boost_LIBRARIES})
+list(APPEND LINKER_LIBS 
+    ${X86_LIB_PATH}/libboost_filesystem.so
+    ${X86_LIB_PATH}/libboost_thread.so 
+    ${X86_LIB_PATH}/libboost_timer.so
+    ${X86_LIB_PATH}/libboost_chrono.so
+    ${X86_LIB_PATH}/libboost_iostreams.so
+    )
 
 # SDL
 find_package(SDL2 REQUIRED)
@@ -49,7 +57,7 @@ list(APPEND LINKER_LIBS
 # DPDK Media Tranport Library
 list(APPEND LINKER_LIBS 
 /usr/local/lib/x86_64-linux-gnu/libst_dpdk.so)
-include_directories(/usr/include/x86_64-linux-gnu/st_dpdk)
+include_directories(/usr/local/include)
 
 # json
 list(APPEND LINKER_LIBS 

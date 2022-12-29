@@ -138,8 +138,8 @@ namespace seeder
 
 int main(int argc, char* argv[])
 {
-    test();
-    return 0;
+    //test();
+    //return 0;
     // auto receiver = seeder::net::udp_receiver("239.0.10.21");
     // receiver.bind_ip("192.168.10.103", 20000);
 

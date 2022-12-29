@@ -274,11 +274,11 @@ int st_app_parse_args(struct st_app_context* ctx, struct st_init_params* p, int 
   int nb;
 
   while (1) {
-    //cmd = getopt_long_only(argc, argv, "hv", st_app_args_options, &optIdx);
-    if(cmd == -2) break;
-    cmd = ST_ARG_CONFIG_FILE;
+    cmd = getopt_long_only(argc, argv, "hv", st_app_args_options, &optIdx);
+    //if(cmd == -2) break;
+    //cmd = ST_ARG_CONFIG_FILE;
     if (cmd == -1) break;
-    //logger->debug("{}, cmd {} {}", __func__, cmd, optarg);
+    logger->debug("{}, cmd {} {}", __func__, cmd, optarg);
 
     switch (cmd) {
       case ST_ARG_P_PORT:
@@ -382,9 +382,9 @@ int st_app_parse_args(struct st_app_context* ctx, struct st_init_params* p, int 
           logger->error("{}, unknow pacing way {}", __func__, optarg);
         break;
       case ST_ARG_CONFIG_FILE:
-        optarg = "./test_tx_1port_1v_1a_1anc.json";
+        //optarg = "./test_tx_1port_1v_1a_1anc.json";
         app_args_json(ctx, p, optarg);
-        cmd = -2;
+        //cmd = -2;
         break;
       case ST_ARG_PTP_UNICAST_ADDR:
         p->flags |= ST_FLAG_PTP_UNICAST_ADDR;

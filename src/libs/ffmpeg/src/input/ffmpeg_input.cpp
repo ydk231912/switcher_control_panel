@@ -159,15 +159,14 @@ namespace seeder::ffmpeg
                     av_frame_get_buffer(f.get(), 1);
                     sws_scale(sws_ctx_, (const uint8_t *const *)vframe->data,  //frm->data,
                                     vframe->linesize, 0, vframe->height, f->data, f->linesize);
-                    //set_video_frame(f);
+                    set_video_frame(f);
                 }
                 else
                 {
-                    //set_video_frame(vframe);
+                    set_video_frame(vframe);
                 }
 
-                std::cout << "ffmpeg decode 1 frame : " << t1.elapsed() << std::endl;
-
+                //std::cout << "ffmpeg decode 1 frame : " << t1.elapsed() << std::endl;
                 //auto frm = std::make_shared<core::frame>();
                 //frm->set_video_data(avframe);
                 //frm->video = avframe;
@@ -285,6 +284,43 @@ namespace seeder::ffmpeg
         }
 
         return frm;
+    }
+
+     /**
+     * @brief push the audio frame into the stream buffer,
+     * if the buffer is full, discard the oldest frame
+     */
+    void ffmpeg_input::set_audio_frame_slice(std::shared_ptr<buffer> asframe)
+    {
+        std::lock_guard<std::mutex> lock(asframe_mutex_);
+        if(asframe_buffer_.size() >= asframe_capacity_)
+        {
+            auto f = asframe_buffer_[0];
+            asframe_buffer_.pop_front(); // discard the oldest frame
+            logger->error("{}, The audio frame is discarded", __func__);
+        }
+        asframe_buffer_.push_back(asframe);
+        asframe_cv_.notify_all();
+    }
+
+     /**
+     * @brief Get a audio frame slice from this input stream
+     * 
+     */
+    std::shared_ptr<buffer> ffmpeg_input::get_audio_frame_slice()
+    {
+        std::shared_ptr<buffer> asframe;
+        std::unique_lock<std::mutex> lock(asframe_mutex_);
+        if(asframe_buffer_.size() > 0)
+        {
+            asframe = asframe_buffer_[0];
+            asframe_buffer_.pop_front();
+            return asframe;
+        }
+        asframe_cv_.wait(lock, [this](){return !(asframe_buffer_.empty());}); // block until the buffer is not empty
+        asframe = asframe_buffer_[0];
+        asframe_buffer_.pop_front();
+        return asframe;
     }
 
     // void ffmpeg_input::set_avframe(std::shared_ptr<AVFrame> frm)

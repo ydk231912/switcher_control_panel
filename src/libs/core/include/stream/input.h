@@ -12,6 +12,7 @@
 #pragma once
 
 #include "core/frame/frame.h"
+#include "core/util/buffer.h"
 
 namespace seeder::core
 {
@@ -71,6 +72,18 @@ namespace seeder::core
          * 
          */
         virtual std::shared_ptr<AVFrame> get_audio_frame() = 0;
+
+        /**
+         * @brief push a audio slice frame into this input stream
+         * 
+         */
+        virtual void set_audio_frame_slice(std::shared_ptr<buffer> asframe) = 0;
+
+        /**
+         * @brief Get a audio slice frame from this input stream
+         * 
+         */
+        virtual std::shared_ptr<buffer> get_audio_frame_slice() = 0;
 
     };
 } 

@@ -84,6 +84,7 @@ namespace seeder::core
          */
         virtual void display_audio_frame(uint8_t* aframe) = 0;
 
+
         // frame buffer pointer
         uint8_t* vframe_buffer;
         uint8_t* aframe_buffer;

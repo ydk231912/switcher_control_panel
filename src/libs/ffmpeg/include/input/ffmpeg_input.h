@@ -28,7 +28,9 @@ extern "C"
 
 #include "core/stream/input.h"
 #include "core/video_format.h"
+#include "core/util/buffer.h"
 
+using namespace seeder::core;
 namespace seeder::ffmpeg
 {
     class ffmpeg_input : public core::input
@@ -69,6 +71,9 @@ namespace seeder::ffmpeg
         std::shared_ptr<AVFrame> get_video_frame();
         std::shared_ptr<AVFrame> get_audio_frame();
 
+        void set_audio_frame_slice(std::shared_ptr<buffer> asframe);
+        std::shared_ptr<buffer> get_audio_frame_slice();
+
 
         // test
         void set_avframe(std::shared_ptr<AVFrame> frm);
@@ -98,6 +103,14 @@ namespace seeder::ffmpeg
         const size_t aframe_capacity_ = 5;
         std::shared_ptr<AVFrame> last_aframe_;
         std::condition_variable aframe_cv_;
+
+        // audio slice buffer
+        std::mutex asframe_mutex_;
+        std::deque<std::shared_ptr<buffer>> asframe_buffer_;
+        const size_t asframe_capacity_ = 1600; // 1 audio frame(p25:40ms) slice to 125us a frame, slices = 40ms / 0.125ms
+        std::shared_ptr<buffer> last_asframe_;
+        std::condition_variable asframe_cv_;
+
 
         std::unique_ptr<std::thread> ffmpeg_thread_ = nullptr;
 

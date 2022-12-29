@@ -51,7 +51,7 @@
 #include <atomic>
 
 // st_dpdk 
-#include "/usr/include/x86_64-linux-gnu/st_dpdk/st20_dpdk_api.h"
+// #include "/usr/include/x86_64-linux-gnu/st_dpdk/st20_dpdk_api.h"
 
 using namespace boost::lockfree;
 using namespace seeder::core;
@@ -63,15 +63,15 @@ using namespace seeder;
  * @brief 
  * 
  */
-void st_dpdk_test()
-{
-    auto size = st20_frame_size(ST20_FMT_YUV_422_10BIT, 1920, 1080);
-    std::cout << "frame size: " << size << std::endl;
+// void st_dpdk_test()
+// {
+//     auto size = st20_frame_size(ST20_FMT_YUV_422_10BIT, 1920, 1080);
+//     std::cout << "frame size: " << size << std::endl;
 
-}
-void test(){
-    st_dpdk_test();
-}
+// }
+// void test(){
+//     st_dpdk_test();
+// }
 
 void udp_receive_test()
 {

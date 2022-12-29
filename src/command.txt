@@ -15,6 +15,7 @@ sudo timedatectl set-timezone Asia/Shanghai
 // set ptpd slaver
 sudo timedatectl set-ntp false
 sudo ptpd -d 127 -g -i enp4s0f1np1 -C
+sudo ptpd -d 127 -g -i ens801f1 -C
 
 sudo ptpd -d 127 -s -i enp4s0f1np1 -C
 sudo ptpd -d 127 -g -i enp11s0f1 -C
@@ -53,8 +54,11 @@ ls -l /sys/kernel/iommu_groups
 // bind NIC to DPDK PMD
 dpdk-devbind.py -s
 0000:0b:00.0 'MT27710 Family [ConnectX-4 Lx] 1015' if=enp11s0f0np0 drv=mlx5_core unused=vfio-pci
-sudo dpdk-devbind.py -b vfio-pci 0000:0b:00.0
-sudo dpdk-devbind.py -b vfio-pci 0000:0b:00.1
+0000:af:00.0 'Ethernet Controller E810-C for QSFP 1592' if=ens801f0 drv=ice unused=vfio-pci 
+0000:af:00.1 'Ethernet Controller E810-C for QSFP 1592' if=ens801f1 drv=ice unused=vfio-pci 
+
+sudo dpdk-devbind.py -b vfio-pci 0000:af:00.0
+sudo dpdk-devbind.py -b vfio-pci 0000:af:00.1
 sudo dpdk-devbind.py -b mlx5_core 0000:0b:00.0
 sudo dpdk-devbind.py -b mlx5_core 0000:0b:00.1
 
@@ -63,7 +67,7 @@ sudo ifconfig enp11s0f0 down
 
 // hugepages
 sudo sysctl -w vm.nr_hugepages=2048
-sudo dpdk-devbind.py -b vfio-pci 0000:0b:00.0
+sudo dpdk-devbind.py -b vfio-pci 0000:af:00.0
 
 // permissions to current user
 sudo chown -R seeder /dev/vfio/
