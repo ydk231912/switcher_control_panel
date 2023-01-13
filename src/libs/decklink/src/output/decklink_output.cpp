@@ -218,7 +218,7 @@ namespace seeder::decklink
         {
             auto f = vframe_buffer_[0];
             frame_buffer_.pop_front(); // discard the last frame
-            logger->error("The video frame be discarded");
+            logger->warn("The video frame be discarded");
         }
         vframe_buffer_.push_back(vframe);
         vframe_cv_.notify_all();

@@ -1477,7 +1477,22 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
   if (tx_group_array != NULL && json_object_get_type(tx_group_array) == json_type_array) {
     /* allocate tx source config*/
     ctx->tx_source_cnt = json_object_array_length(tx_group_array);
-    ctx->tx_sources = (st_app_tx_source*)st_app_zmalloc(ctx->tx_source_cnt*sizeof(st_app_tx_source));
+    ctx->tx_sources = (struct st_app_tx_source*)st_app_zmalloc(ctx->tx_source_cnt*sizeof(struct st_app_tx_source));
+    
+    // auto sz = sizeof(struct st_app_tx_source);
+    // auto sc = ( st_app_tx_source*)st_app_zmalloc(ctx->tx_source_cnt*sizeof( st_app_tx_source));
+    // auto str_sz = sizeof(std::string);
+    // sc[0].device_id = 1;
+    // sc[0].type = "type";
+    // sc[0].file_url = "file_url";
+    // sc[0].video_format = "video_format";
+    // sc[1].device_id = 2;
+    // sc[1].type = "type1";
+    // sc[1].file_url = "file_url1";
+    // sc[1].video_format = "video_format1";
+    // logger->info("{}, {},{},{}", __func__, sc[0].device_id, sc[0].type, sc[0].video_format);
+    // logger->info("{}, {},{},{}", __func__, sc[1].device_id, sc[1].type, sc[1].video_format);
+    
 
     /* parse session numbers for array allocation */
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {

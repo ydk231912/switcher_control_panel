@@ -258,19 +258,19 @@ namespace seeder::decklink
             // }
             // this->set_audio_frame(aframe);
 
-            // one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
-            int nb = format_desc_.st30_fps / format_desc_.fps; // slice number
-            auto size = format_desc_.st30_frame_size;
-            void* audio_bytes = nullptr;
-            if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
-            {
-                for(int i = 0; i < nb; i++)
-                {
-                    auto asframe = std::make_shared<buffer>(buffer(format_desc_.st30_frame_size));
-                    memcpy(asframe.get(), audio_bytes + i * size, size);
-                    this->set_audio_frame_slice(asframe);
-                }
-            }
+            // // one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
+            // int nb = format_desc_.st30_fps / format_desc_.fps; // slice number
+            // auto size = format_desc_.st30_frame_size;
+            // void* audio_bytes = nullptr;
+            // if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
+            // {
+            //     for(int i = 0; i < nb; i++)
+            //     {
+            //         auto asframe = std::make_shared<buffer>(format_desc_.st30_frame_size);
+            //         memcpy(asframe->begin(), audio_bytes + i * size, size);
+            //         this->set_audio_frame_slice(asframe);
+            //     }
+            // }
         }
 
         return S_OK;
@@ -304,7 +304,7 @@ namespace seeder::decklink
         {
             auto f = vframe_buffer_[0];
             vframe_buffer_.pop_front(); // discard the oldest frame
-            logger->error("{}, The video frame is discarded", __func__);
+            logger->warn("{}, The video frame is discarded, Decklink {}", __func__, decklink_index_ + 1);
         }
         vframe_buffer_.push_back(vframe);
         vframe_cv_.notify_all();

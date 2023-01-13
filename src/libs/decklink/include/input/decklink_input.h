@@ -122,7 +122,7 @@ namespace seeder::decklink
         // audio buffer
         std::mutex aframe_mutex_;
         std::deque<std::shared_ptr<AVFrame>> aframe_buffer_;
-        const size_t aframe_capacity_ = 5;
+        const size_t aframe_capacity_ = 2;
         std::shared_ptr<frame> last_aframe_;
         std::condition_variable aframe_cv_;
 

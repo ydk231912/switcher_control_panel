@@ -169,7 +169,7 @@ static int st_tx_video_source_init(struct st_app_context* ctx)
     {
         for(int i = 0; i < c->tx_source_cnt; i++)
         {
-            st_app_tx_source* s = &c->tx_sources[i];
+            struct st_app_tx_source* s = &c->tx_sources[i];
             if(s->type == "decklink")
             {
                 auto format_desc = seeder::core::video_format_desc(s->video_format);

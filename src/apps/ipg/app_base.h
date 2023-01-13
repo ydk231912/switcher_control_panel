@@ -171,7 +171,7 @@ struct st_app_tx_video_session {
 
   // video source
   std::shared_ptr<seeder::core::input> tx_source;
-  st_app_tx_source* source_info;
+  struct st_app_tx_source* source_info;
 };
 
 struct st_app_tx_audio_session {
@@ -205,7 +205,7 @@ struct st_app_tx_audio_session {
 
     // audio source
   std::shared_ptr<seeder::core::input> tx_source;
-  st_app_tx_source* source_info;
+  struct st_app_tx_source* source_info;
 };
 
 struct st_app_tx_anc_session {
@@ -578,7 +578,7 @@ struct st_app_context {
 
   // tx_source handle;
   std::vector<std::shared_ptr<seeder::core::input>> tx_sources;
-  std::vector<st_app_tx_source*> source_info;
+  std::vector<struct st_app_tx_source*> source_info;
   // rx_output handle;
   std::vector<std::shared_ptr<seeder::core::output>> rx_output;
   std::vector<st_app_rx_output*> output_info;

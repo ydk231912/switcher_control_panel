@@ -122,7 +122,7 @@ static void user_param_init(struct st_app_context *ctx, struct st_init_params *p
     p->priv = ctx;
     p->ptp_get_time_fn = app_ptp_from_tai_time;
     p->stat_dump_cb_fn = app_stat;
-    p->log_level = ST_LOG_LEVEL_INFO;
+    p->log_level = ST_LOG_LEVEL_ERROR;//ST_LOG_LEVEL_INFO;
     // app_set_log_level(p->log_level);
 }
 
@@ -202,11 +202,11 @@ static int st_tx_video_source_init(struct st_app_context* ctx)
     {
         for(int i = 0; i < c->tx_source_cnt; i++)
         {
-            st_app_tx_source* s = &c->tx_sources[i];
+            struct st_app_tx_source* s = &c->tx_sources[i];
             if(s->type == "decklink")
             {
                 auto format_desc = seeder::core::video_format_desc(s->video_format);
-                auto info = c->rx_audio_sessions[i].info;
+                auto info = c->tx_audio_sessions[i].info;
                 set_video_foramt(info, &format_desc);
                 auto decklink = std::make_shared<seeder::decklink::decklink_input>(s->device_id, format_desc);
                 ctx->tx_sources.push_back(decklink);
