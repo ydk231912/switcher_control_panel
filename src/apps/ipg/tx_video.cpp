@@ -6,6 +6,7 @@
 #include "core/stream/input.h"
 #include "core/frame/frame.h"
 #include "core/util/timer.h"
+#include "core/util/timer.h"
 
 using namespace seeder::core;
 
@@ -88,7 +89,7 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
     else if(s->source_info->type == "file")
     {
         //timer t1;
-        // video file pixel format must be AV_PIX_FMT_YUV422P10LE
+        //video file pixel format must be AV_PIX_FMT_YUV422P10LE
         ret = st20_yuv422p10le_to_rfc4175_422be10((uint16_t*)f->data[0], (uint16_t*)f->data[1], 
                     (uint16_t*)f->data[2], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
         //std::cout << "422 to st2110 1 frame : " << t1.elapsed() << std::endl;
@@ -278,8 +279,8 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     ops.interlaced = video ? st_app_get_interlaced(video->info.video_format) : false;
     ops.get_next_frame = app_tx_video_next_frame;
     ops.notify_frame_done = app_tx_video_frame_done;
-    //ops.query_frame_lines_ready = app_tx_video_frame_lines_ready;
-    //ops.notify_rtp_done = app_tx_video_rtp_done;
+    // ops.query_frame_lines_ready = app_tx_video_frame_lines_ready;
+    // ops.notify_rtp_done = app_tx_video_rtp_done;
     ops.framebuff_cnt = 2;
     ops.payload_type = video ? video->base.payload_type : ST_APP_PAYLOAD_TYPE_VIDEO;
 
@@ -334,6 +335,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
 
     // tx video source
     s->tx_source = ctx->tx_sources[video->tx_source_id];
+    s->id = video->tx_source_id;
     s->source_info = ctx->source_info[video->tx_source_id];
 
     if(!ctx->app_thread) 
@@ -359,7 +361,7 @@ int st_app_tx_video_sessions_init(struct st_app_context* ctx)
     int ret, i;
     struct st_app_tx_video_session* s;
     ctx->tx_video_sessions = (struct st_app_tx_video_session*)st_app_zmalloc(
-        sizeof(struct st_app_tx_video_session) * ctx->tx_video_session_cnt);
+        sizeof(struct st_app_tx_video_session) * 64 );
     if(!ctx->tx_video_sessions) return -ENOMEM;
     
     for(i = 0; i < ctx->tx_video_session_cnt; i++) 
@@ -378,6 +380,69 @@ int st_app_tx_video_sessions_init(struct st_app_context* ctx)
 
     return 0;
 }
+
+
+int st_app_tx_video_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
+{
+    // st_app_tx_video_session* tx_video_sessions  = (struct st_app_tx_video_session*)st_app_zmalloc(
+    //     sizeof(struct st_app_tx_video_session) * c->tx_video_session_cnt);
+    int count = ctx->tx_video_session_cnt;
+    int ret=0;
+    struct st_app_tx_video_session* s;
+    for(int i = 0; i < c->tx_video_session_cnt; i++)
+    {
+        count= count+i;
+        ctx->tx_video_session_cnt+=1;
+        s = &ctx->tx_video_sessions[count];
+        s->idx = i;
+        s->lcore = -1;
+        ret = app_tx_video_init(
+            ctx,c ? &c->tx_video_sessions[i] : NULL, s);
+        if (ret < 0) 
+        {
+            logger->error("{}({}), app_tx_video_init fail {}", __func__, i, ret);
+            return ret;
+        }   
+    }
+    return 0;
+}
+
+
+
+int st_app_tx_video_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c) 
+{
+    int i,ret;
+    struct st_app_tx_video_session* s;
+    struct st_app_tx_video_session* s_new;
+    s_new = (struct st_app_tx_video_session*)st_app_zmalloc(sizeof(struct st_app_tx_video_session));
+    if(!ctx->tx_video_sessions) return 0;
+
+    for(int i =0;i<ctx->tx_video_session_cnt;i++){
+      if (ctx->tx_video_sessions[i].id == id)
+      {
+        s = &ctx->tx_video_sessions[i];
+        app_tx_video_uinit(s);
+        for(int j =0 ;i<c->tx_video_session_cnt;j++)
+        {
+            if(c->tx_video_sessions->tx_source_id == id)
+            {
+                s_new->idx = i;
+                s_new->lcore = -1;
+                ret = app_tx_video_init(
+                    ctx,c ? &c->tx_video_sessions[j] : NULL, s_new);
+                if (ret < 0) 
+                {
+                    logger->error("{}({}), app_tx_video_init fail {}", __func__, i, ret);
+                    return ret;
+                }
+            }
+        }
+        ctx->tx_video_sessions[i] = *s_new;
+      }
+    }
+    return 0;
+}
+
 
 int st_app_tx_video_sessions_uinit(struct st_app_context* ctx) 
 {

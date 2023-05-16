@@ -2,10 +2,9 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
 #include "app_base.h"
 #include "fmt.h"
-//#include "player.h"
+#include "player.h"
 
 #ifndef _RX_APP_VIDEO_HEAD_H_
 #define _RX_APP_VIDEO_HEAD_H_
@@ -19,5 +18,12 @@ int st_app_rx_video_sessions_stat(struct st_app_context* ctx);
 int st_app_rx_video_sessions_result(struct st_app_context* ctx);
 
 int st_app_rx_video_sessions_pcap(struct st_app_context* ctx);
+
+int st_app_rx_video_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c);
+
+
+int st_app_rx_video_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c);
+int st_app_rx_video_sessions_init_update(struct st_app_context* ctx,st_json_context_t* c);
+
 
 #endif

@@ -70,6 +70,7 @@ include_directories(/usr/include/json-c)
 add_subdirectory(libs)
 add_subdirectory(apps)
 
+include_directories(/usr/include)
 include_directories(${PROGRAM_INCLUDE_PATH})
 link_directories(${PROGRAM_LIB_PATH})
 

@@ -232,36 +232,36 @@ namespace seeder::decklink
 
         if(audio)
         {
-            // // a frame is 20ms:p50 or 40ms:p25
-            // auto aframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
-            // aframe->format = AV_SAMPLE_FMT_S16;
-            // if(format_desc_.audio_samples == 32)
-            //     aframe->format = AV_SAMPLE_FMT_S32;
-            // aframe->channels = format_desc_.audio_channels;
-            // aframe->sample_rate = format_desc_.audio_sample_rate;
+            // a frame is 20ms:p50 or 40ms:p25
+            auto aframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+            aframe->format = AV_SAMPLE_FMT_S16;
+            if(format_desc_.audio_samples == 32)
+                aframe->format = AV_SAMPLE_FMT_S32;
+            aframe->channels = format_desc_.audio_channels;
+            aframe->sample_rate = format_desc_.audio_sample_rate;
 
-            // void* audio_bytes = nullptr;
-            // if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
-            // {
-            //     audio->AddRef();
-            //     aframe = std::shared_ptr<AVFrame>(aframe.get(), [aframe, audio](AVFrame* ptr) { audio->Release(); });
-            //     aframe->data[0] = reinterpret_cast<uint8_t*>(audio_bytes);
-            //     aframe->nb_samples  = audio->GetSampleFrameCount();
-            //     aframe->linesize[0] = aframe->nb_samples * aframe->channels *
-            //                            av_get_bytes_per_sample(static_cast<AVSampleFormat>(aframe->format));
+            void* audio_bytes = nullptr;
+            if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
+            {
+                audio->AddRef();
+                aframe = std::shared_ptr<AVFrame>(aframe.get(), [aframe, audio](AVFrame* ptr) { audio->Release(); });
+                aframe->data[0] = reinterpret_cast<uint8_t*>(audio_bytes);
+                aframe->nb_samples  = audio->GetSampleFrameCount();
+                aframe->linesize[0] = aframe->nb_samples * aframe->channels *
+                                       av_get_bytes_per_sample(static_cast<AVSampleFormat>(aframe->format));
 
-            //     BMDTimeValue duration;
-            //     if (audio->GetPacketTime(&in_audio_pts, AV_TIME_BASE))
-            //     {
-            //         aframe->pts = in_audio_pts; //need bugging to ditermine the in_audio_pts meets the requirement
-            //     }
-            // }
-            // this->set_audio_frame(aframe);
+                BMDTimeValue duration;
+                if (audio->GetPacketTime(&in_audio_pts, AV_TIME_BASE))
+                {
+                    aframe->pts = in_audio_pts; //need bugging to ditermine the in_audio_pts meets the requirement
+                }
+            }
+            this->set_audio_frame(aframe);
 
-            // // one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
+            // one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
             // int nb = format_desc_.st30_fps / format_desc_.fps; // slice number
             // auto size = format_desc_.st30_frame_size;
-            // void* audio_bytes = nullptr;
+            // audio_bytes = nullptr;
             // if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
             // {
             //     for(int i = 0; i < nb; i++)
@@ -287,7 +287,7 @@ namespace seeder::decklink
         {
             auto f = frame_buffer_[0];
             frame_buffer_.pop_front(); // discard the oldest frame
-            logger->error("The frame is discarded");
+            //logger->error("The frame is discarded");
         }
         frame_buffer_.push_back(frm);
         frame_cv_.notify_all();
@@ -304,7 +304,7 @@ namespace seeder::decklink
         {
             auto f = vframe_buffer_[0];
             vframe_buffer_.pop_front(); // discard the oldest frame
-            logger->warn("{}, The video frame is discarded, Decklink {}", __func__, decklink_index_ + 1);
+            //logger->warn("{}, The video frame is discarded, Decklink {}", __func__, decklink_index_ + 1);
         }
         vframe_buffer_.push_back(vframe);
         vframe_cv_.notify_all();
@@ -321,7 +321,7 @@ namespace seeder::decklink
         {
             auto f = aframe_buffer_[0];
             aframe_buffer_.pop_front(); // discard the oldest frame
-            logger->error("{}, The audio frame is discarded", __func__);
+            //logger->error("{}, The audio frame is discarded", __func__);
         }
         aframe_buffer_.push_back(aframe);
         aframe_cv_.notify_all();

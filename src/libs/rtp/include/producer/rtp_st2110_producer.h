@@ -24,7 +24,7 @@ extern "C"
     #include <libavutil/imgutils.h>
 }
 
-#include "core/frame.h"
+#include "core/frame/frame.h"
 #include "core/video_format.h"
 #include "rtp/packet.h"
 #include "core/util/buffer.h"

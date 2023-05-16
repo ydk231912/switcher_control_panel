@@ -125,7 +125,8 @@ namespace seeder::core
         const auto rgba_line_size        = width * 4;
         const auto rgba_frame_size       = height * rgba_line_size;
         constexpr auto pixels_per_pgroup = 2;
-        const auto ycbcr_frame_size = (width * 5 / 2) * height; // 2 pixel = 40bit
+        //const auto ycbcr_frame_size = (width * 5 / 2) * height; // 2 pixel = 40bit
+        const auto ycbcr_frame_size = width * height * 4; // 2 pixel = 40bit
 
         auto converter = format_desc.height > 1080 ? ycbcr_to_rgb_rec2020 : ycbcr_to_rgb_rec709;
 
@@ -168,7 +169,7 @@ namespace seeder::core
                 output[7] = uint8_t(0xFF);
 
                 input += 5;
-                output += 8;
+                //output += 8;
             }
         }
 

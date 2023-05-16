@@ -16,7 +16,7 @@
 #include <deque>
 #include <condition_variable>
 
-#include "core/frame.h"
+#include "core/frame/frame.h"
 #include "rtp/packet.h"
 #include "net/udp_sender.h"
 

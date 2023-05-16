@@ -110,6 +110,7 @@ struct st_app_rx_output
 
 struct st_app_tx_video_session {
   int idx;
+  int id;
   st_handle st;
   st20_tx_handle handle;
   int handle_sch_idx;
@@ -177,11 +178,12 @@ struct st_app_tx_video_session {
 struct st_app_tx_audio_session {
   int idx;
   st30_tx_handle handle;
-
+  int id;
   uint16_t framebuff_cnt;
   uint16_t framebuff_producer_idx;
   uint16_t framebuff_consumer_idx;
   struct st_tx_frame* framebuffs;
+  int handle_sch_idx;
 
   int st30_frame_done_cnt;
   int st30_packet_done_cnt;
@@ -239,6 +241,7 @@ struct st_app_tx_anc_session {
 
 struct st_app_rx_video_session {
   int idx;
+  int id;
   st_handle st;
   st20_rx_handle handle;
   int framebuff_cnt;
@@ -289,6 +292,7 @@ struct st_app_rx_video_session {
 
 struct st_app_rx_audio_session {
   int idx;
+  int id;
   st30_rx_handle handle;
   int framebuff_cnt;
   int st30_frame_size;

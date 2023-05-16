@@ -12,7 +12,7 @@ extern "C"
     #include <libavutil/imgutils.h>
 }
 
-#include "core/frame.h"
+#include "core/frame/frame.h"
 #include "sdl_consumer.h"
 
 namespace seeder

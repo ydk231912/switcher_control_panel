@@ -31,3 +31,4 @@
 [2023-01-11 13:54:48.447] [SEEDER ST2110] [error] st_app_parse_json, can not parse json file ./test_tx_1port_1v_1a_1anc.json, please check the format
 [2023-01-11 13:54:48.447] [SEEDER ST2110] [error] app_args_json, st_app_parse_json fail -1
 [2023-01-11 13:54:48.447] [SEEDER ST2110] [error] main, st_init fail
+[2023-03-30 09:18:33.301] [SEEDER ST2110] [error] main, st_init fail

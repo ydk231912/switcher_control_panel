@@ -103,7 +103,7 @@ namespace seeder::ffmpeg
             logger->error("avcodec_parameters_to_context() failed");
             throw std::runtime_error("avcodec_parameters_to_context() failed");
         }
-        av_opt_set_int(codec_ctx, "threads", 12, 0);
+        auto rt = av_opt_set_int(codec_ctx, "threads", 12, 0);
         
         ret = avcodec_open2(codec_ctx, codec, NULL);
         if(ret < 0)

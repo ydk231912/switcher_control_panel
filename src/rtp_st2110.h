@@ -14,7 +14,7 @@ extern "C"
 
 #include "net/udp_client.h"
 #include "rtp/packet.h"
-#include "core/frame.h"
+#include "core/frame/frame.h"
 
 namespace seeder
 {

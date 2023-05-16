@@ -7,6 +7,10 @@ file(GLOB_RECURSE SRC_LIST ./*.cpp ./*.c ./*.h)
 
 add_executable(ipg ${SRC_LIST})
 
+# aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/json SRC)
+# add_library(calc STATIC ${SRC})
+
+
 target_link_libraries(ipg
 core
 decklink

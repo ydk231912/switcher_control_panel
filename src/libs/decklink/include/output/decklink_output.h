@@ -80,7 +80,7 @@ namespace seeder::decklink
         int decklink_index_;
         core::video_format_desc format_desc_;
         BMDVideoInputFlags video_flags_;
-        BMDPixelFormat pixel_format_ = bmdFormat10BitYUV;//bmdFormat8BitBGRA;
+        BMDPixelFormat pixel_format_ = bmdFormat8BitBGRA;//bmdFormat8BitBGRA;bmdFormat10BitYUV
         BMDDisplayMode bmd_mode_;
         IDeckLinkDisplayMode* display_mode_;
         IDeckLink* decklink_;
@@ -88,6 +88,7 @@ namespace seeder::decklink
         bool abort_ = false;
 
         IDeckLinkMutableVideoFrame*	playbackFrame_ = nullptr;
+        IDeckLinkMutableVideoFrame*	yuv10Frame_ = nullptr;
         SwsContext* sws_ctx_ = nullptr;
         AVFrame* dst_frame_ = nullptr;
         uint8_t * dst_frame_buffer_ = nullptr;

@@ -24,7 +24,7 @@ using namespace seeder::decklink::util;
 namespace seeder::decklink
 {
     decklink_output::decklink_output(int device_id, core::video_format_desc format_desc)
-    :decklink_index_(device_id),
+    :decklink_index_(device_id - 1),
     format_desc_(format_desc)
     {
         HRESULT result;
@@ -64,7 +64,7 @@ namespace seeder::decklink
         }
 
         // create display frame
-        auto outputBytesPerRow = ((display_mode_->GetWidth() + 47) / 48) * 128; //display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
+        auto outputBytesPerRow = display_mode_->GetWidth() * 4; //display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
         result = output_->CreateVideoFrame((int32_t)display_mode_->GetWidth(),
 													  (int32_t)display_mode_->GetHeight(),
 													  outputBytesPerRow,
@@ -76,6 +76,14 @@ namespace seeder::decklink
            logger->error("Unable to create video frame.");
            throw std::runtime_error("Unable to create video frame.");
         }
+        auto PerRow = ((display_mode_->GetWidth() + 47) / 48) * 128; //display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
+        result = output_->CreateVideoFrame((int32_t)display_mode_->GetWidth(),
+													  (int32_t)display_mode_->GetHeight(),
+													  PerRow,
+													  bmdFormat10BitYUV,
+													  bmdFrameFlagDefault,
+													  &yuv10Frame_);
+        vframe_buffer = (uint8_t*)malloc(format_desc_.height * ((display_mode_->GetWidth() + 47) / 48) * 128);
 
         // frame buffer pointer
         if (playbackFrame_->GetBytes((void**)&vframe_buffer) != S_OK)
@@ -124,6 +132,8 @@ namespace seeder::decklink
         if(dst_frame_buffer_) av_free(dst_frame_buffer_);
 
         if(aframe_buffer) free(aframe_buffer);
+
+        if(vframe_buffer) free(vframe_buffer);
     }
 
     /**
@@ -144,7 +154,7 @@ namespace seeder::decklink
                 // sws_scale(sws_ctx_, (const uint8_t *const *)frm->data,
                 //                         frm->linesize, 0, format_desc_.height, dst_frame_->data, dst_frame_->linesize);
                 // convert uyvy422 10bit to decklink bgra 8 bit
-                auto bgra_frame = ycbcr422_to_bgra(frm->data[0], format_desc_);
+               auto bgra_frame = ycbcr422_to_bgra(frm->data[0], format_desc_);
 
                 // fill playback frame
                 uint8_t* deckLinkBuffer = nullptr;
@@ -162,6 +172,7 @@ namespace seeder::decklink
                 {
                     logger->error("Unable to display video output");
                 }
+
             }
         }));
     }
@@ -218,7 +229,7 @@ namespace seeder::decklink
         {
             auto f = vframe_buffer_[0];
             frame_buffer_.pop_front(); // discard the last frame
-            logger->warn("The video frame be discarded");
+            //logger->warn("The video frame be discarded");
         }
         vframe_buffer_.push_back(vframe);
         vframe_cv_.notify_all();
@@ -235,7 +246,7 @@ namespace seeder::decklink
         {
             auto f = aframe_buffer_[0];
             aframe_buffer_.pop_front(); // discard the last frame
-            logger->error("The audio frame be discarded");
+            //logger->error("The audio frame be discarded");
         }
         aframe_buffer_.push_back(aframe);
         aframe_cv_.notify_all();
@@ -276,20 +287,64 @@ namespace seeder::decklink
     void decklink_output::display_video_frame(uint8_t* vframe)
     {
         HRESULT result;
-
-        //auto bgra_frame = ycbcr422_to_bgra(vframe->data[0], format_desc_);
-
+        ////////////do not need format convert
         // fill playback frame
-        uint8_t* deckLinkBuffer = nullptr;
-        if (playbackFrame_->GetBytes((void**)&deckLinkBuffer) != S_OK)
+        // uint8_t* deckLinkBuffer = nullptr;
+        // if (playbackFrame_->GetBytes((void**)&yuvBuffer) != S_OK)
+        // {
+        //     logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+        // }
+        // // // deckLinkBuffer = bgra_frame->begin();
+        // memset(deckLinkBuffer, 0, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
+        // memcpy(deckLinkBuffer, vframe, playbackFrame_->GetRowBytes() * playbackFrame_->GetHeight());
+
+        ///////////bmdFormat10BitYUV to bmdFormat8BitBGRA
+        // fill playback frame
+        uint8_t* yuvBuffer = nullptr;
+        if (yuv10Frame_->GetBytes((void**)&yuvBuffer) != S_OK)
         {
             logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+            return;
         }
-        deckLinkBuffer = vframe;
+        memset(yuvBuffer, 0, yuv10Frame_->GetRowBytes() * yuv10Frame_->GetHeight());
+        memcpy(yuvBuffer, vframe, yuv10Frame_->GetRowBytes() * yuv10Frame_->GetHeight());
+
+        IDeckLinkVideoConversion*	frameConverter		= NULL;
+        frameConverter = CreateVideoConversionInstance();
+		if (frameConverter == NULL)
+		{
+			logger->error("Unable to get Video Conversion interface");
+            return;
+		}
+        if (frameConverter->ConvertFrame(yuv10Frame_, playbackFrame_) != S_OK)
+        {
+            logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+            return;
+        }
 
         result = output_->DisplayVideoFrameSync(playbackFrame_);
         if (result != S_OK)
         {
+            if(result == E_FAIL)
+            {
+                logger->error("E_FAIL");
+            }
+            else if(result == E_INVALIDARG)
+            {
+                logger->error("E_INVALIDARG");
+            }
+            else if(result == E_ACCESSDENIED)
+            {
+                logger->error("E_ACCESSDENIED");
+            }
+            else if(result == E_OUTOFMEMORY)
+            {
+                logger->error("E_OUTOFMEMORY");
+            }
+            else 
+            {
+                logger->error("unknow");
+            }
             logger->error("Unable to display video output");
         }
     }

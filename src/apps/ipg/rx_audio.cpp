@@ -4,6 +4,17 @@
 
 using namespace seeder::core;
 
+
+static int app_rx_audio_rtp_ready(void* priv) {
+  struct st_app_rx_audio_session* s = (st_app_rx_audio_session*)priv;
+
+  st_pthread_mutex_lock(&s->st30_wake_mutex);
+  st_pthread_cond_signal(&s->st30_wake_cond);
+  st_pthread_mutex_unlock(&s->st30_wake_mutex);
+
+  return 0;
+}
+
 static int app_rx_audio_enqueue_frame(struct st_app_rx_audio_session* s, void* frame, size_t size)
 {
     uint16_t producer_idx = s->framebuff_producer_idx;
@@ -151,8 +162,10 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
                 ST_PORT_MAX_LEN);
         ops.udp_port[ST_PORT_R] = audio ? audio->base.udp_port : (10100 + s->idx);
     }
-    ops.notify_frame_ready = app_rx_audio_frame_ready;
-    //ops.notify_rtp_ready = app_rx_audio_rtp_ready;
+    
+     ops.notify_frame_ready = app_rx_audio_frame_ready;
+     ops.notify_rtp_ready = app_rx_audio_rtp_ready;
+
     ops.type = audio ? audio->info.type : ST30_TYPE_FRAME_LEVEL;
     ops.fmt = audio ? audio->info.audio_format : ST30_FMT_PCM16;
     ops.payload_type = audio ? audio->base.payload_type : ST_APP_PAYLOAD_TYPE_AUDIO;
@@ -201,8 +214,9 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
         return -EIO;
     }
     s->handle = handle;
-    // s->rx_output = ctx->rx_output[audio->rx_output_id];
-    // s->output_info = ctx->output_info[audio->rx_output_id];
+    s->rx_output = ctx->rx_output[audio->rx_output_id];
+    s->id = audio->rx_output_id;
+    s->output_info = ctx->output_info[audio->rx_output_id];
     
     ret = app_rx_audio_init_frame_thread(s);
     if(ret < 0)
@@ -214,6 +228,10 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 
     return 0;
 }
+
+
+
+
 
 static int app_rx_audio_uinit(struct st_app_rx_audio_session* s)
 {
@@ -254,7 +272,7 @@ int st_app_rx_audio_sessions_init(struct st_app_context* ctx)
     int ret, i;
     struct st_app_rx_audio_session* s;
     ctx->rx_audio_sessions = (struct st_app_rx_audio_session*)st_app_zmalloc(
-        sizeof(struct st_app_rx_audio_session) * ctx->rx_audio_session_cnt);
+        sizeof(struct st_app_rx_audio_session) * 64);
     if(!ctx->rx_audio_sessions) return -ENOMEM;
 
     for(i = 0; i < ctx->rx_audio_session_cnt; i++)
@@ -275,6 +293,61 @@ int st_app_rx_audio_sessions_init(struct st_app_context* ctx)
     return 0;
 }
 
+int st_app_rx_audio_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c)
+{
+    int ret, i,count;
+     struct st_app_rx_audio_session* s;
+    // ctx->rx_audio_sessions = (struct st_app_rx_audio_session*)st_app_zmalloc(
+    //     sizeof(struct st_app_rx_audio_session) * c->rx_audio_session_cnt);
+    count = ctx->rx_audio_session_cnt;
+    if(!ctx->rx_audio_sessions) return -ENOMEM;
+
+    for(i = 0; i < c->rx_audio_session_cnt; i++)
+    {
+        count = count +i;
+        ctx->rx_anc_session_cnt+=1;
+        s = &ctx->rx_audio_sessions[count];
+        s->idx = i;
+        s->framebuff_cnt = 2;
+        s->st30_ref_fd = -1;
+        ret = app_rx_audio_init(ctx,c ? &c->rx_audio_sessions[i] : NULL,s);
+        if(ret < 0) 
+        {
+            logger->error("{}({}), app_rx_audio_init fail {}", __func__, i, ret);
+            return ret;
+        }
+    }
+
+    return 0;
+}
+
+
+int st_app_rx_audio_sessions_init_update(struct st_app_context* ctx,st_json_context_t* c)
+{
+    int ret, i;
+    struct st_app_rx_audio_session* s;
+    ctx->rx_audio_sessions = (struct st_app_rx_audio_session*)st_app_zmalloc(
+        sizeof(struct st_app_rx_audio_session) * c->rx_audio_session_cnt);
+    if(!ctx->rx_audio_sessions) return -ENOMEM;
+
+    for(i = 0; i < c->rx_audio_session_cnt; i++)
+    {
+        s = &ctx->rx_audio_sessions[i];
+        s->idx = i;
+        s->framebuff_cnt = 2;
+        s->st30_ref_fd = -1;
+        ret = app_rx_audio_init(ctx, c ? &c->rx_audio_sessions[i] : NULL, s);
+        if(ret < 0) 
+        {
+            logger->error("{}({}), app_rx_audio_init fail {}", __func__, i, ret);
+            return ret;
+        }
+    }
+
+    return 0;
+}
+
+
 int st_app_rx_audio_sessions_uinit(struct st_app_context* ctx)
 {
     int i;
@@ -288,6 +361,35 @@ int st_app_rx_audio_sessions_uinit(struct st_app_context* ctx)
     }
     st_app_free(ctx->rx_audio_sessions);
 
+    return 0;
+}
+
+
+int st_app_rx_audio_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t *c)
+{
+
+    int i,ret;
+    struct st_app_rx_audio_session* s;
+    struct st_app_rx_audio_session* s_new;
+    if(!ctx->rx_audio_sessions) return 0;
+
+    for(i = 0; i < ctx->rx_audio_session_cnt; i++)
+    {
+      if (ctx->rx_audio_sessions[i].id == id)
+      {
+        s = &ctx->rx_audio_sessions[i];
+        app_rx_audio_uinit(s);
+        for(int j = 0 ;j<c->rx_audio_session_cnt;j++){
+            if(c->rx_audio_sessions->rx_output_id == id){
+                s_new->idx = i;
+                s_new->framebuff_cnt = 2;
+                s_new->st30_ref_fd = -1;
+                ret = app_rx_audio_init(ctx, c ? &c->rx_audio_sessions[j] : NULL, s_new);
+            }
+        }
+        ctx->rx_audio_sessions[i] = *s_new;
+      }
+    }
     return 0;
 }
 
