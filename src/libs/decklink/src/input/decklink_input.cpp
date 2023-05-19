@@ -232,7 +232,7 @@ namespace seeder::decklink
 
         if(audio)
         {
-            // a frame is 20ms:p50 or 40ms:p25
+            // // a frame is 20ms:p50 or 40ms:p25
             auto aframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
             aframe->format = AV_SAMPLE_FMT_S16;
             if(format_desc_.audio_samples == 32)
@@ -240,7 +240,7 @@ namespace seeder::decklink
             aframe->channels = format_desc_.audio_channels;
             aframe->sample_rate = format_desc_.audio_sample_rate;
 
-            void* audio_bytes = nullptr;
+             void* audio_bytes = nullptr;
             if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
             {
                 audio->AddRef();
@@ -258,7 +258,7 @@ namespace seeder::decklink
             }
             this->set_audio_frame(aframe);
 
-            // one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
+            //one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
             // int nb = format_desc_.st30_fps / format_desc_.fps; // slice number
             // auto size = format_desc_.st30_frame_size;
             // audio_bytes = nullptr;

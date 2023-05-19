@@ -55,6 +55,7 @@ namespace seeder::ffmpeg
 
     void ffmpeg_input::run()
     {
+        
         int ret;
         int count = 0;
         
@@ -74,6 +75,10 @@ namespace seeder::ffmpeg
         }
 
         int v_idx = -1;
+        int a_idx = -1;
+        
+    
+
         for(uint i=0; i<fmt_ctx->nb_streams; i++)
         {
             if(fmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
@@ -82,14 +87,30 @@ namespace seeder::ffmpeg
                 break;
             }
         }
+
+        for(uint i=0; i<fmt_ctx->nb_streams; i++)
+        {
+            if(fmt_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
+            {
+                a_idx = i;
+                break;
+            }
+        }
+
+    
         if(v_idx == -1)
         {
             logger->error("Can not find a video stream");
             throw std::runtime_error("Can not find a video stream");
         }
 
+
+
         AVCodecParameters* codec_par = fmt_ctx->streams[v_idx]->codecpar;
+        AVCodecParameters* codec_par_a = fmt_ctx->streams[a_idx]->codecpar;
+
         AVCodec* codec = avcodec_find_decoder(codec_par->codec_id);
+        AVCodec* codec_a = avcodec_find_decoder(codec_par_a->codec_id);
         if(codec == NULL)
         {
             logger->error("Can not find video codec");
@@ -97,7 +118,14 @@ namespace seeder::ffmpeg
         }
 
         AVCodecContext* codec_ctx = avcodec_alloc_context3(codec);
+        AVCodecContext* codec_ctx_a = avcodec_alloc_context3(codec_a);
         ret = avcodec_parameters_to_context(codec_ctx, codec_par);
+        if(ret < 0)
+        {
+            logger->error("avcodec_parameters_to_context() failed");
+            throw std::runtime_error("avcodec_parameters_to_context() failed");
+        }
+        ret = avcodec_parameters_to_context(codec_ctx_a, codec_par_a);
         if(ret < 0)
         {
             logger->error("avcodec_parameters_to_context() failed");
@@ -111,10 +139,21 @@ namespace seeder::ffmpeg
             logger->error("avcodec_open2() failed {}", ret);
             throw std::runtime_error("avcodec_open2() failed");
         }
+        ret = avcodec_open2(codec_ctx_a, codec_a, NULL);
+        if(ret < 0)
+        {
+            logger->error("avcodec_open2() failed {}", ret);
+            throw std::runtime_error("avcodec_open2() failed");
+        }
+        printf("%s\n",codec_a->name);
+        printf("%d\n",codec_ctx_a->channels);
+        printf("%d\n",codec_ctx_a->sample_rate);
+        printf("%d\n",codec_ctx_a->sample_fmt);
 
         AVPacket* packet = (AVPacket*)av_malloc(sizeof(AVPacket));
         while(1)
         {
+           
             timer t1;
             if(av_read_frame(fmt_ctx, packet) != 0) break;
 
@@ -174,10 +213,42 @@ namespace seeder::ffmpeg
                 //logger->info("frame buffer number {}", frame_buffer_.size());
                 //set_avframe(avframe);
             }
+            if(packet->stream_index == a_idx)
+            {
+                auto avframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+			   // ret = avcodec_decode_audio4( codec_ctx_a, avframe.get(),&got_picture, packet);
+
+
+                // ret =  avcodec_send_packet(codec_ctx_a, packet);  
+                // if(ret != 0)
+                // {
+                //     logger->error("avcodec_send_packet() failed {}", ret);
+                //     throw std::runtime_error("avcodec_send_packet() failed");
+                // }
+
+
+  
+                
+                // ret = avcodec_receive_frame(codec_ctx_a, avframe.get()); //avframe.get()
+                // if(ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+                // {
+                //     continue;
+                // }
+                // if(ret != 0)
+                // {
+                //     logger->error("avcode_receive_frame() failed {}", ret);
+                //     throw std::runtime_error("avcode_receive_frame() failed");
+                // }
+
+                 set_audio_frame(avframe);
+            }
+
+
             av_packet_unref(packet);
         }
 
         avcodec_close(codec_ctx);
+        avcodec_close(codec_ctx_a);
         avformat_close_input(&fmt_ctx);
     }
 

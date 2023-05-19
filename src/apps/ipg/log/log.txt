@@ -24902,4 +24902,5 @@
 [2023-05-15 17:46:45.769] [SEEDER ST2110] [error] set_audio_frame_slice, The audio frame is discarded
 [2023-05-15 17:46:45.769] [SEEDER ST2110] [error] set_audio_frame_slice, The audio frame is discarded
 [2023-05-15 17:46:45.769] [SEEDER ST2110] [error] set_audio_frame_slice, The audio frame is discarded
-[2023-05-15 17:46:45.769] [SEEDER ST2110] [error] set_audio_frame_slice, The audio f
+[2023-05-15 17:46:45.769] [SEEDER ST2110] [error] set_audio_frame_slice, The audio f[2023-05-17 10:20:29.130] [SEEDER ST2110] [error] main, st_init fail
+[2023-05-17 13:43:42.926] [SEEDER ST2110] [error] main, st_init fail

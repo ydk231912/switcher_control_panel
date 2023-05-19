@@ -19,9 +19,11 @@
 
 extern "C"
 {
+  #include <SDL.h>
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
     #include <libswscale/swscale.h>
+ #include <libswresample/swresample.h>
     #include <libavutil/imgutils.h>
     #include <libavutil/opt.h>
 }
@@ -74,7 +76,6 @@ namespace seeder::ffmpeg
         void set_audio_frame_slice(std::shared_ptr<buffer> asframe);
         std::shared_ptr<buffer> get_audio_frame_slice();
 
-
         // test
         void set_avframe(std::shared_ptr<AVFrame> frm);
         std::shared_ptr<AVFrame> get_avframe();
@@ -116,6 +117,7 @@ namespace seeder::ffmpeg
 
         // pixel format convert
         SwsContext* sws_ctx_;
+        SwrContext* swrCtx;
         core::video_format_desc format_desc_;
         int buf_size_;
 

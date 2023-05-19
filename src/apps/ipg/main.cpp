@@ -674,13 +674,13 @@ int main(int argc, char **argv)
 
 
       // init tx video source
-    ret = st_tx_video_source_init(ctx);
-    if(ret < 0)
-    {
-        logger->error("{}, st_tx_video_source_init fail", __func__);
-        st_app_ctx_free(ctx);
-        return -EIO;
-    }
+    // ret = st_tx_video_source_init(ctx);
+    // if(ret < 0)
+    // {
+    //     logger->error("{}, st_tx_video_source_init fail", __func__);
+    //     st_app_ctx_free(ctx);
+    //     return -EIO;
+    // }
 
 
     // // rx video
@@ -705,14 +705,14 @@ int main(int argc, char **argv)
     ret = st_app_tx_audio_sessions_init(ctx);
 
     
-    // tx video
-    ret = st_app_tx_video_sessions_init(ctx);
-    if(ret < 0)
-    {
-        logger->error("{}, st_app_tx_video_session_init fail", __func__);
-        st_app_ctx_free(ctx);
-        return -EIO;
-    }
+    //tx video
+    // ret = st_app_tx_video_sessions_init(ctx);
+    // if(ret < 0)
+    // {
+    //     logger->error("{}, st_app_tx_video_session_init fail", __func__);
+    //     st_app_ctx_free(ctx);
+    //     return -EIO;
+    // }
 
 
     // //start video source input stream
@@ -726,13 +726,13 @@ int main(int argc, char **argv)
 
 
     // start video source input stream
-    ret = st_tx_video_source_start(ctx);
-    if(ret < 0)
-    {
-        logger->error("{}, st_tx_video_source_start fail", __func__);
-        st_app_ctx_free(ctx);
-        return -EIO;
-    }
+    // ret = st_tx_video_source_start(ctx);
+    // if(ret < 0)
+    // {
+    //     logger->error("{}, st_tx_video_source_start fail", __func__);
+    //     st_app_ctx_free(ctx);
+    //     return -EIO;
+    // }
 
 
 
