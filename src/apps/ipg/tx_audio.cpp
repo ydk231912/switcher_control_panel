@@ -72,23 +72,31 @@ static int app_tx_audio_frame_done(void* priv, uint16_t frame_idx,
 static void app_tx_audio_build_frame(struct st_app_tx_audio_session* s, void* frame,
                                      size_t frame_size) 
 {
-    int ret = 0;
-    uint8_t* src = s->st30_frame_cursor;
-    // auto f = s->tx_source->get_audio_frame();
-    // if(!f) return;
-    uint8_t* dst = (uint8_t*)frame;
+//     int ret = 0;
+//     uint8_t* src = s->st30_frame_cursor;
+//     // auto f = s->tx_source->get_audio_frame();
+//     // if(!f) return;
+//     uint8_t* dst = (uint8_t*)frame;
     
-    if (s->st30_frame_cursor + frame_size > s->st30_source_end) {
-    int len = s->st30_source_end - s->st30_frame_cursor;
-    len = len / s->pkt_len * s->pkt_len;
-    if (len) memcpy(dst, s->st30_frame_cursor, len);
-    /* wrap back in the end */
-    memcpy(dst + len, s->st30_source_begin, frame_size - len);
-    s->st30_frame_cursor = s->st30_source_begin + frame_size - len;
-  } else {
-    memcpy(dst, src, s->st30_frame_size);
-    s->st30_frame_cursor += s->st30_frame_size;
-  }
+//     if (s->st30_frame_cursor + frame_size > s->st30_source_end) {
+//     int len = s->st30_source_end - s->st30_frame_cursor;
+//     len = len / s->pkt_len * s->pkt_len;
+//     if (len) memcpy(dst, s->st30_frame_cursor, len);
+//     /* wrap back in the end */
+//     memcpy(dst + len, s->st30_source_begin, frame_size - len);
+//     s->st30_frame_cursor = s->st30_source_begin + frame_size - len;
+//   } else {
+//     memcpy(dst, src, s->st30_frame_size);
+//     s->st30_frame_cursor += s->st30_frame_size;
+//   }
+
+    int ret = 0;
+    auto f = s->tx_source->get_audio_frame_slice();
+    
+    uint8_t* dst = (uint8_t*)frame;
+    uint8_t* src = (uint8_t*)f->begin();
+
+    st_memcpy(dst, src, s->st30_frame_size);
       
    
 }
@@ -270,9 +278,9 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 
     s->st30_pcap_input = false;
     //tx audio source
-    // s->tx_source = ctx->tx_sources[audio->tx_source_id];
-    // s->id = audio->tx_source_id;
-    // s->source_info = ctx->source_info[audio->tx_source_id];
+    s->tx_source = ctx->tx_sources[audio->tx_source_id];
+    s->id = audio->tx_source_id;
+    s->source_info = ctx->source_info[audio->tx_source_id];
 
     // s->st30_pcap_input = false;
     ops.type = audio ? audio->info.type : ST30_TYPE_FRAME_LEVEL;
@@ -289,12 +297,12 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     strncpy(s->st30_source_url, audio ? audio->info.audio_url : ctx->tx_audio_url,
             sizeof(s->st30_source_url));
 
-    ret = app_tx_audio_open_source(s);
-    if (ret < 0) {
-        logger->error("%s(%d), app_tx_audio_session_open_source fail\n", __func__, idx);
-        app_tx_audio_uinit(s);
-        return ret;
-    }
+    // ret = app_tx_audio_open_source(s);
+    // if (ret < 0) {
+    //     logger->error("%s(%d), app_tx_audio_session_open_source fail\n", __func__, idx);
+    //     app_tx_audio_uinit(s);
+    //     return ret;
+    // }
     //start frame thread to build frame
     ret = pthread_create(&s->st30_app_thread, NULL, app_tx_audio_frame_thread, s);
     if(ret < 0)

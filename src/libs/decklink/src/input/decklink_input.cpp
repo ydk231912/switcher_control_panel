@@ -34,7 +34,7 @@ namespace seeder::decklink
     ,pixel_format_(bmdFormat10BitYUV) //bmdFormat8BitYUV
     ,video_flags_(bmdVideoInputFlagDefault)
     {
-        sample_type_ = bmdAudioSampleType16bitInteger;
+        sample_type_ = bmdAudioSampleType32bitInteger;
         if(format_desc_.audio_samples == 32)
             sample_type_ = bmdAudioSampleType32bitInteger;
         
@@ -228,49 +228,51 @@ namespace seeder::decklink
             }
             this->set_video_frame(vframe);
             //frm->video = vframe;
+            
         }
 
         if(audio)
         {
-            // // a frame is 20ms:p50 or 40ms:p25
-            auto aframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
-            aframe->format = AV_SAMPLE_FMT_S16;
-            if(format_desc_.audio_samples == 32)
-                aframe->format = AV_SAMPLE_FMT_S32;
-            aframe->channels = format_desc_.audio_channels;
-            aframe->sample_rate = format_desc_.audio_sample_rate;
+            // a frame is 20ms:p50 or 40ms:p25
+            // auto aframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+            // aframe->format = AV_SAMPLE_FMT_S16;
+            // if(format_desc_.audio_samples == 32)
+            //     aframe->format = AV_SAMPLE_FMT_S32;
+            // aframe->channels = format_desc_.audio_channels;
+            // aframe->sample_rate = format_desc_.audio_sample_rate;
 
-             void* audio_bytes = nullptr;
-            if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
-            {
-                audio->AddRef();
-                aframe = std::shared_ptr<AVFrame>(aframe.get(), [aframe, audio](AVFrame* ptr) { audio->Release(); });
-                aframe->data[0] = reinterpret_cast<uint8_t*>(audio_bytes);
-                aframe->nb_samples  = audio->GetSampleFrameCount();
-                aframe->linesize[0] = aframe->nb_samples * aframe->channels *
-                                       av_get_bytes_per_sample(static_cast<AVSampleFormat>(aframe->format));
-
-                BMDTimeValue duration;
-                if (audio->GetPacketTime(&in_audio_pts, AV_TIME_BASE))
-                {
-                    aframe->pts = in_audio_pts; //need bugging to ditermine the in_audio_pts meets the requirement
-                }
-            }
-            this->set_audio_frame(aframe);
-
-            //one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
-            // int nb = format_desc_.st30_fps / format_desc_.fps; // slice number
-            // auto size = format_desc_.st30_frame_size;
-            // audio_bytes = nullptr;
+            //  void* audio_bytes = nullptr;
             // if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
             // {
-            //     for(int i = 0; i < nb; i++)
+            //     audio->AddRef();
+            //     aframe = std::shared_ptr<AVFrame>(aframe.get(), [aframe, audio](AVFrame* ptr) { audio->Release(); });
+            //     aframe->data[0] = reinterpret_cast<uint8_t*>(audio_bytes);
+            //     aframe->nb_samples  = audio->GetSampleFrameCount();
+            //     aframe->linesize[0] = aframe->nb_samples * aframe->channels *
+            //                            av_get_bytes_per_sample(static_cast<AVSampleFormat>(aframe->format));
+
+            //     BMDTimeValue duration;
+            //     if (audio->GetPacketTime(&in_audio_pts, AV_TIME_BASE))
             //     {
-            //         auto asframe = std::make_shared<buffer>(format_desc_.st30_frame_size);
-            //         memcpy(asframe->begin(), audio_bytes + i * size, size);
-            //         this->set_audio_frame_slice(asframe);
+            //         aframe->pts = in_audio_pts; //need bugging to ditermine the in_audio_pts meets the requirement
             //     }
             // }
+            // this->set_audio_frame(aframe);
+
+            //one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
+            int nb = format_desc_.st30_fps / format_desc_.fps; // slice number
+            auto size = format_desc_.st30_frame_size;
+            void* audio_bytes = nullptr;
+            
+            if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
+            {
+                for(int i = 0; i < nb; i++)
+                {
+                    auto aframe = std::make_shared<buffer>(format_desc_.st30_frame_size);
+                    memcpy(aframe->begin(), audio_bytes + i * size , size);
+                    this->set_audio_frame_slice(aframe);
+                }
+            }
         }
 
         return S_OK;

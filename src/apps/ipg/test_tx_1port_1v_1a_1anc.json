@@ -15,7 +15,7 @@
             ],
             "source": {
                 "//type": "decklink, file",
-                "type": "file",
+                "type": "decklink",
                 "device_id": 5,
                 "file_url": "/home/seeder/4k1.mp4",
                 "video_format": "1080p5000"
@@ -39,8 +39,8 @@
                     "replicas": 1,
                     "type": "frame",
                     "start_port": 30000,
-                    "payload_type": 111,
-                    "audio_format": "PCM16",
+                    "payload_type":"111",
+                    "audio_format": "AM824",
                     "audio_channel": ["ST"],
                     "audio_sampling": "48kHz",
                     "audio_ptime": "1",

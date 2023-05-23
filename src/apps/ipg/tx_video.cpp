@@ -75,7 +75,8 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
     auto f = s->tx_source->get_video_frame();
     if(!f) return;
 
-    // convert pixel format
+
+    // // convert pixel format
     if(s->source_info->type == "decklink")
     {
         // convert v210 to yuv10be

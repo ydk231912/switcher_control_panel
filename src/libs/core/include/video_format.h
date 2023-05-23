@@ -71,7 +71,7 @@ namespace seeder::core
         std::size_t          size; // frame size in bytes
         std::string          name; // name of output format
 
-        int                  audio_channels = 8;
+        int                  audio_channels = 2;
         int                  audio_sample_rate;
         int                  audio_samples; // 16bit 24bit
         std::vector<int>     audio_cadence; // rotating optimal number of samples per frame
@@ -91,6 +91,7 @@ namespace seeder::core
                         std::vector<int> audio_cadence);
 
         video_format_desc(std::string format_name);
+        
         video_format_desc();
     };
 }// namespace seeder::core

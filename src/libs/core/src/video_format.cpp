@@ -89,6 +89,7 @@ namespace seeder::core
             }
         }
     }
+    
 
     video_format_desc::video_format_desc()
     {
