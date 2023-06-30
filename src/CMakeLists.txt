@@ -33,6 +33,9 @@ list(APPEND LINKER_LIBS
 
 # include_directories(${Boost_INCLUDE_DIRS})
 # list(APPEND LINKER_LIBS ${Boost_LIBRARIES})
+set(BOOST_INLCUDE_PATH /ops/boost/include)
+set(BOOST_LIB_PATH /ops/boost/lib)
+#include_directories(${BOOST_INLCUDE_PATH})
 list(APPEND LINKER_LIBS 
     ${X86_LIB_PATH}/libboost_filesystem.so
     ${X86_LIB_PATH}/libboost_thread.so 
@@ -56,7 +59,7 @@ list(APPEND LINKER_LIBS
 
 # DPDK Media Tranport Library
 list(APPEND LINKER_LIBS 
-/usr/local/lib/x86_64-linux-gnu/libst_dpdk.so)
+/usr/local/lib/x86_64-linux-gnu/libmtl.so)
 include_directories(/usr/local/include)
 
 # json

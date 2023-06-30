@@ -11,7 +11,7 @@
 // #endif
 
 
-int st_app_parse_args(struct st_app_context* ctx, struct st_init_params* p, int argc,
+int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int argc,
                       char** argv);
 
 // #if defined(__cplusplus)

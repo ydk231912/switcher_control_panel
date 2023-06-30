@@ -19621,3 +19621,4 @@
 [2023-05-23 14:21:09.031] [SEEDER ST2110] [error] main, st_tx_video_source_start fail
 [2023-05-23 14:21:35.899] [SEEDER ST2110] [error] Failed to enable DeckLink audio input.
 [2023-05-23 14:21:35.899] [SEEDER ST2110] [error] main, st_tx_video_source_start fail
+[2023-05-29 18:04:52.659] [SEEDER ST2110] [error] main, st_init fail

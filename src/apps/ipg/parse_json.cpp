@@ -978,7 +978,7 @@ static int parse_st22p_format(json_object* st22p_obj, st_json_st22p_session_t* s
   } else if (strcmp(format, "YUV422PLANAR8") == 0) {
     st22p->info.format = ST_FRAME_FMT_YUV422PLANAR8;
   } else if (strcmp(format, "YUV422PACKED8") == 0) {
-    st22p->info.format = ST_FRAME_FMT_YUV422PACKED8;
+    st22p->info.format = ST_FRAME_FMT_UYVY;
   } else if (strcmp(format, "YUV422RFC4175PG2BE10") == 0) {
     st22p->info.format = ST_FRAME_FMT_YUV422RFC4175PG2BE10;
   } else if (strcmp(format, "RGB8") == 0) {
@@ -1193,7 +1193,7 @@ static int parse_st20p_format(json_object* st20p_obj, st_json_st20p_session_t* s
   } else if (strcmp(format, "YUV422PLANAR8") == 0) {
     st20p->info.format = ST_FRAME_FMT_YUV422PLANAR8;
   } else if (strcmp(format, "YUV422PACKED8") == 0) {
-    st20p->info.format = ST_FRAME_FMT_YUV422PACKED8;
+    st20p->info.format = ST_FRAME_FMT_UYVY;
   } else if (strcmp(format, "YUV422RFC4175PG2BE10") == 0) {
     st20p->info.format = ST_FRAME_FMT_YUV422RFC4175PG2BE10;
   } else if (strcmp(format, "RGB8") == 0) {
@@ -1591,7 +1591,7 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
       json_object* dip_array = st_json_object_object_get(tx_group, "dip");
       if (dip_array != NULL && json_object_get_type(dip_array) == json_type_array) {
         int len = json_object_array_length(dip_array);
-        if (len < 1 || len > ST_PORT_MAX) {
+        if (len < 1 || len > MTL_PORT_MAX) {
           logger->error("{}, wrong dip number", __func__);
           ret = -ST_JSON_NOT_VALID;
           return error(ret, ctx, root_object);
@@ -1902,7 +1902,7 @@ int st_app_parse_json(st_json_context_t* ctx, const char* filename) {
       json_object* ip_array = st_json_object_object_get(rx_group, "ip");
       if (ip_array != NULL && json_object_get_type(ip_array) == json_type_array) {
         int len = json_object_array_length(ip_array);
-        if (len < 1 || len > ST_PORT_MAX) {
+        if (len < 1 || len > MTL_PORT_MAX) {
           logger->error("{}, wrong dip number", __func__);
           ret = -ST_JSON_NOT_VALID;
           return error(ret, ctx, root_object);
@@ -2296,7 +2296,7 @@ int st_app_parse_json_object_add_tx(st_json_context_t* ctx, json_object* tx_grou
       json_object* dip_array = st_json_object_object_get(tx_group, "dip");
       if (dip_array != NULL && json_object_get_type(dip_array) == json_type_array) {
         int len = json_object_array_length(dip_array);
-        if (len < 1 || len > ST_PORT_MAX) {
+        if (len < 1 || len > MTL_PORT_MAX) {
           logger->error("{}, wrong dip number", __func__);
           ret = -ST_JSON_NOT_VALID;
           return error(ret, ctx, root_object);
@@ -2500,6 +2500,7 @@ int st_app_parse_json_object_add_tx(st_json_context_t* ctx, json_object* tx_grou
       }
     }
   }
+  return ST_JSON_SUCCESS;
 }
 
 
@@ -2631,7 +2632,7 @@ int st_app_parse_json_object_update_tx(st_json_context_t* ctx, json_object*tx_gr
       json_object* dip_array = st_json_object_object_get(tx_group, "dip");
       if (dip_array != NULL && json_object_get_type(dip_array) == json_type_array) {
         int len = json_object_array_length(dip_array);
-        if (len < 1 || len > ST_PORT_MAX) {
+        if (len < 1 || len > MTL_PORT_MAX) {
           logger->error("{}, wrong dip number", __func__);
           ret = -ST_JSON_NOT_VALID;
           return error(ret, ctx, root_object);
@@ -2837,6 +2838,7 @@ int st_app_parse_json_object_update_tx(st_json_context_t* ctx, json_object*tx_gr
       }
     }
 }
+return ST_JSON_SUCCESS;
 }
 
 
@@ -2968,7 +2970,7 @@ int st_app_parse_json_object_add_rx(st_json_context_t* ctx, json_object* rx_grou
       json_object* ip_array = st_json_object_object_get(rx_group, "ip");
       if (ip_array != NULL && json_object_get_type(ip_array) == json_type_array) {
         int len = json_object_array_length(ip_array);
-        if (len < 1 || len > ST_PORT_MAX) {
+        if (len < 1 || len > MTL_PORT_MAX) {
           logger->error("{}, wrong dip number", __func__);
           ret = -ST_JSON_NOT_VALID;
           return error(ret, ctx, root_object);
@@ -3173,6 +3175,7 @@ int st_app_parse_json_object_add_rx(st_json_context_t* ctx, json_object* rx_grou
       }
     }
   }
+  return ST_JSON_SUCCESS;
 }
 
 
@@ -3304,7 +3307,7 @@ if (rx_group_array != NULL && json_object_get_type(rx_group_array) == json_type_
       json_object* ip_array = st_json_object_object_get(rx_group, "ip");
       if (ip_array != NULL && json_object_get_type(ip_array) == json_type_array) {
         int len = json_object_array_length(ip_array);
-        if (len < 1 || len > ST_PORT_MAX) {
+        if (len < 1 || len > MTL_PORT_MAX) {
           logger->error("{}, wrong dip number", __func__);
           ret = -ST_JSON_NOT_VALID;
           return error(ret, ctx, root_object);
@@ -3509,4 +3512,5 @@ if (rx_group_array != NULL && json_object_get_type(rx_group_array) == json_type_
       }
     }
   }
+  return ST_JSON_SUCCESS;
 }
