@@ -14,7 +14,7 @@
 #include <boost/chrono.hpp>
 #include <boost/thread/thread.hpp>
 
-#include "consumer/decklink_consumer.h"
+#include "decklink/consumer/decklink_consumer.h"
 #include "core/util/logger.h"
 #include "decklink/util.h"
 #include "core/util/color_conversion.h"

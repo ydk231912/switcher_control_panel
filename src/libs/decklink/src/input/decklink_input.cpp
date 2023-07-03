@@ -16,9 +16,9 @@ extern "C"
     #include <libavformat/avformat.h>
 }
 
-#include "input/decklink_input.h"
+#include "decklink/input/decklink_input.h"
 #include "core/util/logger.h"
-#include "util.h"
+#include "decklink/util.h"
 
 using namespace seeder::decklink::util;
 using namespace seeder::core;

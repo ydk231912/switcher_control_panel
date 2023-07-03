@@ -2,8 +2,8 @@
  * rtp packet
  *
  */
-#include "packet.h"
-#include "header.h"
+#include "rtp/packet.h"
+#include "rtp/header.h"
 #include "st2110/d20/raw_line_header.h"
 #include "st2110/d10/network.h"
 

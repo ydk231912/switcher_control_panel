@@ -11,9 +11,9 @@
 
 #include <iostream>
 
-#include "producer/decklink_producer.h"
+#include "decklink/producer/decklink_producer.h"
 #include "core/util/logger.h"
-#include "util.h"
+#include "decklink/util.h"
 
 using namespace seeder::core;
 using namespace seeder::decklink::util;

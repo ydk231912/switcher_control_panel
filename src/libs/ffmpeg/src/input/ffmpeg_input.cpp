@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <iostream>
 
-#include "input/ffmpeg_input.h"
+#include "ffmpeg/input/ffmpeg_input.h"
 #include "core/util/logger.h"
 #include "core/util/timer.h"
 

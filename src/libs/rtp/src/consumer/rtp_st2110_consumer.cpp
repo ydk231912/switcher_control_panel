@@ -16,7 +16,7 @@
 #include <boost/chrono.hpp>
 #include <boost/thread/thread.hpp>
 
-#include "consumer/rtp_st2110_consumer.h"
+#include "rtp/consumer/rtp_st2110_consumer.h"
 #include "core/util/logger.h"
 #include "core/util/timer.h"
 

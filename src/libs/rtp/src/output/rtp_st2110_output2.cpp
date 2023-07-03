@@ -32,7 +32,7 @@ extern "C"
 #include "rtp/header.h"
 #include "rtp/rtp_constant.h"
 
-#include "output/rtp_st2110_output2.h"
+#include "rtp/output/rtp_st2110_output2.h"
 
 using namespace seeder::core;
 namespace seeder::rtp

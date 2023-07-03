@@ -16,10 +16,10 @@
 #include <boost/chrono.hpp>
 #include <boost/thread/thread.hpp>
 
-#include "producer/rtp_st2110_producer.h"
+#include "rtp/producer/rtp_st2110_producer.h"
 #include "core/util/logger.h"
 #include "core/util/timer.h"
-#include "header.h"
+#include "rtp/header.h"
 #include "st2110/d20/raw_line_header.h"
 
 using namespace seeder::core;

@@ -15,9 +15,9 @@
 #include <boost/thread/thread.hpp>
 
 #include "core/util/logger.h"
-#include "util.h"
+#include "decklink/util.h"
 #include "core/util/color_conversion.h"
-#include "output/decklink_output.h"
+#include "decklink/output/decklink_output.h"
 
 using namespace seeder::core;
 using namespace seeder::decklink::util;

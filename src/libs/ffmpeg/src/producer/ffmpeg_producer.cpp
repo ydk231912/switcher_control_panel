@@ -14,7 +14,7 @@
 #include <boost/thread/thread.hpp>
 #include <chrono>
 
-#include "producer/ffmpeg_producer.h"
+#include "ffmpeg/producer/ffmpeg_producer.h"
 #include "core/util/logger.h"
 
 using namespace seeder::core;

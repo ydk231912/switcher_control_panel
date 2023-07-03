@@ -9,7 +9,7 @@
  * 
  */
 
-#include "util.h"
+#include "decklink/util.h"
 
 namespace seeder::decklink::util
 {

@@ -3,7 +3,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/system/error_code.hpp>
 #include <functional>
-#include <httplib.h>
+#include "httplib.h"
 #include <ios>
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -96,19 +96,19 @@ private:
         Json::Value add_tx;
         Json::Value root_tx_arr = root["tx_sessions"];
 
-        int count = root_tx_arr.size();
+        // int count = root_tx_arr.size();
         
-        Json::Value add_tx_array =  add_tx["tx_sessions"];
-        for (size_t i = 0; i < add_tx_array.size(); i++)
-        {
-            count = count + i;
-            Json::Value add_tx_obj = add_tx_array[i];
-            add_tx_obj["id"] = count;
-            root_tx_arr[count] = add_tx_obj;
-        }
+        // Json::Value add_tx_array =  add_tx["tx_sessions"];
+        // for (size_t i = 0; i < add_tx_array.size(); i++)
+        // {
+        //     count = count + i;
+        //     Json::Value add_tx_obj = add_tx_array[i];
+        //     add_tx_obj["id"] = count;
+        //     root_tx_arr[count] = add_tx_obj;
+        // }
 
-        root["tx_sessions"] = root_tx_arr;
-        res.body = write.write(root);
+        // root["tx_sessions"] = root_tx_arr;
+        // res.body = write.write(root);
 
         // st_json_context_t * ctx_add = (st_json_context_t*)st_app_zmalloc(sizeof(st_json_context_t));
         // ret = st_app_parse_json_object_add_tx(ctx_add, add_tx_array,root,count);
