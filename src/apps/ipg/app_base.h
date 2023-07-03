@@ -505,6 +505,7 @@ struct st_app_rx_st20p_session {
 
 struct st_app_context {
   st_json_context_t* json_ctx;
+  std::string config_file_path;
   struct mtl_init_params para;
   mtl_handle st;
   int test_time_s;
@@ -586,6 +587,7 @@ struct st_app_context {
   // rx_output handle;
   std::vector<std::shared_ptr<seeder::core::output>> rx_output;
   std::vector<st_app_rx_output*> output_info;
+  int http_port = 0;
 };
 
 static inline void* st_app_malloc(size_t sz) { return malloc(sz); }

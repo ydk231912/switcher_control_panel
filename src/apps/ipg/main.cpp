@@ -31,7 +31,8 @@
 #include "tx_audio.h"
 #include "rx_video.h"
 #include "rx_audio.h"
-#include "http_parse_json.h"
+#include "http_server.h"
+
 extern "C"
 {
     #include "test.h"
@@ -748,7 +749,9 @@ int main(int argc, char **argv)
         }
     }
 
- 
+    seeder::st_http_server http_server {ctx};
+
+    http_server.start();
 
     // wait for stop
     int test_time_s = ctx->test_time_s;
@@ -758,6 +761,7 @@ int main(int argc, char **argv)
         sleep(1);
     }
     logger->debug("{}, start to ending", __func__);
+    http_server.stop();
 
     if(!ctx->runtime_session) {
         /* stop st first */

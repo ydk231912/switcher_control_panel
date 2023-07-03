@@ -84,6 +84,7 @@ enum st_args_cmd {
   ST_ARG_TASKLET_SLEEP,
   ST_ARG_APP_THREAD,
   ST_ARG_RXTX_SIMD_512,
+  ST_ARG_HTTP_SERVER_PORT,
   ST_ARG_MAX,
 };
 
@@ -167,6 +168,7 @@ static struct option st_app_args_options[] = {
     {"tasklet_sleep", no_argument, 0, ST_ARG_TASKLET_SLEEP},
     {"app_thread", no_argument, 0, ST_ARG_APP_THREAD},
     {"rxtx_simd_512", no_argument, 0, ST_ARG_RXTX_SIMD_512},
+    {"http_port", required_argument, 0, ST_ARG_HTTP_SERVER_PORT},
 
     {0, 0, 0, 0}};
 
@@ -384,6 +386,7 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_CONFIG_FILE:
         //optarg = "./test_tx_1port_1v_1a_1anc.json";
         app_args_json(ctx, p, optarg);
+        ctx->config_file_path = optarg;
         //cmd = -2;
         break;
       case ST_ARG_PTP_UNICAST_ADDR:
@@ -517,6 +520,9 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
         break;
       case ST_ARG_RXTX_SIMD_512:
         p->flags |= MTL_FLAG_RXTX_SIMD_512;
+        break;
+      case ST_ARG_HTTP_SERVER_PORT:
+        ctx->http_port = std::atoi(optarg);
         break;
       case '?':
         break;

@@ -12,9 +12,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <string>
+
 #include "app_platform.h"
 #include "fmt.h"
-#include "httplib.h"
 #ifndef _ST_APP_PARSE_JSON_HEAD_H_
 #define _ST_APP_PARSE_JSON_HEAD_H_
 // #if defined(__cplusplus)
@@ -101,6 +102,7 @@ typedef struct st_json_interface {
 } st_json_interface_t;
 
 typedef struct st_json_session_base {
+  std::string id;
   uint8_t ip[MTL_PORT_MAX][MTL_IP_ADDR_LEN];
   st_json_interface_t* inf[MTL_PORT_MAX];
   int num_inf;
