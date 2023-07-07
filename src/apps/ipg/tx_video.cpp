@@ -7,6 +7,9 @@
 #include "core/frame/frame.h"
 #include "core/util/timer.h"
 #include "core/util/timer.h"
+#include "ffmpeg/input/ffmpeg_input.h"
+#include "decklink/input/decklink_input.h"
+
 
 using namespace seeder::core;
 
@@ -144,7 +147,7 @@ static int app_tx_video_handle_free(struct st_app_tx_video_session* s)
     return 0;
 }
 
-static int app_tx_video_uinit(struct st_app_tx_video_session* s) 
+int st_app_tx_video_session_uinit(struct st_app_tx_video_session* s) 
 {
     app_tx_video_handle_free(s);
 
@@ -250,7 +253,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     memcpy(ops.dip_addr[MTL_PORT_P],
             video ? video->base.ip[MTL_PORT_P] : ctx->tx_dip_addr[MTL_PORT_P], MTL_IP_ADDR_LEN);
     strncpy(ops.port[MTL_PORT_P],
-            video ? video->base.inf[MTL_PORT_P]->name : ctx->para.port[MTL_PORT_P], MTL_PORT_MAX_LEN);
+            video ? video->base.inf[MTL_PORT_P].name : ctx->para.port[MTL_PORT_P], MTL_PORT_MAX_LEN);
     ops.udp_port[MTL_PORT_P] = video ? video->base.udp_port : (10000 + s->idx);
     if(ctx->has_tx_dst_mac[MTL_PORT_P]) 
     {
@@ -262,7 +265,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
         memcpy(ops.dip_addr[MTL_PORT_R],
             video ? video->base.ip[MTL_PORT_R] : ctx->tx_dip_addr[MTL_PORT_R], MTL_IP_ADDR_LEN);
         strncpy(ops.port[MTL_PORT_R],
-                video ? video->base.inf[MTL_PORT_R]->name : ctx->para.port[MTL_PORT_R], MTL_PORT_MAX_LEN);
+                video ? video->base.inf[MTL_PORT_R].name : ctx->para.port[MTL_PORT_R], MTL_PORT_MAX_LEN);
         ops.udp_port[MTL_PORT_R] = video ? video->base.udp_port : (10000 + s->idx);
         if(ctx->has_tx_dst_mac[MTL_PORT_R]) 
         {
@@ -324,7 +327,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     if(!handle) 
     {
         logger->error("{}({}), st20_tx_create fail", __func__, idx);
-        app_tx_video_uinit(s);
+        st_app_tx_video_session_uinit(s);
         return -EIO;
     }
     s->handle = handle;
@@ -336,8 +339,8 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
 
     // tx video source
     s->tx_source = ctx->tx_sources[video->tx_source_id];
-    s->id = video->tx_source_id;
-    s->source_info = ctx->source_info[video->tx_source_id];
+    s->tx_source_id = video->tx_source_id;
+    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[video->tx_source_id]);
 
     if(!ctx->app_thread) 
     {
@@ -350,66 +353,149 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     if(ret < 0)
     {
         logger->error("{}, st20_app_thread create fail, err = {}", __func__, ret);
-        app_tx_video_uinit(s);
+        st_app_tx_video_session_uinit(s);
         return -EIO;
     }
 
     return 0;
 }
 
+static int st_app_tx_video_session_init(st_app_context* ctx, st_json_video_session_t *json_video, st_app_tx_video_session *s) {
+    int ret = 0;
+    s->idx = ctx->next_video_session_idx++;
+    s->lcore = -1;
+    ret = app_tx_video_init(ctx, json_video, s);
+    if (ret < 0) logger->error("{}({}), app_tx_video_init fail {}", __func__, s->idx, ret);
+    return ret;
+}
+
 int st_app_tx_video_sessions_init(struct st_app_context* ctx) 
 {
-    int ret, i;
-    struct st_app_tx_video_session* s;
-    ctx->tx_video_sessions = (struct st_app_tx_video_session*)st_app_zmalloc(
-        sizeof(struct st_app_tx_video_session) * 64 );
-    if(!ctx->tx_video_sessions) return -ENOMEM;
+    int ret = 0;
+    ctx->tx_video_sessions.resize(ctx->json_ctx->tx_video_sessions.size());
     
-    for(i = 0; i < ctx->tx_video_session_cnt; i++) 
+    for (auto i = 0; i < ctx->tx_video_sessions.size(); ++i) {
+        auto &s = ctx->tx_video_sessions[i];
+        s = std::shared_ptr<st_app_tx_video_session>(new st_app_tx_video_session {});
+        ret = st_app_tx_video_session_init(ctx, &ctx->json_ctx->tx_video_sessions[i], s.get());
+        if (ret) return ret;
+    }
+    return 0;
+}
+
+int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_json_ctx) {
+    int ret = 0;
+    for (auto &json_video : new_json_ctx->tx_video_sessions) {
+        auto s = std::shared_ptr<st_app_tx_video_session>(new st_app_tx_video_session {});
+        ret = st_app_tx_video_session_init(ctx, &json_video, s.get());
+        if (ret) return ret;
+        ctx->tx_video_sessions.push_back(s);
+    }
+    return ret;
+}
+
+static void set_video_foramt(struct st_json_audio_info info, seeder::core::video_format_desc* desc)
+{
+    auto sample_size = st30_get_sample_size(info.audio_format); //ST30_FMT_PCM8 1 byte, ST30_FMT_PCM16 2 bytes, ST30_FMT_PCM24 3 bytes
+    auto ptime = info.audio_ptime; // ST30_PTIME_1MS, ST30_PTIME_4MS
+    desc->audio_channels = info.audio_channel;
+    desc->sample_num = st30_get_sample_num(ptime, info.audio_sampling); //sample number per ms, ST30_PTIME_1MS + sampling 48k/s = 48
+    if(ptime == ST30_PTIME_4MS)
     {
-        s = &ctx->tx_video_sessions[i];
-        s->idx = i;
-        s->lcore = -1;
-        ret = app_tx_video_init(
-            ctx, ctx->json_ctx ? &ctx->json_ctx->tx_video_sessions[i] : NULL, s);
-        if (ret < 0) 
+        desc->st30_frame_size = sample_size * st30_get_sample_num(ST30_PTIME_4MS, info.audio_sampling) * info.audio_channel;
+        desc->st30_fps = 250;
+    }
+    else
+    {
+        desc->st30_frame_size = sample_size * st30_get_sample_num(ST30_PTIME_1MS, info.audio_sampling) * info.audio_channel;
+        desc->st30_fps = 1000;
+    }
+
+    if(info.audio_sampling == ST30_SAMPLING_96K)
+        desc->audio_sample_rate = 96000;
+    else
+        desc->audio_sample_rate = 48000;
+
+    if(info.audio_format == ST30_FMT_PCM8)
+        desc->audio_samples = 8;
+    else if(info.audio_format == ST30_FMT_PCM24)
+        desc->audio_samples = 24;
+    else if(info.audio_format == ST31_FMT_AM824)
+        desc->audio_samples = 32;
+    else 
+        desc->audio_samples = 16;
+
+}
+
+int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {
+    try
+    {
+        for(int i = 0; i < c->tx_sources.size(); i++)
         {
-            logger->error("{}({}), app_tx_video_init fail {}", __func__, i, ret);
-            return ret;
+            auto &s = c->tx_sources[i];
+            if(s.type == "decklink")
+            {
+                auto format_desc = seeder::core::video_format_desc(s.video_format);
+                auto info = c->tx_audio_sessions[i].info;
+                set_video_foramt(info, &format_desc);
+                auto decklink = std::make_shared<seeder::decklink::decklink_input>(s.id, s.device_id, format_desc);
+                ctx->tx_sources.emplace(decklink->get_source_id(), decklink);
+                ctx->source_info.emplace(decklink->get_source_id(), s);
+            }
+            else if(s.type == "file")
+            {
+                auto format_desc = seeder::core::video_format_desc(s.video_format);
+                auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s.id, s.file_url, format_desc);
+                ctx->tx_sources.emplace(ffmpeg->get_source_id(), ffmpeg);
+                ctx->source_info.emplace(ffmpeg->get_source_id(), s);
+            }
         }
     }
-
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
+    
     return 0;
 }
 
-
-int st_app_tx_video_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
-{
-    // st_app_tx_video_session* tx_video_sessions  = (struct st_app_tx_video_session*)st_app_zmalloc(
-    //     sizeof(struct st_app_tx_video_session) * c->tx_video_session_cnt);
-    int count = ctx->tx_video_session_cnt;
-    int ret=0;
-    struct st_app_tx_video_session* s;
-    for(int i = 0; i < c->tx_video_session_cnt; i++)
-    {
-        count= count+i;
-        ctx->tx_video_session_cnt+=1;
-        s = &ctx->tx_video_sessions[count];
-        s->idx = i;
-        s->lcore = -1;
-        ret = app_tx_video_init(
-            ctx,c ? &c->tx_video_sessions[i] : NULL, s);
-        if (ret < 0) 
-        {
-            logger->error("{}({}), app_tx_video_init fail {}", __func__, i, ret);
-            return ret;
-        }   
+int st_tx_video_source_start(st_app_context *ctx, seeder::core::input *s) {
+    try {
+        if (s) s->start();
+    } catch(const std::exception& e) {
+        return -1;
     }
     return 0;
 }
 
 
+// int st_app_tx_video_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
+// {
+//     // st_app_tx_video_session* tx_video_sessions  = (struct st_app_tx_video_session*)st_app_zmalloc(
+//     //     sizeof(struct st_app_tx_video_session) * c->tx_video_session_cnt);
+//     int count = ctx->tx_video_session_cnt;
+//     int ret=0;
+//     struct st_app_tx_video_session* s;
+//     for(int i = 0; i < c->tx_video_session_cnt; i++)
+//     {
+//         count= count+i;
+//         ctx->tx_video_session_cnt+=1;
+//         s = &ctx->tx_video_sessions[count];
+//         s->idx = i;
+//         s->lcore = -1;
+//         ret = app_tx_video_init(
+//             ctx,c ? &c->tx_video_sessions[i] : NULL, s);
+//         if (ret < 0) 
+//         {
+//             logger->error("{}({}), app_tx_video_init fail {}", __func__, i, ret);
+//             return ret;
+//         }   
+//     }
+//     return 0;
+// }
 
+
+/*
 int st_app_tx_video_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c) 
 {
     int i,ret;
@@ -443,33 +529,26 @@ int st_app_tx_video_sessions_uinit_update(struct st_app_context* ctx,int id,st_j
     }
     return 0;
 }
+*/
 
 
 int st_app_tx_video_sessions_uinit(struct st_app_context* ctx) 
 {
-    int i;
-    struct st_app_tx_video_session* s;
-    if(!ctx->tx_video_sessions) return 0;
-    for(i = 0; i < ctx->tx_video_session_cnt; i++) 
-    {
-        s = &ctx->tx_video_sessions[i];
-        app_tx_video_uinit(s);
+    for (auto &s : ctx->tx_video_sessions) {
+        if (s) {
+            st_app_tx_video_session_uinit(s.get());
+        }
     }
-    st_app_free(ctx->tx_video_sessions);
+    ctx->tx_video_sessions.clear();
 
     return 0;
 }
 
 int st_app_tx_video_sessions_result(struct st_app_context* ctx) 
 {
-    int i, ret = 0;
-    struct st_app_tx_video_session* s;
-    if(!ctx->tx_video_sessions) return 0;
-    for(i = 0; i < ctx->tx_video_session_cnt; i++)
-    {
-        s = &ctx->tx_video_sessions[i];
-        ret += app_tx_video_result(s);
+    int ret = 0;
+    for (auto &s : ctx->tx_video_sessions) {
+        ret += app_tx_video_result(s.get());
     }
-
     return 0;
 }

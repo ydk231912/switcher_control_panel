@@ -3,7 +3,7 @@
 #include "core/util/logger.h"
 #include "core/stream/input.h"
 #include "player.h"
-
+#include "fmt.h"
 
 
 using namespace seeder::core;
@@ -258,7 +258,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     // strncpy(ops.port[ST_PORT_P],
     //         video ? video->base.inf[ST_PORT_P]->name : ctx->para.port[ST_PORT_P],ST_PORT_MAX_LEN);
     strncpy(ops.port[MTL_PORT_P],
-            video ? video->base.inf[MTL_PORT_P]->name : ctx->para.port[MTL_PORT_P],MTL_PORT_MAX_LEN);
+            video ? video->base.inf[MTL_PORT_P].name : ctx->para.port[MTL_PORT_P],MTL_PORT_MAX_LEN);
     
     ops.udp_port[MTL_PORT_P] = video ? video->base.udp_port : (10000 + s->idx);
     if(ops.num_port > 1)
@@ -267,7 +267,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
                 video ? video->base.ip[MTL_PORT_R] : ctx->rx_sip_addr[MTL_PORT_R],
                 MTL_IP_ADDR_LEN);
         strncpy(ops.port[MTL_PORT_R],
-                video ? video->base.inf[MTL_PORT_R]->name : ctx->para.port[MTL_PORT_R],
+                video ? video->base.inf[MTL_PORT_R].name : ctx->para.port[MTL_PORT_R],
                 MTL_PORT_MAX_LEN);
         ops.udp_port[MTL_PORT_R] = video ? video->base.udp_port : (10000 + s->idx);
     }
@@ -403,153 +403,146 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
 
 int st_app_rx_video_sessions_init(struct st_app_context* ctx) 
 {
-    int ret, i;
-    struct st_app_rx_video_session* s;
+    int ret = 0;
     int fb_cnt = ctx->rx_video_fb_cnt;
     if(fb_cnt <= 0) fb_cnt = 6;
 
-    ctx->rx_video_sessions = (struct st_app_rx_video_session*)st_app_zmalloc(
-        sizeof(struct st_app_rx_video_session) * 64);
-    if(!ctx->rx_video_sessions) return -ENOMEM;
-    for(i = 0; i < ctx->rx_video_session_cnt; i++) 
+    ctx->rx_video_sessions.resize(ctx->json_ctx->rx_video_sessions.size());
+    for(auto i = 0; i < ctx->rx_video_sessions.size(); i++) 
     {
-        s = &ctx->rx_video_sessions[i];
+        auto &s = ctx->rx_video_sessions[i];
+        s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
         s->idx = i;
         s->st = ctx->st;
         s->framebuff_cnt = fb_cnt;
         s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
         s->st20_dst_fd = -1;
 
-        ret = app_rx_video_init(ctx, ctx->json_ctx ? &ctx->json_ctx->rx_video_sessions[i] : NULL, s);
+        ret = app_rx_video_init(ctx, ctx->json_ctx ? &ctx->json_ctx->rx_video_sessions[i] : NULL, s.get());
         if(ret < 0)
         {
             logger->debug("{}({}), app_rx_video_init fail {}", __func__, i, ret);
             return ret;
         }
     }
+    return ret;
 }
 
 
-int st_app_rx_video_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
-{
-    int ret, i;
-    struct st_app_rx_video_session* s;
-    int fb_cnt = ctx->rx_video_fb_cnt;
-    if(fb_cnt <= 0) fb_cnt = 6;
+// int st_app_rx_video_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
+// {
+//     int ret, i;
+//     struct st_app_rx_video_session* s;
+//     int fb_cnt = ctx->rx_video_fb_cnt;
+//     if(fb_cnt <= 0) fb_cnt = 6;
 
-    // ctx->rx_video_sessions = (struct st_app_rx_video_session*)st_app_zmalloc(
-    //     sizeof(struct st_app_rx_video_session) * c->rx_video_session_cnt);
+//     // ctx->rx_video_sessions = (struct st_app_rx_video_session*)st_app_zmalloc(
+//     //     sizeof(struct st_app_rx_video_session) * c->rx_video_session_cnt);
 
-    if(!ctx->rx_video_sessions) return -ENOMEM;
-    int count = ctx->rx_video_session_cnt;
+//     if(!ctx->rx_video_sessions) return -ENOMEM;
+//     int count = ctx->rx_video_session_cnt;
 
-    for(i = 0; i < c->rx_video_session_cnt; i++) 
-    {
-        count = count + i;
-        ctx->rx_video_session_cnt+=1;
-        s = &ctx->rx_video_sessions[count];
-        s->idx = i;
-        s->st = ctx->st;
-        s->framebuff_cnt = fb_cnt;
-        s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
-        s->st20_dst_fd = -1;
+//     for(i = 0; i < c->rx_video_session_cnt; i++) 
+//     {
+//         count = count + i;
+//         ctx->rx_video_session_cnt+=1;
+//         s = &ctx->rx_video_sessions[count];
+//         s->idx = i;
+//         s->st = ctx->st;
+//         s->framebuff_cnt = fb_cnt;
+//         s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
+//         s->st20_dst_fd = -1;
 
-        ret = app_rx_video_init(ctx,c ? &c->rx_video_sessions[i] : NULL, s);
-        if(ret < 0)
-        {
-            logger->debug("{}({}),st_app_rx_video_sessions_init_add {}", __func__, i, ret);
-            return ret;
-        }
-    }
-}
-
-
+//         ret = app_rx_video_init(ctx,c ? &c->rx_video_sessions[i] : NULL, s);
+//         if(ret < 0)
+//         {
+//             logger->debug("{}({}),st_app_rx_video_sessions_init_add {}", __func__, i, ret);
+//             return ret;
+//         }
+//     }
+// }
 
 
 int st_app_rx_video_sessions_uinit(struct st_app_context* ctx)
 {
-    int i;
-    struct st_app_rx_video_session* s;
-    if(!ctx->rx_video_sessions) return 0;
-    for (i = 0; i < ctx->rx_video_session_cnt; i++)
-    {
-        s = &ctx->rx_video_sessions[i];
-        app_rx_video_uinit(s);
-    }
-    st_app_free(ctx->rx_video_sessions);
-
-    return 0;
-}
-
-int st_app_rx_video_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c)
-{
-    int i,ret;
-    struct st_app_rx_video_session* s;
-    struct st_app_rx_video_session* s_new;
-    int fb_cnt = ctx->rx_video_fb_cnt;
-    if(!ctx->rx_video_sessions) return 0;
-    for(int i =0;i<ctx->rx_video_session_cnt;i++)
-    {
-      if (ctx->rx_video_sessions[i].id == id)
-      {
-        s = &ctx->rx_video_sessions[i];
-        app_rx_video_uinit(s);
-        for(int j =0;j<c->rx_video_session_cnt;j++)
-        {
-            if(c->rx_video_sessions->rx_output_id == id){
-            s_new->idx = i;
-            s_new->st = ctx->st;
-            s_new->framebuff_cnt = fb_cnt;
-            s_new->st20_dst_fb_cnt = ctx->rx_video_file_frames;
-            s_new->st20_dst_fd = -1;
-            ret = app_rx_video_init(ctx, c ? &c->rx_video_sessions[j] : NULL, s_new);
-            if(ret < 0)
-            {
-                logger->debug("{}({}), st_app_rx_video_sessions_uinit_update fail {}", __func__, i, ret);
-                return ret;
-            }
-
-            }
+    for (auto &s : ctx->rx_video_sessions) {
+        if (s) {
+            app_rx_video_uinit(s.get());
         }
-        ctx->rx_video_sessions[i]= *s_new;
-      }
     }
-    return 0;
-}
-
-static int app_rx_video_stat(struct st_app_rx_video_session* s)
-{
-    uint64_t cur_time_ns = st_app_get_monotonic_time();
-    #ifdef DEBUG
-        double time_sec = (double)(cur_time_ns - s->stat_last_time) / NS_PER_S;
-        double framerate = s->stat_frame_received / time_sec;
-        logger->debug("{}({}), fps {}, {} frame received", __func__, s->idx, framerate,
-            s->stat_frame_received);
-    #endif
-    if(s->measure_latency && s->stat_frame_received)
-    {
-        double latency_ms = (double)s->stat_latency_us_sum / s->stat_frame_received / 1000;
-        logger->info("{}({}), avrage latency {}ms", __func__, s->idx, latency_ms);
-        s->stat_latency_us_sum = 0;
-    }
-    s->stat_frame_received = 0;
-    s->stat_last_time = cur_time_ns;
 
     return 0;
 }
 
-static int app_rx_video_result(struct st_app_rx_video_session* s)
-{
-    int idx = s->idx;
-    uint64_t cur_time_ns = st_app_get_monotonic_time();
-    double time_sec = (double)(cur_time_ns - s->stat_frame_frist_rx_time) / NS_PER_S;
-    double framerate = s->stat_frame_total_received / time_sec;
+// int st_app_rx_video_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c)
+// {
+//     int i,ret;
+//     struct st_app_rx_video_session* s;
+//     struct st_app_rx_video_session* s_new;
+//     int fb_cnt = ctx->rx_video_fb_cnt;
+//     if(!ctx->rx_video_sessions) return 0;
+//     for(int i =0;i<ctx->rx_video_session_cnt;i++)
+//     {
+//       if (ctx->rx_video_sessions[i].id == id)
+//       {
+//         s = &ctx->rx_video_sessions[i];
+//         app_rx_video_uinit(s);
+//         for(int j =0;j<c->rx_video_session_cnt;j++)
+//         {
+//             if(c->rx_video_sessions->rx_output_id == id){
+//             s_new->idx = i;
+//             s_new->st = ctx->st;
+//             s_new->framebuff_cnt = fb_cnt;
+//             s_new->st20_dst_fb_cnt = ctx->rx_video_file_frames;
+//             s_new->st20_dst_fd = -1;
+//             ret = app_rx_video_init(ctx, c ? &c->rx_video_sessions[j] : NULL, s_new);
+//             if(ret < 0)
+//             {
+//                 logger->debug("{}({}), st_app_rx_video_sessions_uinit_update fail {}", __func__, i, ret);
+//                 return ret;
+//             }
 
-    if(!s->stat_frame_total_received) return -EINVAL;
+//             }
+//         }
+//         ctx->rx_video_sessions[i]= *s_new;
+//       }
+//     }
+//     return 0;
+// }
 
-    logger->critical("{}({}), {}, fps {}, {} frame received", __func__, idx,
-            ST_APP_EXPECT_NEAR(framerate, s->expect_fps, s->expect_fps * 0.05) ? "OK"
-                                                                                : "FAILED",
-            framerate, s->stat_frame_total_received);
-    return 0;
-}
+// static int app_rx_video_stat(struct st_app_rx_video_session* s)
+// {
+//     uint64_t cur_time_ns = st_app_get_monotonic_time();
+//     #ifdef DEBUG
+//         double time_sec = (double)(cur_time_ns - s->stat_last_time) / NS_PER_S;
+//         double framerate = s->stat_frame_received / time_sec;
+//         logger->debug("{}({}), fps {}, {} frame received", __func__, s->idx, framerate,
+//             s->stat_frame_received);
+//     #endif
+//     if(s->measure_latency && s->stat_frame_received)
+//     {
+//         double latency_ms = (double)s->stat_latency_us_sum / s->stat_frame_received / 1000;
+//         logger->info("{}({}), avrage latency {}ms", __func__, s->idx, latency_ms);
+//         s->stat_latency_us_sum = 0;
+//     }
+//     s->stat_frame_received = 0;
+//     s->stat_last_time = cur_time_ns;
+
+//     return 0;
+// }
+
+// static int app_rx_video_result(struct st_app_rx_video_session* s)
+// {
+//     int idx = s->idx;
+//     uint64_t cur_time_ns = st_app_get_monotonic_time();
+//     double time_sec = (double)(cur_time_ns - s->stat_frame_frist_rx_time) / NS_PER_S;
+//     double framerate = s->stat_frame_total_received / time_sec;
+
+//     if(!s->stat_frame_total_received) return -EINVAL;
+
+//     logger->critical("{}({}), {}, fps {}, {} frame received", __func__, idx,
+//             ST_APP_EXPECT_NEAR(framerate, s->expect_fps, s->expect_fps * 0.05) ? "OK"
+//                                                                                 : "FAILED",
+//             framerate, s->stat_frame_total_received);
+//     return 0;
+// }

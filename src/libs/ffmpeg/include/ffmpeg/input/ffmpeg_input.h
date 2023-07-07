@@ -38,8 +38,8 @@ namespace seeder::ffmpeg
     class ffmpeg_input : public core::input
     {
       public:
-        ffmpeg_input(std::string filename);
-        ffmpeg_input(std::string filename, core::video_format_desc& format_desc);
+        explicit ffmpeg_input(const std::string &source_id, std::string filename);
+        explicit ffmpeg_input(const std::string &source_id, std::string filename, core::video_format_desc& format_desc);
         ~ffmpeg_input();
 
         /**

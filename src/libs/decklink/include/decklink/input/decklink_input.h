@@ -32,7 +32,7 @@ namespace seeder::decklink
          * @brief Construct a new decklink input object.
          * initialize deckllink device and start input stream
          */
-        decklink_input(int device_id, video_format_desc& format_desc);
+        explicit decklink_input(const std::string &source_id, int device_id, video_format_desc& format_desc);
         ~decklink_input();
 
 

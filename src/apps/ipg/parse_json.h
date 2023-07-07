@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2022 Intel Corporation
  */
-// #include "json/json.h"
-#include <json-c/json.h>
 #include <math.h>
 #include <mtl/st30_api.h>
 #include <mtl/st40_api.h>
@@ -13,9 +11,12 @@
 #include <string.h>
 
 #include <string>
+#include <vector>
+#include <memory>
 
 #include "app_platform.h"
 #include "fmt.h"
+#include <json/json.h>
 #ifndef _ST_APP_PARSE_JSON_HEAD_H_
 #define _ST_APP_PARSE_JSON_HEAD_H_
 // #if defined(__cplusplus)
@@ -104,7 +105,7 @@ typedef struct st_json_interface {
 typedef struct st_json_session_base {
   std::string id;
   uint8_t ip[MTL_PORT_MAX][MTL_IP_ADDR_LEN];
-  st_json_interface_t* inf[MTL_PORT_MAX];
+  st_json_interface_t inf[MTL_PORT_MAX];
   int num_inf;
   uint16_t udp_port;
   uint8_t payload_type;
@@ -171,7 +172,7 @@ typedef struct st_json_video_session {
   st_json_video_info_t info;
 
   // tx only
-  int tx_source_id; // video source handle id
+  std::string tx_source_id; // video source handle id
   
   /* rx only items */
   enum user_pg_fmt user_pg_format;
@@ -186,7 +187,7 @@ typedef struct st_json_audio_session {
   st_json_audio_info_t info;
 
   // audio source handle id
-  int tx_source_id;
+  std::string tx_source_id;
   // audio output handle id
   int rx_output_id;
 
@@ -214,46 +215,40 @@ typedef struct st_json_st20p_session {
 } st_json_st20p_session_t;
 
 typedef struct st_json_context {
-  st_json_interface_t* interfaces;
-  int num_interfaces;
+  std::vector<st_json_interface_t> interfaces;
   int sch_quota;
 
-  st_json_video_session_t* tx_video_sessions;
-  int tx_video_session_cnt;
-  st_json_audio_session_t* tx_audio_sessions;
-  int tx_audio_session_cnt;
-  st_json_ancillary_session_t* tx_anc_sessions;
-  int tx_anc_session_cnt;
-  st_json_st22p_session_t* tx_st22p_sessions;
-  int tx_st22p_session_cnt;
-  st_json_st20p_session_t* tx_st20p_sessions;
-  int tx_st20p_session_cnt;
+  std::vector<st_json_video_session_t> tx_video_sessions;
+  std::vector<st_json_audio_session_t> tx_audio_sessions;
+  std::vector<st_json_ancillary_session_t> tx_anc_sessions;
+  std::vector<st_json_st22p_session_t> tx_st22p_sessions;
+  std::vector<st_json_st20p_session_t> tx_st20p_sessions;
 
-  st_json_video_session_t* rx_video_sessions;
-  int rx_video_session_cnt;
-  st_json_audio_session_t* rx_audio_sessions;
-  int rx_audio_session_cnt;
-  st_json_ancillary_session_t* rx_anc_sessions;
-  int rx_anc_session_cnt;
-  st_json_st22p_session_t* rx_st22p_sessions;
-  int rx_st22p_session_cnt;
-  st_json_st20p_session_t* rx_st20p_sessions;
-  int rx_st20p_session_cnt;
+  std::vector<st_json_video_session_t> rx_video_sessions;
+  std::vector<st_json_audio_session_t> rx_audio_sessions;
+  std::vector<st_json_ancillary_session_t> rx_anc_sessions;
+  std::vector<st_json_st22p_session_t> rx_st22p_sessions;
+  std::vector<st_json_st20p_session_t> rx_st20p_sessions;
 
-  struct st_app_tx_source* tx_sources;
-  int tx_source_cnt;
-  struct st_app_rx_output* rx_output;
-  int rx_output_cnt;
+  std::vector<struct st_app_tx_source> tx_sources;
+  std::vector<struct st_app_rx_output> rx_output;
+
+  Json::Value json_root;
+
+  ~st_json_context();
 } st_json_context_t;
 
 int st_app_parse_json(st_json_context_t* ctx, const char* filename);
-void st_app_free_json(st_json_context_t* ctx);
 
 enum st_fps st_app_get_fps(enum video_format fmt);
 uint32_t st_app_get_width(enum video_format fmt);
 uint32_t st_app_get_height(enum video_format fmt);
 bool st_app_get_interlaced(enum video_format fmt);
 
+int st_app_parse_json_add(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
+int st_app_parse_json_update(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
+
+Json::Value st_app_get_fmts();
 
 
 // #if defined(__cplusplus)

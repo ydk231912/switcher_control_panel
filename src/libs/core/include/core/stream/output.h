@@ -12,6 +12,7 @@
 #pragma once
 
 #include "core/frame/frame.h"
+#include <boost/core/noncopyable.hpp>
 
 namespace seeder::core
 {
@@ -21,7 +22,7 @@ namespace seeder::core
      * output devices include: decklink sdi output, video file capture, rtp output stream etc.
      * 
      */
-    class output
+    class output: boost::noncopyable
     {
       public:
         /**

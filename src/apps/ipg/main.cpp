@@ -55,7 +55,7 @@ enum mtl_log_level app_get_log_level(void) { return app_log_level; }
 
 static void app_stat(void *priv)
 {
-    struct st_app_context *ctx = (st_app_context *)priv;
+    // struct st_app_context *ctx = (st_app_context *)priv;
 
     // st_app_rx_video_sessions_stat(ctx);
     // st_app_rx_st22p_sessions_stat(ctx);
@@ -135,21 +135,6 @@ static void st_app_ctx_init(struct st_app_context *ctx)
 {
     user_param_init(ctx, &ctx->para);
 
-    /* tx */
-    ctx->tx_video_session_cnt = 0;
-    ctx->tx_audio_session_cnt = 0;
-    ctx->tx_anc_session_cnt = 0;
-    ctx->tx_st22_session_cnt = 0;
-    ctx->tx_st22p_session_cnt = 0;
-    ctx->tx_st20p_session_cnt = 0;
-
-    /* rx */
-    ctx->rx_video_session_cnt = 0;
-    ctx->rx_audio_session_cnt = 0;
-    ctx->rx_anc_session_cnt = 0;
-    ctx->rx_st22_session_cnt = 0;
-    ctx->rx_st22p_session_cnt = 0;
-    ctx->rx_st20p_session_cnt = 0;
     ctx->rx_max_width = 1920;
     ctx->rx_max_height = 1080;
 
@@ -166,76 +151,7 @@ static void st_app_ctx_init(struct st_app_context *ctx)
     }
 }
 
-static void set_video_foramt(struct st_json_audio_info info, seeder::core::video_format_desc* desc)
-{
-    auto sample_size = st30_get_sample_size(info.audio_format); //ST30_FMT_PCM8 1 byte, ST30_FMT_PCM16 2 bytes, ST30_FMT_PCM24 3 bytes
-    auto ptime = info.audio_ptime; // ST30_PTIME_1MS, ST30_PTIME_4MS
-    desc->audio_channels = info.audio_channel;
-    desc->sample_num = st30_get_sample_num(ptime, info.audio_sampling); //sample number per ms, ST30_PTIME_1MS + sampling 48k/s = 48
-    if(ptime == ST30_PTIME_4MS)
-    {
-        desc->st30_frame_size = sample_size * st30_get_sample_num(ST30_PTIME_4MS, info.audio_sampling) * info.audio_channel;
-        desc->st30_fps = 250;
-    }
-    else
-    {
-        desc->st30_frame_size = sample_size * st30_get_sample_num(ST30_PTIME_1MS, info.audio_sampling) * info.audio_channel;
-        desc->st30_fps = 1000;
-    }
-
-    if(info.audio_sampling == ST30_SAMPLING_96K)
-        desc->audio_sample_rate = 96000;
-    else
-        desc->audio_sample_rate = 48000;
-
-    if(info.audio_format == ST30_FMT_PCM8)
-        desc->audio_samples = 8;
-    else if(info.audio_format == ST30_FMT_PCM24)
-        desc->audio_samples = 24;
-    else if(info.audio_format == ST31_FMT_AM824)
-        desc->audio_samples = 32;
-    else 
-        desc->audio_samples = 16;
-
-}
-
-// initialize video source 
-static int st_tx_video_source_init(struct st_app_context* ctx)
-{
-    st_json_context_t* c = ctx->json_ctx;
-    try
-    {
-        for(int i = 0; i < c->tx_source_cnt; i++)
-        {
-            struct st_app_tx_source* s = &c->tx_sources[i];
-            if(s->type == "decklink")
-            {
-                auto format_desc = seeder::core::video_format_desc(s->video_format);
-                auto info = c->tx_audio_sessions[i].info;
-                set_video_foramt(info, &format_desc);
-                auto decklink = std::make_shared<seeder::decklink::decklink_input>(s->device_id, format_desc);
-                ctx->tx_sources.push_back(decklink);
-                ctx->source_info.push_back(s);
-            }
-            else if(s->type == "file")
-            {
-                auto format_desc = seeder::core::video_format_desc(s->video_format);
-                auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s->file_url, format_desc);
-                ctx->tx_sources.push_back(ffmpeg);
-                ctx->source_info.push_back(s);
-            }
-        }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-    
-    return 0;
-}
-
-
-
+/*
 static int st_tx_video_source_init_update(struct st_app_context* ctx,st_json_context_t* c,int id)
 {
     try
@@ -270,8 +186,9 @@ static int st_tx_video_source_init_update(struct st_app_context* ctx,st_json_con
     } 
     return 0;
 }
+*/
 
-
+/*
 static int st_tx_video_source_init_add(struct st_app_context* ctx,st_json_context_t* c)
 {
     try
@@ -303,44 +220,20 @@ static int st_tx_video_source_init_add(struct st_app_context* ctx,st_json_contex
     }
     return 0;
 }
+*/
 
 
 
 static int st_tx_video_source_start(struct st_app_context* ctx)
 {
-    try
-    {
-        for(auto s : ctx->tx_sources)
-        {
-            if(s) s->start();        
-        }
+    for(auto &[id, s] : ctx->tx_sources) {
+        st_tx_video_source_start(ctx, s.get());
     }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-
     return 0;
-}
-
-static int st_tx_video_source_stop(struct st_app_context* ctx)
-{
-    try
-    {
-        for(auto s : ctx->tx_sources)
-        {
-            if(s) s->stop();        
-        }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-
-    return 0;
-}
+} 
 
 // initialize video output 
+/*
 static int st_rx_output_init(struct st_app_context* ctx)
 {
     st_json_context_t* c = ctx->json_ctx;
@@ -490,61 +383,7 @@ static int st_rx_output_start(struct st_app_context* ctx)
 
     return 0;
 }
-
-static int st_rx_output_stop(struct st_app_context* ctx)
-{
-    try
-    {
-        for(auto s : ctx->rx_output)
-        {
-            if(s) s->stop();        
-        }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-
-    return 0;
-}
-
-static void st_app_ctx_free(struct st_app_context* ctx)
-{
-    st_tx_video_source_stop(ctx);
-    st_rx_output_stop(ctx);
-    st_app_tx_video_sessions_uinit(ctx);
-    st_app_tx_audio_sessions_uinit(ctx);
-    st_app_rx_video_sessions_uinit(ctx);
-    st_app_rx_audio_sessions_uinit(ctx);
-
-    if(ctx->runtime_session)
-        if(ctx->st) mtl_stop(ctx->st);
-    
-    if(ctx->json_ctx)
-    {
-        st_app_free_json(ctx->json_ctx);
-        st_app_free(ctx->json_ctx);
-    }
-
-    if(ctx->st) 
-    {
-        for(int i = 0; i < ST_APP_MAX_LCORES; i++) 
-        {
-            if(ctx->lcore[i] >= 0) {
-                mtl_put_lcore(ctx->st, ctx->lcore[i]);
-                ctx->lcore[i] = -1;
-            }
-            if(ctx->rtp_lcore[i] >= 0) {
-                mtl_put_lcore(ctx->st, ctx->rtp_lcore[i]);
-                ctx->rtp_lcore[i] = -1;
-            }
-        }
-        mtl_uninit(ctx->st);
-        ctx->st = NULL;
-    }
-
-    st_app_free(ctx);
-}
+*/
 
 static void st_app_sig_handler(int signo) 
 {
@@ -564,27 +403,25 @@ static void st_app_sig_handler(int signo)
 // check args are correct
 int st_app_args_check(struct st_app_context *ctx)
 {
-    if(ctx->tx_video_session_cnt > ST_APP_MAX_TX_VIDEO_SESSIONS ||
-        ctx->tx_st22_session_cnt > ST_APP_MAX_TX_VIDEO_SESSIONS ||
-        ctx->tx_st22p_session_cnt > ST_APP_MAX_TX_VIDEO_SESSIONS ||
-        ctx->tx_st20p_session_cnt > ST_APP_MAX_TX_VIDEO_SESSIONS ||
-        ctx->tx_audio_session_cnt > ST_APP_MAX_TX_AUDIO_SESSIONS ||
-        ctx->tx_anc_session_cnt > ST_APP_MAX_TX_ANC_SESSIONS ||
-        ctx->rx_video_session_cnt > ST_APP_MAX_RX_VIDEO_SESSIONS ||
-        ctx->rx_st22_session_cnt > ST_APP_MAX_RX_VIDEO_SESSIONS ||
-        ctx->rx_st22p_session_cnt > ST_APP_MAX_RX_VIDEO_SESSIONS ||
-        ctx->rx_st20p_session_cnt > ST_APP_MAX_RX_VIDEO_SESSIONS ||
-        ctx->rx_audio_session_cnt > ST_APP_MAX_RX_AUDIO_SESSIONS ||
-        ctx->rx_anc_session_cnt > ST_APP_MAX_RX_ANC_SESSIONS)
+    if(ctx->json_ctx->tx_video_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||
+        ctx->json_ctx->tx_st22p_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||
+        ctx->json_ctx->tx_st20p_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||
+        ctx->json_ctx->tx_audio_sessions.size() > ST_APP_MAX_TX_AUDIO_SESSIONS ||
+        ctx->json_ctx->tx_anc_sessions.size() > ST_APP_MAX_TX_ANC_SESSIONS ||
+        ctx->json_ctx->rx_video_sessions.size() > ST_APP_MAX_RX_VIDEO_SESSIONS ||
+        ctx->json_ctx->rx_st22p_sessions.size() > ST_APP_MAX_RX_VIDEO_SESSIONS ||
+        ctx->json_ctx->rx_st20p_sessions.size() > ST_APP_MAX_RX_VIDEO_SESSIONS ||
+        ctx->json_ctx->rx_audio_sessions.size() > ST_APP_MAX_RX_AUDIO_SESSIONS ||
+        ctx->json_ctx->rx_anc_sessions.size() > ST_APP_MAX_RX_ANC_SESSIONS)
     {
         return -1;
     }
-    ctx->para.tx_sessions_cnt_max = ctx->tx_video_session_cnt + ctx->tx_audio_session_cnt +
-                                    ctx->tx_anc_session_cnt + ctx->tx_st22_session_cnt +
-                                    ctx->tx_st20p_session_cnt + ctx->tx_st22p_session_cnt;
-    ctx->para.rx_sessions_cnt_max = ctx->rx_video_session_cnt + ctx->rx_audio_session_cnt +
-                                    ctx->rx_anc_session_cnt + ctx->rx_st22_session_cnt +
-                                    ctx->rx_st22p_session_cnt + ctx->rx_st20p_session_cnt;
+    ctx->para.tx_sessions_cnt_max = ctx->json_ctx->tx_video_sessions.size() + ctx->json_ctx->tx_audio_sessions.size() +
+                                    ctx->json_ctx->tx_anc_sessions.size() +
+                                    ctx->json_ctx->tx_st20p_sessions.size() + ctx->json_ctx->tx_st22p_sessions.size();
+    ctx->para.rx_sessions_cnt_max = ctx->json_ctx->rx_video_sessions.size() + ctx->json_ctx->rx_audio_sessions.size() +
+                                    ctx->json_ctx->rx_anc_sessions.size() +
+                                    ctx->json_ctx->rx_st22p_sessions.size() + ctx->json_ctx->rx_st20p_sessions.size();
 
     for(int i = 0; i < ctx->para.num_ports; i++)
     {
@@ -597,19 +434,19 @@ int st_app_args_check(struct st_app_context *ctx)
 
     if(ctx->enable_hdr_split)
     {
-        ctx->para.nb_rx_hdr_split_queues = ctx->rx_video_session_cnt;
+        ctx->para.nb_rx_hdr_split_queues = ctx->rx_video_sessions.size();
     }
 
     return 0;
 }
 
 // initialize app context
-struct st_app_context *ctx;
+std::unique_ptr<st_app_context> ctx;
 
 int main(int argc, char **argv)
 {
 
-    ctx = (st_app_context *)st_app_zmalloc(sizeof(*ctx));
+    ctx = std::unique_ptr<st_app_context>(new st_app_context {});
     int ret = 0;
     // seeder::config config;
     try
@@ -629,21 +466,19 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    st_app_ctx_init(ctx);
-    ret = st_app_parse_args(ctx, &ctx->para, argc, argv);
+    st_app_ctx_init(ctx.get());
+    ret = st_app_parse_args(ctx.get(), &ctx->para, argc, argv);
     if(ret < 0)
     {
         logger->error("{}, parse arguments fail", __func__);
-        st_app_ctx_free(ctx);
         return ret;
     }
 
-    ret = st_app_args_check(ctx);
+    ret = st_app_args_check(ctx.get());
     if(ret < 0)
     {
         logger->error("{}, session count invalid, pass the restriction {}", __func__,
                       ST_APP_MAX_RX_VIDEO_SESSIONS);
-        st_app_ctx_free(ctx);
         return -EINVAL;
     }
 
@@ -651,15 +486,13 @@ int main(int argc, char **argv)
     if(!ctx->st)
     {
         logger->error("{}, st_init fail", __func__);
-        st_app_ctx_free(ctx);
         return -ENOMEM;
     }
     
-    g_app_ctx = ctx;
+    g_app_ctx = ctx.get();
     if(signal(SIGINT, st_app_sig_handler) == SIG_ERR)
     {
         logger->error("{}, cat SIGINT fail", __func__);
-        st_app_ctx_free(ctx);
         return -EIO;
     }
 
@@ -675,17 +508,12 @@ int main(int argc, char **argv)
 
 
     // init tx video source
-    ret = st_tx_video_source_init(ctx);
+    ret = st_tx_video_source_init(ctx.get(), ctx->json_ctx.get());
     if(ret < 0)
     {
         logger->error("{}, st_tx_video_source_init fail", __func__);
-        st_app_ctx_free(ctx);
         return -EIO;
     }
-
-
-  
- 
 
     // // rx video
     // ret = st_app_rx_video_sessions_init(ctx);
@@ -707,23 +535,21 @@ int main(int argc, char **argv)
 
 
     //tx video
-    ret = st_app_tx_video_sessions_init(ctx);
+    ret = st_app_tx_video_sessions_init(ctx.get());
     if(ret < 0)
     {
         logger->error("{}, st_app_tx_video_session_init fail", __func__);
-        st_app_ctx_free(ctx);
         return -EIO;
     }
 
     //tx_audio
-    ret = st_app_tx_audio_sessions_init(ctx);
+    ret = st_app_tx_audio_sessions_init(ctx.get());
 
    //start video source input stream
-    ret = st_tx_video_source_start(ctx);
+    ret = st_tx_video_source_start(ctx.get());
     if(ret < 0)
     {
         logger->error("{}, st_tx_video_source_start fail", __func__);
-        st_app_ctx_free(ctx);
         return -EIO;
     } 
 
@@ -744,12 +570,11 @@ int main(int argc, char **argv)
         if(ret < 0 )
         {
             logger->error("{}, start device fail", __func__);
-            st_app_ctx_free(ctx);
             return -EIO;
         }
     }
 
-    seeder::st_http_server http_server {ctx};
+    seeder::st_http_server http_server {ctx.get()};
 
     http_server.start();
 
@@ -770,8 +595,6 @@ int main(int argc, char **argv)
 
     //ret = st_app_result(ctx);
 
-    /* free */
-    st_app_ctx_free(ctx);
     return ret;
 }
 

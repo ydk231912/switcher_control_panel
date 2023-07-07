@@ -1,11 +1,17 @@
 #include "http_server.h"
+#include "app_error_code.h"
 #include "core/util/logger.h"
 #include <boost/filesystem/operations.hpp>
 #include <boost/system/error_code.hpp>
 #include <functional>
 #include "httplib.h"
 #include <ios>
+#include <json/forwards.h>
+#include <json/reader.h>
+#include <json/value.h>
+#include <json/writer.h>
 #include <memory>
+#include <mutex>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <system_error>
@@ -13,6 +19,9 @@
 #include <thread>
 #include <boost/filesystem.hpp>
 #include <json/json.h>
+#include <core/util/fs.h>
+#include "parse_json.h"
+#include "app_session.h"
 
 using httplib::Request;
 using httplib::Response;
@@ -21,14 +30,6 @@ using httplib::Response;
 
 namespace {
     namespace fs = boost::filesystem;
-
-    void read_file_to_string(const std::string &file_path, std::string &output) {
-        std::fstream stream(file_path, std::ios_base::in);
-        std::string buf;
-        while (stream >> buf) {
-            output.append(buf);
-        }
-    }
 
     void write_string_to_file_directly(const std::string &file_path, const std::string &content) {
         std::fstream stream(file_path, std::ios_base::out);
@@ -74,9 +75,15 @@ private:
     std::shared_ptr<spdlog::logger> logger;
 
     void get_config(const Request& req, Response& res) {
+        auto lock = acquire_ctx_lock();
         std::string output;
-        read_file_to_string(app_ctx->config_file_path, output);
+        seeder::core::read_file_to_string(app_ctx->config_file_path, output);
         json_ok(res, output);
+    }
+
+    void get_config2(const Request& req, Response& res) {
+        auto lock = acquire_ctx_lock();
+        json_ok(res, app_ctx->json_ctx->json_root);
     }
 
     void save_config(const Request& req, Response& res) {
@@ -84,49 +91,77 @@ private:
             text_err(res, "empty body");
             return;
         }
+        auto lock = acquire_ctx_lock();
         write_string_to_file(app_ctx->config_file_path, req.body);
         logger->info("save config file {}", app_ctx->config_file_path);
     }
 
-    void add_tx_session(const Request& req, Response& res) {
-        Json::Reader json_reader;
-        Json::FastWriter write;
-        Json::Value root;
-        json_reader.parse(req.body, root);
-        Json::Value add_tx;
-        Json::Value root_tx_arr = root["tx_sessions"];
+    void get_fmts(const Request& req, Response& res) {
+        auto json_value = st_app_get_fmts();
+        json_ok(res, json_value);
+    }
 
-        // int count = root_tx_arr.size();
-        
-        // Json::Value add_tx_array =  add_tx["tx_sessions"];
-        // for (size_t i = 0; i < add_tx_array.size(); i++)
-        // {
-        //     count = count + i;
-        //     Json::Value add_tx_obj = add_tx_array[i];
-        //     add_tx_obj["id"] = count;
-        //     root_tx_arr[count] = add_tx_obj;
-        // }
-
-        // root["tx_sessions"] = root_tx_arr;
-        // res.body = write.write(root);
-
-        // st_json_context_t * ctx_add = (st_json_context_t*)st_app_zmalloc(sizeof(st_json_context_t));
-        // ret = st_app_parse_json_object_add_tx(ctx_add, add_tx_array,root,count);
-        // ret = st_tx_video_source_init_add(app_ctx, ctx_add);
-        // ret = st_app_tx_video_sessions_init_add(app_ctx, ctx_add);
-        // ret = st_app_tx_audio_sessions_init_add(app_ctx, ctx_add);
+    void add_session(const Request& req, Response& res) {
+        auto lock = acquire_ctx_lock();
+        std::unique_ptr<st_json_context_t> new_ctx;
+        std::error_code ec {};
+        ec = make_app_error_code(st_app_parse_json_add(app_ctx->json_ctx.get(), req.body, new_ctx));
+        if (ec) {
+            logger->error("st_app_parse_json_add error {}", ec.value());
+            text_err(res, "st_app_parse_json_add error");
+            return;
+        }
+        ec = st_app_add_session(app_ctx, new_ctx.get());
+        if (ec) {
+            logger->error("st_app_add_session error {}", ec.value());
+            text_err(res, "st_app_add_session error");
+            return;
+        }
         json_ok(res);
     }
     
-    void update_tx_session(const Request& req, Response& res) {
-        //             for (size_t i = 0; i < update_tx_array.size(); i++)
-//             {
-//             Value update_tx_obj = update_tx_array[i];
-//             int id = update_tx_obj["id"];
-//             ret = st_tx_video_source_init_update( ctx,ctx_update,id);
-//             ret = st_app_tx_video_sessions_uinit_update(ctx_update,id,ctx_update);
-//             ret = st_app_tx_audio_sessions_uinit_update(ctx_update,id,ctx_update); 
-//             } 
+    void update_session(const Request& req, Response& res) {
+        auto lock = acquire_ctx_lock();
+        std::unique_ptr<st_json_context_t> new_ctx;
+        std::error_code ec {};
+        ec = make_app_error_code(st_app_parse_json_update(app_ctx->json_ctx.get(), req.body, new_ctx));
+        if (ec) {
+            logger->error("st_app_parse_json_update error {}", ec.value());
+            text_err(res, "st_app_parse_json_update error");
+            return;
+        }
+        ec = st_app_update_session(app_ctx, new_ctx.get());
+        if (ec) {
+            logger->error("st_app_update_session error {}", ec.value());
+            text_err(res, "st_app_update_session error");
+            return;
+        }
+        json_ok(res);
+    }
+
+    void remove_tx_session(const Request& req, Response& res) {
+        auto root = parse_json_body(req);
+        auto tx_source_id = root["tx_source_id"].asString();
+        if (tx_source_id.empty()) {
+            text_err(res, "tx_source_id empty");
+            return;
+        }
+        std::error_code ec {};
+        ec = st_app_remove_tx_session(app_ctx, tx_source_id);
+        if (ec) {
+            logger->error("st_app_remove_tx_session error {}", ec.value());
+            text_err(res, "st_app_remove_tx_session error");
+            return;
+        }
+        json_ok(res);
+    }
+
+    std::unique_lock<std::mutex> acquire_ctx_lock() {
+        return std::unique_lock<std::mutex>(app_ctx->mutex);
+    }
+
+    static std::error_code make_app_error_code(int code) {
+        return {code, st_app_error_category()};
     }
 
     static void json_ok(Response& res) {
@@ -139,9 +174,26 @@ private:
         res.set_content(json_content, "application/json");
     }
 
+    static void json_ok(Response& res, const Json::Value &value) {
+        Json::FastWriter writer;
+        std::string output = writer.write(value);
+        json_ok(res, output);
+    }
+
     static void text_err(Response& res, const std::string &message) {
         res.status = 400;
         res.set_content(message, "text/plain");
+    }
+
+    static Json::Value parse_json_body(const Request req) {
+        return parse_json(req.body);
+    }
+
+    static Json::Value parse_json(const std::string &json) {
+        Json::Reader json_reader;
+        Json::Value value;
+        json_reader.parse(json, value);
+        return value;
     }
 };
 
@@ -161,6 +213,7 @@ void st_http_server::start() {
     }
     if (p.app_ctx->http_port <= 0) {
         p.logger->warn("http_port={} http server disabled", p.app_ctx->http_port);
+        return;
     }
 
     server.set_logger([&p](const Request& req, const Response& res) {
@@ -171,16 +224,28 @@ void st_http_server::start() {
         p.get_config(req, res);
     });
 
+    server.Get("/api/json2", [&p] (const Request& req, Response& res) {
+        p.get_config2(req, res);
+    });
+
+    server.Get("/api/get_fmt", [&p] (const Request& req, Response& res) {
+        p.get_fmts(req, res);
+    });
+
     server.Post("/api/saveConfig", [&p] (const Request& req, Response& res) {
         p.save_config(req, res);
     });
 
     server.Post("/api/add_tx_json", [&p] (const Request& req, Response& res) {
-        p.add_tx_session(req, res);
+        p.add_session(req, res);
     });
 
     server.Post("/api/update_tx_json", [&p] (const Request& req, Response& res) {
-        p.update_tx_session(req, res);
+        p.update_session(req, res);
+    });
+
+    server.Post("/api/remove_tx_json", [&p] (const Request& req, Response& res) {
+        p.remove_tx_session(req, res);
     });
 
     p.server_thread = std::thread([&] {

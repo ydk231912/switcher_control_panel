@@ -6,6 +6,12 @@
 #include "core/frame/frame.h"
 #include "tx_audio.h"
 
+#include <fcntl.h>
+#include <math.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 using namespace seeder::core;
 
 static int app_tx_audio_next_frame(void* priv, uint16_t* next_frame_idx,
@@ -90,7 +96,6 @@ static void app_tx_audio_build_frame(struct st_app_tx_audio_session* s, void* fr
 //     s->st30_frame_cursor += s->st30_frame_size;
 //   }
 
-    int ret = 0;
     auto f = s->tx_source->get_audio_frame_slice();
     
     uint8_t* dst = (uint8_t*)frame;
@@ -101,7 +106,7 @@ static void app_tx_audio_build_frame(struct st_app_tx_audio_session* s, void* fr
    
 }
 
-static int app_tx_audio_uinit(struct st_app_tx_audio_session* s)
+int st_app_tx_audio_session_uinit(struct st_app_tx_audio_session* s)
 {
     int ret;
 
@@ -228,7 +233,7 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     memcpy(ops.dip_addr[MTL_PORT_P],
             audio ? audio->base.ip[MTL_PORT_P] : ctx->tx_dip_addr[MTL_PORT_P], MTL_IP_ADDR_LEN);
     strncpy(ops.port[MTL_PORT_P],
-            audio ? audio->base.inf[MTL_PORT_P]->name : ctx->para.port[MTL_PORT_P],
+            audio ? audio->base.inf[MTL_PORT_P].name : ctx->para.port[MTL_PORT_P],
             MTL_PORT_MAX_LEN);
     ops.udp_port[MTL_PORT_P] = audio ? audio->base.udp_port : (10100 + s->idx);
     if(ctx->has_tx_dst_mac[MTL_PORT_P])
@@ -242,7 +247,7 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
             audio ? audio->base.ip[MTL_PORT_R] : ctx->tx_dip_addr[MTL_PORT_R],
             MTL_IP_ADDR_LEN);
         strncpy(ops.port[MTL_PORT_R],
-                audio ? audio->base.inf[MTL_PORT_R]->name : ctx->para.port[MTL_PORT_R],
+                audio ? audio->base.inf[MTL_PORT_R].name : ctx->para.port[MTL_PORT_R],
                 MTL_PORT_MAX_LEN);
         ops.udp_port[MTL_PORT_R] = audio ? audio->base.udp_port : (10100 + s->idx);
         if(ctx->has_tx_dst_mac[MTL_PORT_R])
@@ -279,15 +284,15 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     s->st30_pcap_input = false;
     //tx audio source
     s->tx_source = ctx->tx_sources[audio->tx_source_id];
-    s->id = audio->tx_source_id;
-    s->source_info = ctx->source_info[audio->tx_source_id];
+    s->tx_source_id = audio->tx_source_id;
+    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[audio->tx_source_id]);
 
     // s->st30_pcap_input = false;
     ops.type = audio ? audio->info.type : ST30_TYPE_FRAME_LEVEL;
     handle = st30_tx_create(ctx->st, &ops);
     if (!handle) {
         logger->error("{}({}), st30_tx_create fail", __func__, idx);
-        app_tx_audio_uinit(s);
+        st_app_tx_audio_session_uinit(s);
         return -EIO;
     }
 
@@ -308,115 +313,116 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     if(ret < 0)
     {
         logger->error("{}, st30_app_thread create fail, err = {}", __func__, ret);
-        app_tx_audio_uinit(s);
+        st_app_tx_audio_session_uinit(s);
         return -EIO;
     }
 
     return 0;
 }
 
-
+static int st_app_tx_audio_sessions_init(struct st_app_context* ctx, st_json_audio_session_t *json_audio, st_app_tx_audio_session *s) {
+    int ret;
+    s->idx = ctx->next_audio_session_idx++;
+    ret = app_tx_audio_init(ctx, json_audio, s);
+    if (ret < 0) logger->error("{}({}), app_tx_audio_init fail {}", __func__, s->idx, ret);
+    return ret;
+}
 
 int st_app_tx_audio_sessions_init(struct st_app_context* ctx) 
 {
-    int ret, i;
-    struct st_app_tx_audio_session* s;
-    ctx->tx_audio_sessions = (struct st_app_tx_audio_session*)st_app_zmalloc(
-        sizeof(struct st_app_tx_audio_session) * 64);
-    if(!ctx->tx_audio_sessions) return -ENOMEM;
-    
-    for(i = 0; i < ctx->tx_audio_session_cnt; i++) 
+    int ret;
+    ctx->tx_audio_sessions.resize(ctx->json_ctx->tx_audio_sessions.size());
+    for(std::size_t i = 0; i < ctx->tx_audio_sessions.size(); i++) 
     {
-        s = &ctx->tx_audio_sessions[i];
-        s->idx = i;
-        ret = app_tx_audio_init(
-            ctx, ctx->json_ctx ? &ctx->json_ctx->tx_audio_sessions[i] : NULL, s);
-        if (ret < 0) 
-        {
-            logger->error("{}({}), app_tx_audio_init fail {}", __func__, i, ret);
-            return ret;
-        }
+        auto &s = ctx->tx_audio_sessions[i];
+        s = std::shared_ptr<st_app_tx_audio_session>(new st_app_tx_audio_session {});
+        ret = st_app_tx_audio_sessions_init(ctx, &ctx->json_ctx->tx_audio_sessions[i], s.get());
+        if (ret) return ret;
     }
 
     return 0;
 }
 
-
-
-int st_app_tx_audio_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
-{
-    int ret, i;
-    struct st_app_tx_audio_session* s;
-    
-    int count = ctx->tx_audio_session_cnt;
-
-    if(!ctx->tx_audio_sessions) return -ENOMEM;
-    
-    for(i = 0; i < c->tx_audio_session_cnt; i++) 
-    {
-        count = count +i;
-        ctx->tx_audio_session_cnt+=1;
-        s = &ctx->tx_audio_sessions[count];
-        s->idx = i;
-        ret = app_tx_audio_init(
-            ctx, c ? &c->tx_audio_sessions[i] : NULL, s);
-        if (ret < 0) 
-        {
-            logger->error("{}({}), app_tx_audio_init fail {}", __func__, i, ret);
-            return ret;
-        }
+int st_app_tx_audio_sessions_add(struct st_app_context* ctx, st_json_context_t *new_json_ctx) {
+    int ret = 0;
+    for (auto &json_audio : new_json_ctx->tx_audio_sessions) {
+        auto s = std::shared_ptr<st_app_tx_audio_session>(new st_app_tx_audio_session {});
+        ret = st_app_tx_audio_sessions_init(ctx, &json_audio, s.get());
+        if (ret) return ret;
+        ctx->tx_audio_sessions.push_back(s);
     }
-    return 0;
+    return ret;
 }
 
 
+// int st_app_tx_audio_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
+// {
+//     int ret, i;
+//     struct st_app_tx_audio_session* s;
+    
+//     int count = ctx->tx_audio_session_cnt;
+
+//     if(!ctx->tx_audio_sessions) return -ENOMEM;
+    
+//     for(i = 0; i < c->tx_audio_session_cnt; i++) 
+//     {
+//         count = count +i;
+//         ctx->tx_audio_session_cnt+=1;
+//         s = &ctx->tx_audio_sessions[count];
+//         s->idx = i;
+//         ret = app_tx_audio_init(
+//             ctx, c ? &c->tx_audio_sessions[i] : NULL, s);
+//         if (ret < 0) 
+//         {
+//             logger->error("{}({}), app_tx_audio_init fail {}", __func__, i, ret);
+//             return ret;
+//         }
+//     }
+//     return 0;
+// }
 
 
 int st_app_tx_audio_sessions_uinit(struct st_app_context* ctx) 
 {
-    struct st_app_tx_audio_session* s;
-
-    if(!ctx->tx_audio_sessions) return 0;
-
-    for(int i = 0; i < ctx->tx_audio_session_cnt; i++) 
-    {
-        s = &ctx->tx_audio_sessions[i];
-        app_tx_audio_uinit(s);
+    for (auto &s : ctx->tx_audio_sessions) {
+        if (s) {
+            st_app_tx_audio_session_uinit(s.get());
+        }
     }
-    st_app_free(ctx->tx_audio_sessions);
+    ctx->tx_audio_sessions.clear();
 
     return 0;
 }
 
 
-int st_app_tx_audio_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c) 
-{
-    int ret=0;
-    struct st_app_tx_audio_session* s;
-    struct st_app_tx_audio_session* s_new;
-    if(!ctx->tx_audio_sessions) return 0;
+// int st_app_tx_audio_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c) 
+// {
+//     int ret=0;
+//     struct st_app_tx_audio_session* s;
+//     struct st_app_tx_audio_session* s_new;
+//     if(!ctx->tx_audio_sessions) return 0;
 
 
-    for(int i =0;i<ctx->tx_audio_session_cnt;i++){
-      if (ctx->tx_audio_sessions[i].id == id)
-      {
-        s = &ctx->tx_audio_sessions[i];
-        app_tx_audio_uinit(s);
-        for(int j =0 ;j<c->tx_audio_session_cnt;j++)
-        {
-            if(c->tx_audio_sessions->tx_source_id == id)
-            {
-                s->idx = i;
-                ret = app_tx_audio_init(ctx, c ? &c->tx_audio_sessions[j] : NULL, s_new);
-                if (ret < 0) 
-                {
-                    logger->error("{}({}), app_tx_audio_init fail {}", __func__, i, ret);
-                    return ret;
-                }
-        }
-        ctx->tx_audio_sessions[i] = *s_new;
-        }
-    }
-    }
-    return 0;
-}
+//     for(int i =0;i<ctx->tx_audio_session_cnt;i++){
+//       if (ctx->tx_audio_sessions[i].id == id)
+//       {
+//         s = &ctx->tx_audio_sessions[i];
+//         app_tx_audio_uinit(s);
+//         for(int j =0 ;j<c->tx_audio_session_cnt;j++)
+//         {
+//             if(c->tx_audio_sessions->tx_source_id == id)
+//             {
+//                 s->idx = i;
+//                 ret = app_tx_audio_init(ctx, c ? &c->tx_audio_sessions[j] : NULL, s_new);
+//                 if (ret < 0) 
+//                 {
+//                     logger->error("{}({}), app_tx_audio_init fail {}", __func__, i, ret);
+//                     return ret;
+//                 }
+//         }
+//         ctx->tx_audio_sessions[i] = *s_new;
+//         }
+//     }
+//     }
+//     return 0;
+// }

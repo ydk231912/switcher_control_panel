@@ -10,13 +10,13 @@
 using namespace seeder::core;
 namespace seeder::ffmpeg
 {
-    ffmpeg_input::ffmpeg_input(std::string filename)
-    :filename_(filename)
+    ffmpeg_input::ffmpeg_input(const std::string &source_id, std::string filename)
+    :input(source_id), filename_(filename)
     {
     }
 
-    ffmpeg_input::ffmpeg_input(std::string filename, core::video_format_desc& format_desc)
-    :filename_(filename),
+    ffmpeg_input::ffmpeg_input(const std::string &source_id, std::string filename, core::video_format_desc& format_desc)
+    :input(source_id), filename_(filename),
     format_desc_(format_desc)
     {
         
@@ -34,6 +34,7 @@ namespace seeder::ffmpeg
      */
     void ffmpeg_input::start()
     {
+        input::start();
         abort = false;
 
         ffmpeg_thread_ = std::make_unique<std::thread>(std::thread([&](){
@@ -57,7 +58,6 @@ namespace seeder::ffmpeg
     {
         
         int ret;
-        int count = 0;
         
         AVFormatContext* fmt_ctx = NULL;
         ret = avformat_open_input(&fmt_ctx, filename_.data(), NULL, NULL);
@@ -131,7 +131,7 @@ namespace seeder::ffmpeg
             logger->error("avcodec_parameters_to_context() failed");
             throw std::runtime_error("avcodec_parameters_to_context() failed");
         }
-        auto rt = av_opt_set_int(codec_ctx, "threads", 12, 0);
+        av_opt_set_int(codec_ctx, "threads", 12, 0);
         
         ret = avcodec_open2(codec_ctx, codec, NULL);
         if(ret < 0)

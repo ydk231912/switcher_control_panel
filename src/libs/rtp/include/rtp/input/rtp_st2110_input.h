@@ -37,7 +37,7 @@ namespace seeder::rtp
     class rtp_st2110_input : public core::input
     {
       public:
-        rtp_st2110_input(rtp_context context);
+        explicit rtp_st2110_input(const std::string &source_id, rtp_context context);
         ~rtp_st2110_input();
 
         /**

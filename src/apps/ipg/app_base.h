@@ -1,8 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2022 Intel Corporation
  */
+#pragma once
 
 #include <SDL2/SDL.h>
+#include <json/forwards.h>
+#include <mutex>
+#include <unordered_map>
 #ifdef APP_HAS_SDL2_TTF
 #include <SDL2/SDL_ttf.h>
 #endif
@@ -32,13 +36,6 @@
 
 #include "core/stream/input.h"
 #include "core/stream/output.h"
-
-#ifndef _ST_APP_BASE_HEAD_H_
-#define _ST_APP_BASE_HEAD_H_
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
 #define ST_APP_MAX_TX_VIDEO_SESSIONS (180)
 #define ST_APP_MAX_TX_AUDIO_SESSIONS (180)
@@ -94,6 +91,7 @@ struct st_app_frameinfo {
 
 struct st_app_tx_source
 {
+  std::string id; // uuid
   std::string type; // decklink, file
   int device_id; // decklink
   std::string file_url;
@@ -110,7 +108,7 @@ struct st_app_rx_output
 
 struct st_app_tx_video_session {
   int idx;
-  int id;
+  std::string tx_source_id;
   mtl_handle st;
   st20_tx_handle handle;
   int handle_sch_idx;
@@ -172,13 +170,13 @@ struct st_app_tx_video_session {
 
   // video source
   std::shared_ptr<seeder::core::input> tx_source;
-  struct st_app_tx_source* source_info;
+  std::shared_ptr<st_app_tx_source> source_info;
 };
 
 struct st_app_tx_audio_session {
   int idx;
   st30_tx_handle handle;
-  int id;
+  std::string tx_source_id;
   uint16_t framebuff_cnt;
   uint16_t framebuff_producer_idx;
   uint16_t framebuff_consumer_idx;
@@ -207,7 +205,7 @@ struct st_app_tx_audio_session {
 
     // audio source
   std::shared_ptr<seeder::core::input> tx_source;
-  struct st_app_tx_source* source_info;
+  std::shared_ptr<st_app_tx_source> source_info;
 };
 
 struct st_app_tx_anc_session {
@@ -504,7 +502,7 @@ struct st_app_rx_st20p_session {
 };
 
 struct st_app_context {
-  st_json_context_t* json_ctx;
+  std::shared_ptr<st_json_context_t> json_ctx;
   std::string config_file_path;
   struct mtl_init_params para;
   mtl_handle st;
@@ -525,69 +523,62 @@ struct st_app_context {
   uint32_t rx_max_height;
 
   char tx_video_url[ST_APP_URL_MAX_LEN]; /* send video content url*/
-  struct st_app_tx_video_session* tx_video_sessions;
-  int tx_video_session_cnt;
+  std::vector<std::shared_ptr<struct st_app_tx_video_session>> tx_video_sessions;
   int tx_video_rtp_ring_size; /* the ring size for tx video rtp type */
 
-  struct st_app_tx_audio_session* tx_audio_sessions;
+  std::vector<std::shared_ptr<st_app_tx_audio_session>> tx_audio_sessions;
   char tx_audio_url[ST_APP_URL_MAX_LEN];
-  int tx_audio_session_cnt;
   int tx_audio_rtp_ring_size; /* the ring size for tx audio rtp type */
 
-  struct st_app_tx_anc_session* tx_anc_sessions;
+  std::vector<std::shared_ptr<struct st_app_tx_anc_session>> tx_anc_sessions;
   char tx_anc_url[ST_APP_URL_MAX_LEN];
-  int tx_anc_session_cnt;
   int tx_anc_rtp_ring_size; /* the ring size for tx anc rtp type */
 
   char tx_st22p_url[ST_APP_URL_MAX_LEN]; /* send st22p content url*/
-  struct st_app_tx_st22p_session* tx_st22p_sessions;
-  int tx_st22p_session_cnt;
+  std::vector<std::shared_ptr<struct st_app_tx_st22p_session>> tx_st22p_sessions;
 
   char tx_st20p_url[ST_APP_URL_MAX_LEN]; /* send st20p content url*/
-  struct st_app_tx_st20p_session* tx_st20p_sessions;
-  int tx_st20p_session_cnt;
+  std::vector<std::shared_ptr<struct st_app_tx_st20p_session>> tx_st20p_sessions;
 
   uint8_t rx_sip_addr[MTL_PORT_MAX][MTL_IP_ADDR_LEN]; /* rx source IP */
 
-  struct st_app_rx_video_session* rx_video_sessions;
-  int rx_video_session_cnt;
+  std::vector<std::shared_ptr<struct st_app_rx_video_session>> rx_video_sessions;
   int rx_video_file_frames; /* the frames recevied saved to file */
   int rx_video_fb_cnt;
   int rx_video_rtp_ring_size; /* the ring size for rx video rtp type */
   bool display;               /* flag to display all rx video with SDL */
   bool has_sdl;               /* has SDL device or not*/
 
-  struct st_app_rx_audio_session* rx_audio_sessions;
-  int rx_audio_session_cnt;
+  std::vector<std::shared_ptr<struct st_app_rx_audio_session>> rx_audio_sessions;
   int rx_audio_rtp_ring_size; /* the ring size for rx audio rtp type */
 
-  struct st_app_rx_anc_session* rx_anc_sessions;
-  int rx_anc_session_cnt;
+  std::vector<std::shared_ptr<struct st_app_rx_anc_session>> rx_anc_sessions;
 
-  struct st_app_rx_st22p_session* rx_st22p_sessions;
-  int rx_st22p_session_cnt;
+  std::vector<std::shared_ptr<struct st_app_rx_st22p_session>> rx_st22p_sessions;
 
-  struct st_app_rx_st20p_session* rx_st20p_sessions;
-  int rx_st20p_session_cnt;
+  std::vector<std::shared_ptr<struct st_app_rx_st20p_session>> rx_st20p_sessions;
 
   char tx_st22_url[ST_APP_URL_MAX_LEN]; /* send st22 content url*/
-  struct st22_app_tx_session* tx_st22_sessions;
-  int tx_st22_session_cnt;
-  struct st22_app_rx_session* rx_st22_sessions;
-  int rx_st22_session_cnt;
+  std::vector<std::shared_ptr<struct st22_app_tx_session>> tx_st22_sessions;
+  std::vector<std::shared_ptr<struct st22_app_rx_session>> rx_st22_sessions;
   int st22_bpp;
 
   uint32_t pcapng_max_pkts;
   char ttf_file[ST_APP_URL_MAX_LEN];
   int utc_offset;
 
+  std::mutex mutex;
   // tx_source handle;
-  std::vector<std::shared_ptr<seeder::core::input>> tx_sources;
-  std::vector<struct st_app_tx_source*> source_info;
+  std::unordered_map<std::string, std::shared_ptr<seeder::core::input>> tx_sources;
+  std::unordered_map<std::string, st_app_tx_source> source_info;
   // rx_output handle;
   std::vector<std::shared_ptr<seeder::core::output>> rx_output;
   std::vector<st_app_rx_output*> output_info;
   int http_port = 0;
+  int next_video_session_idx = 0;
+  int next_audio_session_idx = 0;
+
+  ~st_app_context();
 };
 
 static inline void* st_app_malloc(size_t sz) { return malloc(sz); }
@@ -610,9 +601,3 @@ static inline uint64_t st_app_get_monotonic_time() {
 
 int st_app_video_get_lcore(struct st_app_context* ctx, int sch_idx, bool rtp,
                            unsigned int* lcore);
-
-#if defined(__cplusplus)
-}
-#endif
-
-#endif

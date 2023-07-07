@@ -1,6 +1,20 @@
-file(GLOB_RECURSE SRC_LIST ./*.cpp ./*.c)
+add_executable(
+    ipg
 
-add_executable(ipg ${SRC_LIST})
+    app_base.cpp
+    app_session.cpp
+    app_error_code.cpp
+    args.cpp
+    fmt.cpp
+    http_server.cpp
+    main.cpp
+    parse_json.cpp
+    player.cpp
+    rx_audio.cpp
+    rx_video.cpp
+    tx_audio.cpp
+    tx_video.cpp    
+)
 
 # aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/json SRC)
 # add_library(calc STATIC ${SRC})

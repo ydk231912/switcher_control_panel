@@ -9,8 +9,6 @@
  * 
  */
 
-#pragma once
-
 extern "C"
 {
     #include <libavformat/avformat.h>
@@ -28,11 +26,12 @@ namespace seeder::decklink
      * @brief Construct a new decklink input object.
      * initialize deckllink device and start input stream
      */
-    decklink_input::decklink_input(int device_id, video_format_desc& format_desc)
-    :decklink_index_(device_id - 1)
+    decklink_input::decklink_input(const std::string &source_id, int device_id, video_format_desc& format_desc)
+    :input(source_id),
+    decklink_index_(device_id - 1)
     ,format_desc_(format_desc)
-    ,pixel_format_(bmdFormat10BitYUV) //bmdFormat8BitYUV
     ,video_flags_(bmdVideoInputFlagDefault)
+    ,pixel_format_(bmdFormat10BitYUV) //bmdFormat8BitYUV
     {
         sample_type_ = bmdAudioSampleType32bitInteger;
         if(format_desc_.audio_samples == 32)
@@ -95,6 +94,7 @@ namespace seeder::decklink
      */
     void decklink_input::start()
     {
+        input::start();
         // enable input and start streams
         HRESULT result = input_->EnableVideoInput(bmd_mode_, pixel_format_, video_flags_);
         if(result != S_OK)
@@ -198,7 +198,7 @@ namespace seeder::decklink
                                                        IDeckLinkAudioInputPacket* audio)
     {
         BMDTimeValue in_video_pts = 0LL;
-        BMDTimeValue in_audio_pts = 0LL;
+        // BMDTimeValue in_audio_pts = 0LL;
         auto frm = std::make_shared<core::frame>(); 
 
         if(video)
@@ -269,7 +269,7 @@ namespace seeder::decklink
                 for(int i = 0; i < nb; i++)
                 {
                     auto aframe = std::make_shared<buffer>(format_desc_.st30_frame_size);
-                    memcpy(aframe->begin(), audio_bytes + i * size , size);
+                    memcpy(aframe->begin(), (char*) audio_bytes + i * size , size);
                     this->set_audio_frame_slice(aframe);
                 }
             }
@@ -413,7 +413,7 @@ namespace seeder::decklink
         {
             auto f = asframe_buffer_[0];
             asframe_buffer_.pop_front(); // discard the oldest frame
-            logger->error("{}, The audio frame is discarded", __func__);
+            logger->debug("{}, The audio frame is discarded", __func__);
         }
         asframe_buffer_.push_back(asframe);
         asframe_cv_.notify_all();

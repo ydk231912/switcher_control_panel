@@ -13,6 +13,8 @@
 
 #include "core/frame/frame.h"
 #include "core/util/buffer.h"
+#include <boost/core/noncopyable.hpp>
+#include <atomic>
 
 namespace seeder::core
 {
@@ -22,14 +24,14 @@ namespace seeder::core
      * input devices include: decklink sdi input, video file, rtp input stream etc.
      * 
      */
-    class input
+    class input: boost::noncopyable
     {
       public:
         /**
          * @brief start input stream handle
          * 
          */
-        virtual void start() = 0;
+        virtual void start();
         
         /**
          * @brief stop input stream handle
@@ -85,5 +87,21 @@ namespace seeder::core
          */
         virtual std::shared_ptr<buffer> get_audio_frame_slice() = 0;
 
+        explicit input(const std::string &source_id);
+
+        virtual ~input();
+
+        const std::string & get_source_id() const;
+
+        virtual bool is_started() const;
+
+        enum running_status {
+          INIT = 0,
+          STARTED = 1
+        };
+
+      private:
+        std::string source_id;
+        std::atomic<int> status = {running_status::INIT};
     };
 } 

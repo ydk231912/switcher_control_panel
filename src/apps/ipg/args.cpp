@@ -230,29 +230,14 @@ static int app_args_dma_dev(struct mtl_init_params* p, char* in_dev) {
 
 static int app_args_json(struct st_app_context* ctx, struct mtl_init_params* p,
                          char* json_file) {
-  ctx->json_ctx = (st_json_context_t*)st_app_zmalloc(sizeof(st_json_context_t));
-  if (!ctx->json_ctx) {
-    logger->error("{}, json_ctx alloc fail", __func__);
-    return -ENOMEM;
-  }
-  int ret = st_app_parse_json(ctx->json_ctx, json_file);
+  ctx->json_ctx = std::shared_ptr<st_json_context_t>(new st_json_context_t {});
+  int ret = st_app_parse_json(ctx->json_ctx.get(), json_file);
   if (ret < 0) {
     logger->error("{}, st_app_parse_json fail {}", __func__, ret);
-    st_app_free(ctx->json_ctx);
-    ctx->json_ctx = NULL;
+    ctx->json_ctx.reset();
     return ret;
   }
-  ctx->tx_video_session_cnt = ctx->json_ctx->tx_video_session_cnt;
-  ctx->tx_audio_session_cnt = ctx->json_ctx->tx_audio_session_cnt;
-  ctx->tx_anc_session_cnt = ctx->json_ctx->tx_anc_session_cnt;
-  ctx->tx_st22p_session_cnt = ctx->json_ctx->tx_st22p_session_cnt;
-  ctx->tx_st20p_session_cnt = ctx->json_ctx->tx_st20p_session_cnt;
-  ctx->rx_video_session_cnt = ctx->json_ctx->rx_video_session_cnt;
-  ctx->rx_audio_session_cnt = ctx->json_ctx->rx_audio_session_cnt;
-  ctx->rx_anc_session_cnt = ctx->json_ctx->rx_anc_session_cnt;
-  ctx->rx_st22p_session_cnt = ctx->json_ctx->rx_st22p_session_cnt;
-  ctx->rx_st20p_session_cnt = ctx->json_ctx->rx_st20p_session_cnt;
-  for (int i = 0; i < ctx->json_ctx->num_interfaces; ++i) {
+  for (int i = 0; i < ctx->json_ctx->interfaces.size(); ++i) {
     snprintf(p->port[i], sizeof(p->port[i]), "%s", ctx->json_ctx->interfaces[i].name);
     memcpy(p->sip_addr[i], ctx->json_ctx->interfaces[i].ip_addr, sizeof(p->sip_addr[i]));
     p->num_ports++;
@@ -261,7 +246,7 @@ static int app_args_json(struct st_app_context* ctx, struct mtl_init_params* p,
     p->data_quota_mbs_per_sch =
         ctx->json_ctx->sch_quota * st20_1080p59_yuv422_10bit_bandwidth_mps();
   }
-  for (int i = 0; i < ctx->json_ctx->rx_video_session_cnt; i++) {
+  for (int i = 0; i < ctx->json_ctx->rx_video_sessions.size(); i++) {
     int w = st_app_get_width(ctx->json_ctx->rx_video_sessions[i].info.video_format);
     if (w > ctx->rx_max_width) ctx->rx_max_width = w;
     int h = st_app_get_height(ctx->json_ctx->rx_video_sessions[i].info.video_format);
@@ -315,15 +300,15 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_TX_VIDEO_RTP_RING_SIZE:
         ctx->tx_video_rtp_ring_size = atoi(optarg);
         break;
-      case ST_ARG_TX_VIDEO_SESSIONS_CNT:
-        ctx->tx_video_session_cnt = atoi(optarg);
-        break;
+      // case ST_ARG_TX_VIDEO_SESSIONS_CNT:
+      //   ctx->tx_video_session_cnt = atoi(optarg);
+      //   break;
       case ST_ARG_TX_AUDIO_URL:
         snprintf(ctx->tx_audio_url, sizeof(ctx->tx_audio_url), "%s", optarg);
         break;
-      case ST_ARG_TX_AUDIO_SESSIONS_CNT:
-        ctx->tx_audio_session_cnt = atoi(optarg);
-        break;
+      // case ST_ARG_TX_AUDIO_SESSIONS_CNT:
+      //   ctx->tx_audio_session_cnt = atoi(optarg);
+      //   break;
       case ST_ARG_TX_AUDIO_RTP_RING_SIZE:
         ctx->tx_audio_rtp_ring_size = atoi(optarg);
         break;
@@ -333,12 +318,12 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_TX_ANC_RTP_RING_SIZE:
         ctx->tx_anc_rtp_ring_size = atoi(optarg);
         break;
-      case ST_ARG_TX_ANC_SESSIONS_CNT:
-        ctx->tx_anc_session_cnt = atoi(optarg);
-        break;
-      case ST_ARG_RX_VIDEO_SESSIONS_CNT:
-        ctx->rx_video_session_cnt = atoi(optarg);
-        break;
+      // case ST_ARG_TX_ANC_SESSIONS_CNT:
+      //   ctx->tx_anc_session_cnt = atoi(optarg);
+      //   break;
+      // case ST_ARG_RX_VIDEO_SESSIONS_CNT:
+      //   ctx->rx_video_session_cnt = atoi(optarg);
+      //   break;
       case ST_ARG_RX_VIDEO_FLIE_FRAMES:
         ctx->rx_video_file_frames = atoi(optarg);
         break;
@@ -348,24 +333,24 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_RX_VIDEO_RTP_RING_SIZE:
         ctx->rx_video_rtp_ring_size = atoi(optarg);
         break;
-      case ST_ARG_RX_AUDIO_SESSIONS_CNT:
-        ctx->rx_audio_session_cnt = atoi(optarg);
-        break;
+      // case ST_ARG_RX_AUDIO_SESSIONS_CNT:
+      //   ctx->rx_audio_session_cnt = atoi(optarg);
+      //   break;
       case ST_ARG_RX_AUDIO_RTP_RING_SIZE:
         ctx->rx_audio_rtp_ring_size = atoi(optarg);
         break;
-      case ST_ARG_RX_ANC_SESSIONS_CNT:
-        ctx->rx_anc_session_cnt = atoi(optarg);
-        break;
-      case ST22_ARG_TX_SESSIONS_CNT:
-        ctx->tx_st22_session_cnt = atoi(optarg);
-        break;
+      // case ST_ARG_RX_ANC_SESSIONS_CNT:
+      //   ctx->rx_anc_session_cnt = atoi(optarg);
+      //   break;
+      // case ST22_ARG_TX_SESSIONS_CNT:
+      //   ctx->tx_st22_session_cnt = atoi(optarg);
+      //   break;
       case ST22_ARG_TX_URL:
         snprintf(ctx->tx_st22_url, sizeof(ctx->tx_st22_url), "%s", optarg);
         break;
-      case ST22_ARG_RX_SESSIONS_CNT:
-        ctx->rx_st22_session_cnt = atoi(optarg);
-        break;
+      // case ST22_ARG_RX_SESSIONS_CNT:
+      //   ctx->rx_st22_session_cnt = atoi(optarg);
+      //   break;
       case ST_ARG_HDR_SPLIT:
         ctx->enable_hdr_split = true;
         break;

@@ -25,8 +25,8 @@
 using namespace seeder::core;
 namespace seeder::rtp
 {
-    rtp_st2110_input::rtp_st2110_input(rtp_context context)
-    :context_(context),
+    rtp_st2110_input::rtp_st2110_input(const std::string & source_id, rtp_context context)
+    :input(source_id), context_(context),
     receiver_(context.multicast_ip)
     {
         // create new frame
@@ -47,6 +47,7 @@ namespace seeder::rtp
      */
     void rtp_st2110_input::start()
     {
+        input::start();
         abort = true;
 
         receive_packet();
@@ -100,7 +101,7 @@ namespace seeder::rtp
             }
 
             // detect frame transition
-            if(last_frame_timestamp_ = 0)
+            if(last_frame_timestamp_ == 0)
             {
                 last_frame_timestamp_ = rtp_header->timestamp;
                 buffer_ = (uint8_t*)malloc(frame_size_);
@@ -119,8 +120,8 @@ namespace seeder::rtp
 
             // 2.2 decode line header
             ptr +=  sizeof(raw_header) + csrc_size;
-            auto raw_extended_sequence = reinterpret_cast<const d20::raw_extended_sequence_number*>(ptr);
-            auto sequence_number = (raw_extended_sequence->esn << 16) | rtp_header->sequence_number;
+            // auto raw_extended_sequence = reinterpret_cast<const d20::raw_extended_sequence_number*>(ptr);
+            // auto sequence_number = (raw_extended_sequence->esn << 16) | rtp_header->sequence_number;
             ptr += sizeof(d20::raw_extended_sequence_number);
 
             int line_length[3] = {0, 0, 0}; //Only three lines per packet allowed by ST2110-20

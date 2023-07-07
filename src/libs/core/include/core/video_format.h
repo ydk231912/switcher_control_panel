@@ -94,4 +94,6 @@ namespace seeder::core
         
         video_format_desc();
     };
+
+    extern const std::vector<video_format_desc> format_descs;
 }// namespace seeder::core

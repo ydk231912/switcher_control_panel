@@ -9,8 +9,6 @@
  * 
  */
 
-#pragma once
-
 #include <cstring>
 #include <malloc.h>
 
