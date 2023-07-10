@@ -248,7 +248,7 @@ bool st_app_get_interlaced(enum video_format fmt);
 int st_app_parse_json_add(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
 int st_app_parse_json_update(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
 
-Json::Value st_app_get_fmts();
+Json::Value st_app_get_fmts(st_json_context_t* ctx);
 
 
 // #if defined(__cplusplus)

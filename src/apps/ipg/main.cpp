@@ -416,20 +416,28 @@ int st_app_args_check(struct st_app_context *ctx)
     {
         return -1;
     }
-    ctx->para.tx_sessions_cnt_max = ctx->json_ctx->tx_video_sessions.size() + ctx->json_ctx->tx_audio_sessions.size() +
-                                    ctx->json_ctx->tx_anc_sessions.size() +
-                                    ctx->json_ctx->tx_st20p_sessions.size() + ctx->json_ctx->tx_st22p_sessions.size();
-    ctx->para.rx_sessions_cnt_max = ctx->json_ctx->rx_video_sessions.size() + ctx->json_ctx->rx_audio_sessions.size() +
-                                    ctx->json_ctx->rx_anc_sessions.size() +
-                                    ctx->json_ctx->rx_st22p_sessions.size() + ctx->json_ctx->rx_st20p_sessions.size();
+    if (ctx->para.tx_sessions_cnt_max == 0) {
+        ctx->para.tx_sessions_cnt_max = ctx->json_ctx->tx_video_sessions.size() + ctx->json_ctx->tx_audio_sessions.size() +
+                                        ctx->json_ctx->tx_anc_sessions.size() +
+                                        ctx->json_ctx->tx_st20p_sessions.size() + ctx->json_ctx->tx_st22p_sessions.size();
+    }
+    if (ctx->para.rx_sessions_cnt_max == 0) {
+        ctx->para.rx_sessions_cnt_max = ctx->json_ctx->rx_video_sessions.size() + ctx->json_ctx->rx_audio_sessions.size() +
+                                        ctx->json_ctx->rx_anc_sessions.size() +
+                                        ctx->json_ctx->rx_st22p_sessions.size() + ctx->json_ctx->rx_st20p_sessions.size();
+    }
+    logger->info("para.tx_sessions_cnt_max={} para.rx_sessions_cnt_max={}", ctx->para.tx_sessions_cnt_max, ctx->para.rx_sessions_cnt_max);
+    
 
     for(int i = 0; i < ctx->para.num_ports; i++)
     {
         ctx->para.pmd[i] = mtl_pmd_by_port_name(ctx->para.port[i]);
-        if(ctx->para.tx_sessions_cnt_max > ctx->para.rx_sessions_cnt_max)
+        if(ctx->para.tx_sessions_cnt_max > ctx->para.rx_sessions_cnt_max) {
             ctx->para.xdp_info[i].queue_count = ctx->para.tx_sessions_cnt_max;
-        else
+        }
+        else {
             ctx->para.xdp_info[i].queue_count = ctx->para.rx_sessions_cnt_max;
+        }
     }
 
     if(ctx->enable_hdr_split)
@@ -495,7 +503,6 @@ int main(int argc, char **argv)
         logger->error("{}, cat SIGINT fail", __func__);
         return -EIO;
     }
-
 
     //    // init rx video source
     // ret = st_rx_output_init(ctx);

@@ -1615,12 +1615,31 @@ int st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *root_obje
             logger->error("{}, invalid replicas number: {}", __func__, replicas);
             return -ST_JSON_NOT_VALID;
           }
+          // 取video对象的dip，没有的话用外层的dip
+          json_object* video_dip_p = NULL;
+          json_object* video_dip_r = NULL;
+          json_object* video_dip_array = st_json_object_object_get(video_session, "dip");
+          if (video_dip_array != NULL && json_object_get_type(video_dip_array) == json_type_array) {
+            int len = json_object_array_length(video_dip_array);
+            if (len < 1 || len > MTL_PORT_MAX) {
+              logger->error("{}, wrong dip number", __func__);
+              return -ST_JSON_NOT_VALID;
+            }
+            video_dip_p = json_object_array_get_idx(video_dip_array, 0);
+            if (len == 2) {
+              video_dip_r = json_object_array_get_idx(video_dip_array, 1);
+            }
+          } else {
+            video_dip_p = dip_p;
+            video_dip_r = dip_r;
+          }
+
           for (int k = 0; k < replicas; ++k) {
-            inet_pton(AF_INET, json_object_get_string(dip_p),
+            inet_pton(AF_INET, json_object_get_string(video_dip_p),
                       ctx->tx_video_sessions[num_video].base.ip[0]);
             ctx->tx_video_sessions[num_video].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              inet_pton(AF_INET, json_object_get_string(dip_r),
+              inet_pton(AF_INET, json_object_get_string(video_dip_r),
                         ctx->tx_video_sessions[num_video].base.ip[1]);
               ctx->tx_video_sessions[num_video].base.inf[1] = ctx->interfaces[inf_r];
             }
@@ -1648,12 +1667,30 @@ int st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *root_obje
             logger->error("{}, invalid replicas number: {}", __func__, replicas);
             return -ST_JSON_NOT_VALID;
           }
+          // 取audio对象的dip，没有的话用外层的dip
+          json_object* audio_dip_p = NULL;
+          json_object* audio_dip_r = NULL;
+          json_object* audio_dip_array = st_json_object_object_get(audio_session, "dip");
+          if (audio_dip_array != NULL && json_object_get_type(audio_dip_array) == json_type_array) {
+            int len = json_object_array_length(audio_dip_array);
+            if (len < 1 || len > MTL_PORT_MAX) {
+              logger->error("{}, wrong dip number", __func__);
+              return -ST_JSON_NOT_VALID;
+            }
+            audio_dip_p = json_object_array_get_idx(audio_dip_array, 0);
+            if (len == 2) {
+              audio_dip_r = json_object_array_get_idx(audio_dip_array, 1);
+            }
+          } else {
+            audio_dip_p = dip_p;
+            audio_dip_r = dip_r;
+          }
           for (int k = 0; k < replicas; ++k) {
-            inet_pton(AF_INET, json_object_get_string(dip_p),
+            inet_pton(AF_INET, json_object_get_string(audio_dip_p),
                       ctx->tx_audio_sessions[num_audio].base.ip[0]);
             ctx->tx_audio_sessions[num_audio].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              inet_pton(AF_INET, json_object_get_string(dip_r),
+              inet_pton(AF_INET, json_object_get_string(audio_dip_r),
                         ctx->tx_audio_sessions[num_audio].base.ip[1]);
               ctx->tx_audio_sessions[num_audio].base.inf[1] = ctx->interfaces[inf_r];
             }
@@ -2158,8 +2195,12 @@ int st_app_parse_json_update(st_json_context_t* ctx, const std::string &json, st
   return ret;
 }
 
-Json::Value st_app_get_fmts() {
+Json::Value st_app_get_fmts(st_json_context_t* ctx) {
   Json::Value root;
+
+  for (int i = 0; i < ctx->interfaces.size(); ++i) {
+    root["tx_sessions.interface"].append(make_fmt_item(ctx->interfaces[i].name, i));
+  }
 
   root["tx_sessions.source.type"].append(make_fmt_item("decklink", "decklink"));
   auto &tx_source_video_format = root["tx_sessions.source.video_format"];

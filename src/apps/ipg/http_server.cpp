@@ -76,13 +76,6 @@ private:
 
     void get_config(const Request& req, Response& res) {
         auto lock = acquire_ctx_lock();
-        std::string output;
-        seeder::core::read_file_to_string(app_ctx->config_file_path, output);
-        json_ok(res, output);
-    }
-
-    void get_config2(const Request& req, Response& res) {
-        auto lock = acquire_ctx_lock();
         json_ok(res, app_ctx->json_ctx->json_root);
     }
 
@@ -97,7 +90,7 @@ private:
     }
 
     void get_fmts(const Request& req, Response& res) {
-        auto json_value = st_app_get_fmts();
+        auto json_value = st_app_get_fmts(app_ctx->json_ctx.get());
         json_ok(res, json_value);
     }
 
@@ -222,10 +215,6 @@ void st_http_server::start() {
 
     server.Get("/api/json", [&p] (const Request& req, Response& res) {
         p.get_config(req, res);
-    });
-
-    server.Get("/api/json2", [&p] (const Request& req, Response& res) {
-        p.get_config2(req, res);
     });
 
     server.Get("/api/get_fmt", [&p] (const Request& req, Response& res) {

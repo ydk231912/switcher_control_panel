@@ -85,6 +85,8 @@ enum st_args_cmd {
   ST_ARG_APP_THREAD,
   ST_ARG_RXTX_SIMD_512,
   ST_ARG_HTTP_SERVER_PORT,
+  ST_ARG_TX_SESSIONS_CNT_MAX,
+  ST_ARG_RX_SESSIONS_CNT_MAX,
   ST_ARG_MAX,
 };
 
@@ -169,6 +171,8 @@ static struct option st_app_args_options[] = {
     {"app_thread", no_argument, 0, ST_ARG_APP_THREAD},
     {"rxtx_simd_512", no_argument, 0, ST_ARG_RXTX_SIMD_512},
     {"http_port", required_argument, 0, ST_ARG_HTTP_SERVER_PORT},
+    {"tx_sessions_cnt_max", required_argument, 0, ST_ARG_TX_SESSIONS_CNT_MAX},
+    {"rx_sessions_cnt_max", required_argument, 0, ST_ARG_RX_SESSIONS_CNT_MAX},
 
     {0, 0, 0, 0}};
 
@@ -508,6 +512,23 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
         break;
       case ST_ARG_HTTP_SERVER_PORT:
         ctx->http_port = std::atoi(optarg);
+        break;
+      case ST_ARG_TX_SESSIONS_CNT_MAX:
+        {
+          int cnt = std::atoi(optarg);
+          if (cnt > 0) {
+            ctx->para.tx_sessions_cnt_max = cnt;
+          }
+        }
+        break;
+      case ST_ARG_RX_SESSIONS_CNT_MAX:
+        {
+          int cnt = std::atoi(optarg);
+          if (cnt > 0) {
+            ctx->para.rx_sessions_cnt_max = cnt;
+          }
+        }
+        
         break;
       case '?':
         break;
