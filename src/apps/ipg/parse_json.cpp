@@ -1844,11 +1844,28 @@ int st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *root_obje
 
       // parse rx output config
       json_object* output = st_json_object_object_get(rx_group, "output");
-      ctx->rx_output[i].type = safe_get_string(output, "type");
-      ctx->rx_output[i].device_id = json_object_get_int(st_json_object_object_get(output, "device_id"));
+      auto &rx_output = ctx->rx_output[i];
+      rx_output.type = safe_get_string(output, "type");
+      rx_output.device_id = json_object_get_int(st_json_object_object_get(output, "device_id"));
       std::string fu = safe_get_string(output, "file_url");
-      if(!(fu.empty())) ctx->rx_output[i].file_url = fu;
-      ctx->rx_output[i].video_format = safe_get_string(output, "video_format");
+      if(!(fu.empty())) rx_output.file_url = fu;
+      rx_output.video_format = safe_get_string(output, "video_format");
+      if (rx_output.id.empty()) {
+        rx_output.id = seeder::core::generate_uuid();
+      }
+      rx_output.pixel_format = safe_get_string(output, "pixel_format");
+    }
+
+    std::unordered_map<std::string, int> output_id_map;
+    for (auto &rx_output : ctx->rx_output) {
+      if (rx_output.id.empty()) {
+        logger->error("empty rx_output.id");
+        return -ST_JSON_NOT_VALID;
+      }
+      if (++output_id_map[rx_output.id] > 1) {
+        logger->error("duplicated rx_output.id {}", rx_output.id);
+        return -ST_JSON_NOT_VALID;
+      }
     }
 
     /* allocate tx sessions */
@@ -1867,11 +1884,12 @@ int st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *root_obje
 
     for (int i = 0; i < json_object_array_length(rx_group_array); ++i) {
       json_object* rx_group = json_object_array_get_idx(rx_group_array, i);
-      int id = json_object_get_int(st_json_object_object_get(rx_group, "id"));
       if (rx_group == NULL) {
         logger->error("{}, can not parse rx session group", __func__);
         return -ST_JSON_PARSE_FAIL;
       }
+
+      auto &rx_output = ctx->rx_output[i];
 
       /* parse receiving ip */
       json_object* ip_p = NULL;
@@ -1946,7 +1964,7 @@ int st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *root_obje
             if (ret) return ret;
 
             // video output handle id
-            ctx->rx_video_sessions[num_video].rx_output_id = id;
+            ctx->rx_video_sessions[num_video].rx_output_id = rx_output.id;
 
             num_video++;
           }
@@ -1979,7 +1997,7 @@ int st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *root_obje
             if (ret) return ret;
 
             // video output handle id
-            ctx->rx_audio_sessions[num_audio].rx_output_id = id;
+            ctx->rx_audio_sessions[num_audio].rx_output_id = rx_output.id;
 
             num_audio++;
           }

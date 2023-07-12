@@ -13,6 +13,7 @@
 
 #include "core/frame/frame.h"
 #include <boost/core/noncopyable.hpp>
+#include <atomic>
 
 namespace seeder::core
 {
@@ -29,7 +30,7 @@ namespace seeder::core
          * @brief start output stream handle
          * 
          */
-        virtual void start() = 0;
+        virtual void start();
         
         /**
          * @brief stop output stream handle
@@ -85,11 +86,28 @@ namespace seeder::core
          */
         virtual void display_audio_frame(uint8_t* aframe) = 0;
 
+        virtual void dump_stat();
+
 
         // frame buffer pointer
         uint8_t* vframe_buffer;
         uint8_t* aframe_buffer;
 
+        explicit output(const std::string &output_id);
 
+        virtual ~output();
+
+        const std::string & get_output_id() const;
+
+        virtual bool is_started() const;
+
+        enum running_status {
+          INIT = 0,
+          STARTED = 1
+        };
+
+      private:
+        std::string output_id;
+        std::atomic<int> status = {running_status::INIT};
     };
 } 

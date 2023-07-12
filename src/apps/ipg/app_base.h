@@ -36,6 +36,7 @@
 
 #include "core/stream/input.h"
 #include "core/stream/output.h"
+#include "core/video_format.h"
 
 #define ST_APP_MAX_TX_VIDEO_SESSIONS (180)
 #define ST_APP_MAX_TX_AUDIO_SESSIONS (180)
@@ -100,10 +101,12 @@ struct st_app_tx_source
 
 struct st_app_rx_output
 {
+  std::string id; // uuid
   std::string type; // decklink, file
   int device_id; // decklink
   std::string file_url;
   std::string video_format;
+  std::string pixel_format;
 };
 
 struct st_app_tx_video_session {
@@ -239,7 +242,7 @@ struct st_app_tx_anc_session {
 
 struct st_app_rx_video_session {
   int idx;
-  int id;
+  std::string rx_output_id;
   mtl_handle st;
   st20_rx_handle handle;
   int framebuff_cnt;
@@ -285,12 +288,12 @@ struct st_app_rx_video_session {
 
   // video output handle
   std::shared_ptr<seeder::core::output> rx_output;
-  st_app_rx_output* output_info;
+  st_app_rx_output output_info;
 };
 
 struct st_app_rx_audio_session {
   int idx;
-  int id;
+  std::string rx_output_id;
   st30_rx_handle handle;
   int framebuff_cnt;
   int st30_frame_size;
@@ -319,7 +322,7 @@ struct st_app_rx_audio_session {
 
   // audio output handle
   std::shared_ptr<seeder::core::output> rx_output;
-  st_app_rx_output* output_info;
+  st_app_rx_output output_info;
   int sample_num; // audio sample number per frame
 };
 
@@ -572,11 +575,13 @@ struct st_app_context {
   std::unordered_map<std::string, std::shared_ptr<seeder::core::input>> tx_sources;
   std::unordered_map<std::string, st_app_tx_source> source_info;
   // rx_output handle;
-  std::vector<std::shared_ptr<seeder::core::output>> rx_output;
-  std::vector<st_app_rx_output*> output_info;
+  std::unordered_map<std::string, std::shared_ptr<seeder::core::output>> rx_output;
+  std::unordered_map<std::string, st_app_rx_output> output_info;
   int http_port = 0;
-  int next_video_session_idx = 0;
-  int next_audio_session_idx = 0;
+  int next_tx_video_session_idx = 0;
+  int next_tx_audio_session_idx = 0;
+  int next_rx_video_session_idx = 0;
+  int next_rx_audio_session_idx = 0;
 
   ~st_app_context();
 };
@@ -601,3 +606,5 @@ static inline uint64_t st_app_get_monotonic_time() {
 
 int st_app_video_get_lcore(struct st_app_context* ctx, int sch_idx, bool rtp,
                            unsigned int* lcore);
+
+void st_set_video_foramt(struct st_json_audio_info info, seeder::core::video_format_desc* desc);

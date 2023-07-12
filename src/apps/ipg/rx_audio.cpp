@@ -220,7 +220,7 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     }
     s->handle = handle;
     s->rx_output = ctx->rx_output[audio->rx_output_id];
-    s->id = audio->rx_output_id;
+    s->rx_output_id = audio->rx_output_id;
     s->output_info = ctx->output_info[audio->rx_output_id];
     
     ret = app_rx_audio_init_frame_thread(s);
@@ -280,7 +280,7 @@ int st_app_rx_audio_sessions_init(struct st_app_context* ctx)
     {
         auto &s = ctx->rx_audio_sessions[i];
         s = std::shared_ptr<st_app_rx_audio_session>(new st_app_rx_audio_session {});
-        s->idx = i;
+        s->idx = ctx->next_rx_audio_session_idx++;
         s->framebuff_cnt = 2;
         s->st30_ref_fd = -1;
 

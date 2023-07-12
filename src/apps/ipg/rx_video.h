@@ -7,7 +7,13 @@ int st_app_rx_video_sessions_init(struct st_app_context* ctx);
 
 int st_app_rx_video_sessions_uinit(struct st_app_context* ctx);
 
-// int st_app_rx_video_sessions_stat(struct st_app_context* ctx);
+int st_app_rx_output_init(struct st_app_context* ctx, st_json_context *json_ctx);
+
+int st_rx_output_start(struct st_app_context* ctx, seeder::core::output *output);
+
+int st_app_rx_video_sessions_stat(struct st_app_context* ctx);
+
+int st_app_rx_output_stat(struct st_app_context* ctx);
 
 // int st_app_rx_video_sessions_result(struct st_app_context* ctx);
 

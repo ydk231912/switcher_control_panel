@@ -15,13 +15,13 @@
 using namespace seeder::core;
 namespace seeder::sdl
 {
-    sdl_output::sdl_output()
-    {
-        init();
-    }
+    // sdl_output::sdl_output()
+    // {
+    //     init();
+    // }
 
-    sdl_output::sdl_output(core::video_format_desc format_desc)
-    :format_desc_(format_desc)
+    sdl_output::sdl_output(const std::string &output_id, core::video_format_desc format_desc)
+    :output(output_id), format_desc_(format_desc)
     {
         init();
     }
@@ -94,6 +94,7 @@ namespace seeder::sdl
      */
     void sdl_output::start()
     {
+        output::start();
         abort = false;
         sdl_thread_ = std::make_unique<std::thread>(std::thread([&](){
             while(!abort)

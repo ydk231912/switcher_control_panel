@@ -34,7 +34,7 @@ namespace seeder::decklink
     class decklink_output : public core::output
     {
       public:
-        decklink_output(int device_id, core::video_format_desc format_desc);
+        decklink_output(const std::string &output_id, int device_id, const core::video_format_desc &format_desc, const std::string &pixel_format);
         ~decklink_output();
 
         /**
@@ -76,19 +76,24 @@ namespace seeder::decklink
          */
         void display_audio_frame(uint8_t* aframe);
 
+        void dump_stat();
+
       private:
         int decklink_index_;
         core::video_format_desc format_desc_;
         BMDVideoInputFlags video_flags_;
         BMDPixelFormat pixel_format_ = bmdFormat8BitBGRA;//bmdFormat8BitBGRA;bmdFormat10BitYUV
+        std::string pixel_format_string_;
         BMDDisplayMode bmd_mode_;
         IDeckLinkDisplayMode* display_mode_;
         IDeckLink* decklink_;
         IDeckLinkOutput* output_;
-        bool abort_ = false;
+        std::atomic<bool> abort_ = { false };
+        int display_frame_count = 0;
 
         IDeckLinkMutableVideoFrame*	playbackFrame_ = nullptr;
         IDeckLinkMutableVideoFrame*	yuv10Frame_ = nullptr;
+        IDeckLinkVideoConversion* frameConverter = nullptr;
         SwsContext* sws_ctx_ = nullptr;
         AVFrame* dst_frame_ = nullptr;
         uint8_t * dst_frame_buffer_ = nullptr;

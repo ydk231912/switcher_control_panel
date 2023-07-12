@@ -38,8 +38,8 @@ namespace seeder::sdl
     class sdl_output : public core::output
     {
       public:
-        sdl_output();
-        sdl_output(core::video_format_desc format_desc);
+        // sdl_output();
+        sdl_output(const std::string &output_id, core::video_format_desc format_desc);
         ~sdl_output();
 
         void init();

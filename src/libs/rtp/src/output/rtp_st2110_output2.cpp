@@ -9,8 +9,6 @@
  * 
  */
 
-#pragma once
-
 #include <iostream>
 #include <exception>
 #include <chrono>
@@ -37,8 +35,8 @@ extern "C"
 using namespace seeder::core;
 namespace seeder::rtp
 {
-    rtp_st2110_output2::rtp_st2110_output2(rtp_context& context)
-    :context_(context)
+    rtp_st2110_output2::rtp_st2110_output2(const std::string &output_id, rtp_context& context)
+    :output(output_id), context_(context)
     ,udp_sender_(std::make_unique<net::udp_sender>())
     ,udp_sender2_(std::make_unique<net::udp_sender>())
     ,executor_(std::make_unique<core::executor>())

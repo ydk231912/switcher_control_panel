@@ -1,69 +1,18 @@
 {
     "interfaces": [
         {
-            "name": "0000:52:00.0",
+            "name": "0000:18:00.0",
             "ip": "192.168.10.103"
-        }
-    ],
-    "tx_sessions": [
+        },
         {
-            "dip": [
-                "239.0.10.111"
-            ],
-            "interface": [
-                0
-            ],
-            "source": {
-                "//type": "decklink, file",
-                "type": "decklink",
-                "device_id": 1,
-                "file_url": "/home/seeder/4k1.mp4",
-                "video_format": "1080p5000"
-            },
-            "video": [
-                {
-                    "replicas": 1,
-                    "type": "frame",
-                    "pacing": "gap",
-                    "packing": "BPM",
-                    "start_port": 20000,
-                    "payload_type": 96,
-                    "tr_offset": "default",
-                    "video_format": "i1080p50",
-                    "pg_format": "YUV_422_10bit",
-                    "video_url": "./test.yuv"
-                }
-            ],
-            "audio": [
-                {
-                    "replicas": 1,
-                    "type": "frame",
-                    "start_port": 30000,
-                    "payload_type":97,
-                    "audio_format": "AM824",
-                    "audio_channel": ["ST"],
-                    "audio_sampling": "48kHz",
-                    "audio_ptime": "1",
-                    "audio_url": "/home/seeder/test.wav"
-                }
-            ],
-            "ancillary": [
-                {
-                    "replicas": 1,
-                    "start_port": 40000,
-                    "payload_type": 113,
-                    "type": "frame",
-                    "ancillary_format": "closed_caption",
-                    "ancillary_url": "./test.txt",
-                    "ancillary_fps": "p59"
-                }
-            ]
+            "name": "0000:18:00.1",
+            "ip": "192.168.10.104"
         }
     ],
     "rx_sessions": [
         {
             "ip": [
-                "192.168.10.103" 
+                "239.0.10.7"
             ],
             "interface": [
                 0
@@ -71,23 +20,23 @@
             "output":{
                 "//type": "decklink, file",
                 "type": "decklink",
-                "device_id": 5,
+                "device_id": 8,
                 "file_url": "",
-                "video_format": "1080i5000"
+                "video_format": "2160p5000",
+                "pixel_format": "bmdFormat10BitYUV"
             },
             "video": [
                 {
                     "replicas": 1,
                     "type": "frame",
                     "pacing": "gap",
-                    "packing": "BPM",
                     "start_port": 20000,
                     "payload_type": 96,
                     "tr_offset": "default",
-                    "video_format": "i1080i50",
+                    "video_format": "i2160p50",
                     "pg_format": "YUV_422_10bit",
                     "video_url": "./test.yuv",
-                    "display":"false"
+                    "display": false
                 }
             ],
             "audio": [
@@ -101,13 +50,6 @@
                     "audio_sampling": "48kHz",
                     "audio_ptime": "1",
                     "audio_url": "./test.wav"
-                }
-            ],
-            "ancillary": [
-                {
-                    "replicas": 1,
-                    "payload_type": 113,
-                    "start_port": 40000
                 }
             ]
         }

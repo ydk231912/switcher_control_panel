@@ -362,7 +362,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
 
 static int st_app_tx_video_session_init(st_app_context* ctx, st_json_video_session_t *json_video, st_app_tx_video_session *s) {
     int ret = 0;
-    s->idx = ctx->next_video_session_idx++;
+    s->idx = ctx->next_tx_video_session_idx++;
     s->lcore = -1;
     ret = app_tx_video_init(ctx, json_video, s);
     if (ret < 0) logger->error("{}({}), app_tx_video_init fail {}", __func__, s->idx, ret);
@@ -394,50 +394,17 @@ int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_jso
     return ret;
 }
 
-static void set_video_foramt(struct st_json_audio_info info, seeder::core::video_format_desc* desc)
-{
-    auto sample_size = st30_get_sample_size(info.audio_format); //ST30_FMT_PCM8 1 byte, ST30_FMT_PCM16 2 bytes, ST30_FMT_PCM24 3 bytes
-    auto ptime = info.audio_ptime; // ST30_PTIME_1MS, ST30_PTIME_4MS
-    desc->audio_channels = info.audio_channel;
-    desc->sample_num = st30_get_sample_num(ptime, info.audio_sampling); //sample number per ms, ST30_PTIME_1MS + sampling 48k/s = 48
-    if(ptime == ST30_PTIME_4MS)
-    {
-        desc->st30_frame_size = sample_size * st30_get_sample_num(ST30_PTIME_4MS, info.audio_sampling) * info.audio_channel;
-        desc->st30_fps = 250;
-    }
-    else
-    {
-        desc->st30_frame_size = sample_size * st30_get_sample_num(ST30_PTIME_1MS, info.audio_sampling) * info.audio_channel;
-        desc->st30_fps = 1000;
-    }
-
-    if(info.audio_sampling == ST30_SAMPLING_96K)
-        desc->audio_sample_rate = 96000;
-    else
-        desc->audio_sample_rate = 48000;
-
-    if(info.audio_format == ST30_FMT_PCM8)
-        desc->audio_samples = 8;
-    else if(info.audio_format == ST30_FMT_PCM24)
-        desc->audio_samples = 24;
-    else if(info.audio_format == ST31_FMT_AM824)
-        desc->audio_samples = 32;
-    else 
-        desc->audio_samples = 16;
-
-}
-
 int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {
     try
     {
         for(int i = 0; i < c->tx_sources.size(); i++)
         {
             auto &s = c->tx_sources[i];
+            auto &info = c->tx_audio_sessions[i].info;
             if(s.type == "decklink")
             {
                 auto format_desc = seeder::core::video_format_desc(s.video_format);
-                auto info = c->tx_audio_sessions[i].info;
-                set_video_foramt(info, &format_desc);
+                st_set_video_foramt(info, &format_desc);
                 auto decklink = std::make_shared<seeder::decklink::decklink_input>(s.id, s.device_id, format_desc);
                 ctx->tx_sources.emplace(decklink->get_source_id(), decklink);
                 ctx->source_info.emplace(decklink->get_source_id(), s);

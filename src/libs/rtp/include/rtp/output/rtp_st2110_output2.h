@@ -30,7 +30,7 @@ namespace seeder::rtp
     class rtp_st2110_output2 : public core::output
     {
       public:
-        rtp_st2110_output2(rtp_context& context);
+        rtp_st2110_output2(const std::string &output_id, rtp_context& context);
         ~rtp_st2110_output2();
 
         /**

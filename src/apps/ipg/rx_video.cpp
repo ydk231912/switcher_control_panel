@@ -1,9 +1,12 @@
 
 #include "rx_video.h"
 #include "core/util/logger.h"
-#include "core/stream/input.h"
-#include "player.h"
+#include "core/stream/output.h"
+// #include "player.h"
 #include "fmt.h"
+#include "decklink/output/decklink_output.h"
+#include "tx_video.h"
+#include <mutex>
 
 
 using namespace seeder::core;
@@ -383,7 +386,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     s->st20_frame_size = st20_rx_get_framebuffer_size(handle);
     // rx output handle
     s->rx_output = ctx->rx_output[video->rx_output_id];
-    s->id = video->rx_output_id;
+    s->rx_output_id = video->rx_output_id;
     //s->rx_output = ctx->tx_sources[video->tx_source_id];
     s->output_info = ctx->output_info[video->rx_output_id];
 
@@ -412,7 +415,7 @@ int st_app_rx_video_sessions_init(struct st_app_context* ctx)
     {
         auto &s = ctx->rx_video_sessions[i];
         s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
-        s->idx = i;
+        s->idx = ctx->next_rx_video_session_idx++;
         s->st = ctx->st;
         s->framebuff_cnt = fb_cnt;
         s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
@@ -428,39 +431,59 @@ int st_app_rx_video_sessions_init(struct st_app_context* ctx)
     return ret;
 }
 
+int st_app_rx_output_init(struct st_app_context* ctx, st_json_context *json_ctx)
+{
+    st_json_context_t* c = json_ctx;
+    try
+    {
+        for(int i = 0; i < c->rx_output.size(); i++)
+        {
 
-// int st_app_rx_video_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
-// {
-//     int ret, i;
-//     struct st_app_rx_video_session* s;
-//     int fb_cnt = ctx->rx_video_fb_cnt;
-//     if(fb_cnt <= 0) fb_cnt = 6;
+            st_app_rx_output* s = &c->rx_output[i];
+            auto &info = c->rx_audio_sessions[i].info;
+            // auto session = c->rx_audio_sessions[i];
+            if(s->type == "decklink")
+            {
+                auto desc = seeder::core::video_format_desc(s->video_format);
+                st_set_video_foramt(info, &desc);
+                auto decklink = std::make_shared<seeder::decklink::decklink_output>(s->id, s->device_id, desc, s->pixel_format);
+                ctx->rx_output.emplace(s->id, decklink);
+                ctx->output_info.emplace(s->id, *s);
+            
+                // ctx->rx_video_sessions[i].rx_output = decklink;
+                //  ctx->rx_video_sessions[i].output_info = s;
+                // ctx->rx_audio_sessions[i].rx_output = decklink;
+                // ctx->rx_audio_sessions[i].output_info = s;
+            }
+            // else if(s->type == "file")
+            // {
+            //     auto format_desc = seeder::core::video_format_desc(s->video_format);
+            //     auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_output>(s->id, s->file_url, format_desc);
+            //     ctx->rx_output.emplace(s->id, ffmpeg);
+            //     ctx->output_info.emplace(s->id, *s);
+            // }
+        }
+    }
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
+    
+    return 0;
+}
 
-//     // ctx->rx_video_sessions = (struct st_app_rx_video_session*)st_app_zmalloc(
-//     //     sizeof(struct st_app_rx_video_session) * c->rx_video_session_cnt);
+int st_rx_output_start(struct st_app_context* ctx, seeder::core::output *output) {
+    try
+    {
+        output->start();
+    }
+    catch(const std::exception& e)
+    {
+        return -1;
+    }
 
-//     if(!ctx->rx_video_sessions) return -ENOMEM;
-//     int count = ctx->rx_video_session_cnt;
-
-//     for(i = 0; i < c->rx_video_session_cnt; i++) 
-//     {
-//         count = count + i;
-//         ctx->rx_video_session_cnt+=1;
-//         s = &ctx->rx_video_sessions[count];
-//         s->idx = i;
-//         s->st = ctx->st;
-//         s->framebuff_cnt = fb_cnt;
-//         s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
-//         s->st20_dst_fd = -1;
-
-//         ret = app_rx_video_init(ctx,c ? &c->rx_video_sessions[i] : NULL, s);
-//         if(ret < 0)
-//         {
-//             logger->debug("{}({}),st_app_rx_video_sessions_init_add {}", __func__, i, ret);
-//             return ret;
-//         }
-//     }
-// }
+    return 0;
+}
 
 
 int st_app_rx_video_sessions_uinit(struct st_app_context* ctx)
@@ -474,41 +497,30 @@ int st_app_rx_video_sessions_uinit(struct st_app_context* ctx)
     return 0;
 }
 
-// int st_app_rx_video_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c)
-// {
-//     int i,ret;
-//     struct st_app_rx_video_session* s;
-//     struct st_app_rx_video_session* s_new;
-//     int fb_cnt = ctx->rx_video_fb_cnt;
-//     if(!ctx->rx_video_sessions) return 0;
-//     for(int i =0;i<ctx->rx_video_session_cnt;i++)
-//     {
-//       if (ctx->rx_video_sessions[i].id == id)
-//       {
-//         s = &ctx->rx_video_sessions[i];
-//         app_rx_video_uinit(s);
-//         for(int j =0;j<c->rx_video_session_cnt;j++)
-//         {
-//             if(c->rx_video_sessions->rx_output_id == id){
-//             s_new->idx = i;
-//             s_new->st = ctx->st;
-//             s_new->framebuff_cnt = fb_cnt;
-//             s_new->st20_dst_fb_cnt = ctx->rx_video_file_frames;
-//             s_new->st20_dst_fd = -1;
-//             ret = app_rx_video_init(ctx, c ? &c->rx_video_sessions[j] : NULL, s_new);
-//             if(ret < 0)
-//             {
-//                 logger->debug("{}({}), st_app_rx_video_sessions_uinit_update fail {}", __func__, i, ret);
-//                 return ret;
-//             }
+static void st_app_rx_video_session_stat(st_app_rx_video_session &s) {
+    uint64_t cur_time_ns = st_app_get_monotonic_time();
+    if (s.measure_latency && s.stat_frame_received) {
+        double latency_ms = (double)s.stat_latency_us_sum / s.stat_frame_received / 1000;
+        logger->info("{}({}) , avrage latency {}ms", __func__, s.idx, latency_ms);
+        s.stat_latency_us_sum = 0;
+    }
+    s.stat_frame_received = 0;
+    s.stat_last_time = cur_time_ns;
+}
 
-//             }
-//         }
-//         ctx->rx_video_sessions[i]= *s_new;
-//       }
-//     }
-//     return 0;
-// }
+int st_app_rx_video_sessions_stat(struct st_app_context* ctx) {
+    for (auto &s : ctx->rx_video_sessions) {
+        st_app_rx_video_session_stat(*s);
+    }
+    return 0;
+}
+
+int st_app_rx_output_stat(struct st_app_context* ctx) {
+    for (auto &[id, s] : ctx->rx_output) {
+        s->dump_stat();
+    }
+    return 0;
+}
 
 // static int app_rx_video_stat(struct st_app_rx_video_session* s)
 // {

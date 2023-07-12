@@ -39,8 +39,8 @@ extern "C"
 using namespace seeder::core;
 namespace seeder::rtp
 {
-    rtp_st2110_output::rtp_st2110_output(rtp_context& context)
-    :context_(context)
+    rtp_st2110_output::rtp_st2110_output(const std::string &output_id, rtp_context& context)
+    :output(output_id), context_(context)
     //,executor_(std::make_unique<core::executor>())
     {
         udp_senders_.push_back(std::make_shared<net::udp_sender>());
@@ -91,6 +91,7 @@ namespace seeder::rtp
      */
     void rtp_st2110_output::start()
     {
+        output::start();
         abort = false;
         encode();
         send_packet(0);

@@ -172,24 +172,24 @@ typedef struct st_json_video_session {
   st_json_video_info_t info;
 
   // tx only
-  std::string tx_source_id; // video source handle id
+  std::string tx_source_id; // tx_source.id
   
   /* rx only items */
   enum user_pg_fmt user_pg_format;
   bool display;
   bool measure_latency;
 
-  int rx_output_id; // ip stream output device handle id
+  std::string rx_output_id; // rx_output.id
 } st_json_video_session_t;
 
 typedef struct st_json_audio_session {
   st_json_session_base_t base;
   st_json_audio_info_t info;
 
-  // audio source handle id
+  // tx_source.id
   std::string tx_source_id;
-  // audio output handle id
-  int rx_output_id;
+  // rx_ourput.id
+  std::string rx_output_id;
 
 } st_json_audio_session_t;
 

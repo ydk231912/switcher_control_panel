@@ -322,7 +322,7 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 
 static int st_app_tx_audio_sessions_init(struct st_app_context* ctx, st_json_audio_session_t *json_audio, st_app_tx_audio_session *s) {
     int ret;
-    s->idx = ctx->next_audio_session_idx++;
+    s->idx = ctx->next_tx_audio_session_idx++;
     ret = app_tx_audio_init(ctx, json_audio, s);
     if (ret < 0) logger->error("{}({}), app_tx_audio_init fail {}", __func__, s->idx, ret);
     return ret;

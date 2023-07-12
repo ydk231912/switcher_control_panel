@@ -55,9 +55,11 @@ enum mtl_log_level app_get_log_level(void) { return app_log_level; }
 
 static void app_stat(void *priv)
 {
-    // struct st_app_context *ctx = (st_app_context *)priv;
-
-    // st_app_rx_video_sessions_stat(ctx);
+    struct st_app_context *ctx = (st_app_context *)priv;
+    std::lock_guard<std::mutex> lock_guard(ctx->mutex);
+    
+    st_app_rx_video_sessions_stat(ctx);
+    st_app_rx_output_stat(ctx);
     // st_app_rx_st22p_sessions_stat(ctx);
     // st_app_rx_st20p_sessions_stat(ctx);
 }
@@ -232,49 +234,7 @@ static int st_tx_video_source_start(struct st_app_context* ctx)
     return 0;
 } 
 
-// initialize video output 
 /*
-static int st_rx_output_init(struct st_app_context* ctx)
-{
-    st_json_context_t* c = ctx->json_ctx;
-    try
-    {
-        for(int i = 0; i < c->rx_output_cnt; i++)
-        {
-
-            st_app_rx_output* s = &c->rx_output[i];
-             auto info = c->rx_audio_sessions[i].info;
-            // auto session = c->rx_audio_sessions[i];
-            if(s->type == "decklink")
-            {
-                auto desc = seeder::core::video_format_desc(s->video_format);
-                set_video_foramt(info, &desc);
-
-                auto decklink = std::make_shared<seeder::decklink::decklink_output>(s->device_id, desc);
-                ctx->rx_output.push_back(decklink);
-                ctx->output_info.push_back(s);
-            
-                // ctx->rx_video_sessions[i].rx_output = decklink;
-                //  ctx->rx_video_sessions[i].output_info = s;
-                // ctx->rx_audio_sessions[i].rx_output = decklink;
-                // ctx->rx_audio_sessions[i].output_info = s;
-            }
-            else if(s->type == "file")
-            {
-                 auto format_desc = seeder::core::video_format_desc(s->video_format);
-                 auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s->file_url, format_desc);
-                //   ctx->rx_output.push_back(ffmpeg);
-                //   ctx->output_info.push_back(s);
-            }
-        }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-    
-    return 0;
-}
 
 
 // initialize video output 
@@ -366,24 +326,14 @@ static int st_rx_output_init_update(struct st_app_context* ctx,st_json_context_t
 
 
 
+*/
 
 static int st_rx_output_start(struct st_app_context* ctx)
 {
-    try
-    {
-        for(auto s : ctx->rx_output)
-        {
-            if(s) s->start();        
-        }
+    for (auto &[id, s] : ctx->rx_output) {
+        st_rx_output_start(ctx, s.get());
     }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-
-    return 0;
 }
-*/
 
 static void st_app_sig_handler(int signo) 
 {
@@ -505,13 +455,12 @@ int main(int argc, char **argv)
     }
 
     //    // init rx video source
-    // ret = st_rx_output_init(ctx);
-    // if(ret < 0)
-    // {
-    //     logger->error("{}, st_rx_output_init fail", __func__);
-    //     st_app_ctx_free(ctx);
-    //     return -EIO;
-    // }
+    ret = st_app_rx_output_init(ctx.get(), ctx->json_ctx.get());
+    if(ret < 0)
+    {
+        logger->error("{}, st_rx_output_init fail", __func__);
+        return -EIO;
+    }
 
 
     // init tx video source
@@ -522,23 +471,21 @@ int main(int argc, char **argv)
         return -EIO;
     }
 
-    // // rx video
-    // ret = st_app_rx_video_sessions_init(ctx);
-    // if(ret < 0)
-    // {
-    //     logger->error("{}, st_app_rx_video_sessions_init fail", __func__);
-    //     st_app_ctx_free(ctx);
-    //     return -EIO;
-    // }
+    // rx video
+    ret = st_app_rx_video_sessions_init(ctx.get());
+    if(ret < 0)
+    {
+        logger->error("{}, st_app_rx_video_sessions_init fail", __func__);
+        return -EIO;
+    }
 
-    // //rx audio
-    // ret =  st_app_rx_audio_sessions_init(ctx);
-    // if(ret < 0)
-    // {
-    //     logger->error("{}, st_app_rx_audio_sessions_init fail", __func__);
-    //     st_app_ctx_free(ctx);
-    //     return -EIO;
-    // }
+    //rx audio
+    ret =  st_app_rx_audio_sessions_init(ctx.get());
+    if(ret < 0)
+    {
+        logger->error("{}, st_app_rx_audio_sessions_init fail", __func__);
+        return -EIO;
+    }
 
 
     //tx video
@@ -561,14 +508,13 @@ int main(int argc, char **argv)
     } 
 
 
-    // //start video source input stream
-    // ret = st_rx_output_start(ctx);
-    // if(ret < 0)
-    // {
-    //     logger->error("{}, st_rx_output_start fail", __func__);
-    //     st_app_ctx_free(ctx);
-    //     return -EIO;
-    // }
+    //start video source input stream
+    ret = st_rx_output_start(ctx.get());
+    if(ret < 0)
+    {
+        logger->error("{}, st_rx_output_start fail", __func__);
+        return -EIO;
+    }
 
 
     if(!ctx->runtime_session)

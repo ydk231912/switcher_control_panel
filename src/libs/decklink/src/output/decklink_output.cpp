@@ -23,10 +23,19 @@ using namespace seeder::core;
 using namespace seeder::decklink::util;
 namespace seeder::decklink
 {
-    decklink_output::decklink_output(int device_id, core::video_format_desc format_desc)
-    :decklink_index_(device_id - 1),
+    decklink_output::decklink_output(
+        const std::string &output_id, 
+        int device_id, 
+        const core::video_format_desc &format_desc, 
+        const std::string &pixel_format
+    )
+    :output(output_id), decklink_index_(device_id - 1),
     format_desc_(format_desc)
     {
+        pixel_format_string_ = pixel_format;
+        if (pixel_format == "bmdFormat10BitYUV") {
+            pixel_format_ = bmdFormat10BitYUV;
+        }
         HRESULT result;
         bmd_mode_ = get_decklink_video_format(format_desc_.format);
         video_flags_ = 0;
@@ -100,6 +109,13 @@ namespace seeder::decklink
             throw std::runtime_error("Unable to enable video output");
         }
 
+        frameConverter = CreateVideoConversionInstance();
+        if (frameConverter == nullptr)
+        {
+            logger->error("Unable to get Video Conversion interface");
+            throw std::runtime_error("Unable to get Video Conversion interface");
+        }
+
         // create audio frame buffer
         aframe_buffer = (uint8_t*)malloc(format_desc_.st30_frame_size);
 
@@ -142,12 +158,14 @@ namespace seeder::decklink
      */
     void decklink_output::start()
     {
-        HRESULT result;
+        output::start();
         abort_ = false;
-
+        logger->info("decklink_output start, device_index={} pixel_format={} format_desc={}", decklink_index_, pixel_format_string_, format_desc_.name);
+        /*
         decklink_thread_ = std::make_unique<std::thread>(std::thread([&](){
             while(!abort_)
             {
+                HRESULT result;
                 auto frm = get_video_frame();
 
                 // convert frame format
@@ -175,6 +193,7 @@ namespace seeder::decklink
 
             }
         }));
+        */
     }
         
     /**
@@ -184,7 +203,9 @@ namespace seeder::decklink
     void decklink_output::stop()
     {
         abort_ = true;
-        decklink_thread_->join();
+        if (decklink_thread_->joinable()) {
+            decklink_thread_->join();
+        }
     }
 
     /**
@@ -309,20 +330,21 @@ namespace seeder::decklink
         memset(yuvBuffer, 0, yuv10Frame_->GetRowBytes() * yuv10Frame_->GetHeight());
         memcpy(yuvBuffer, vframe, yuv10Frame_->GetRowBytes() * yuv10Frame_->GetHeight());
 
-        IDeckLinkVideoConversion*	frameConverter		= NULL;
-        frameConverter = CreateVideoConversionInstance();
-		if (frameConverter == NULL)
-		{
-			logger->error("Unable to get Video Conversion interface");
-            return;
-		}
-        if (frameConverter->ConvertFrame(yuv10Frame_, playbackFrame_) != S_OK)
-        {
-            logger->error("Could not get DeckLinkVideoFrame buffer pointer");
-            return;
-        }
+        if (pixel_format_ == bmdFormat10BitYUV) {
+            result = output_->DisplayVideoFrameSync(yuv10Frame_);
+        } else {
+            
+            if (frameConverter->ConvertFrame(yuv10Frame_, playbackFrame_) != S_OK)
+            {
+                logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+                return;
+            }
 
-        result = output_->DisplayVideoFrameSync(playbackFrame_);
+            result = output_->DisplayVideoFrameSync(playbackFrame_);
+        }
+        display_frame_count++;
+
+        
         if (result != S_OK)
         {
             if(result == E_FAIL)
@@ -362,5 +384,11 @@ namespace seeder::decklink
         {
             logger->error("Unable to display audio output");
         }
+    }
+
+    void decklink_output::dump_stat() {
+        logger->info("decklink_output device_index={} display_frame_count={}", decklink_index_, display_frame_count);
+
+        display_frame_count = 0;
     }
 }
