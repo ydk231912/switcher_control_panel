@@ -38,6 +38,10 @@ namespace seeder::core
          */
         virtual void stop() = 0;
 
+        virtual void consume_st_video_frame(void* frame, uint32_t width, uint32_t height) = 0;
+
+        virtual void consume_st_audio_frame(void* frame, size_t frame_size) = 0;
+
         /**
          * @brief push a frame into this output stream
          * 
@@ -78,20 +82,16 @@ namespace seeder::core
          * @brief push a video frame into this output stream
          * 
          */
-        virtual void display_video_frame(uint8_t* vframe) = 0;
+        virtual void display_video_frame() = 0;
 
         /**
          * @brief push a audio frame into this output stream
          * 
          */
-        virtual void display_audio_frame(uint8_t* aframe) = 0;
+        virtual void display_audio_frame() = 0;
 
         virtual void dump_stat();
 
-
-        // frame buffer pointer
-        uint8_t* vframe_buffer;
-        uint8_t* aframe_buffer;
 
         explicit output(const std::string &output_id);
 

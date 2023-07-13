@@ -215,11 +215,14 @@ namespace seeder::sdl
      * @brief push a video frame into this output stream
      * 
      */
-    void sdl_output::display_video_frame(uint8_t* vframe){}
+    void sdl_output::display_video_frame(){}
 
     /**
      * @brief push a audio frame into this output stream
      * 
      */
-    void sdl_output::display_audio_frame(uint8_t* aframe){}
+    void sdl_output::display_audio_frame(){}
+
+    void sdl_output::consume_st_video_frame(void* frame, uint32_t width, uint32_t height) {}
+    void sdl_output::consume_st_audio_frame(void* frame, size_t frame_size) {}
 }

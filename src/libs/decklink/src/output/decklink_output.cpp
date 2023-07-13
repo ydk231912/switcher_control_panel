@@ -11,13 +11,16 @@
 
 #include <iostream>
 
-#include <boost/chrono.hpp>
 #include <boost/thread/thread.hpp>
+
+#include <chrono>
 
 #include "core/util/logger.h"
 #include "decklink/util.h"
 #include "core/util/color_conversion.h"
 #include "decklink/output/decklink_output.h"
+
+#include <mtl/st_convert_api.h>
 
 using namespace seeder::core;
 using namespace seeder::decklink::util;
@@ -35,6 +38,8 @@ namespace seeder::decklink
         pixel_format_string_ = pixel_format;
         if (pixel_format == "bmdFormat10BitYUV") {
             pixel_format_ = bmdFormat10BitYUV;
+        } else if (pixel_format == "bmdFormat8BitBGRA") {
+            pixel_format_ = bmdFormat8BitBGRA;
         }
         HRESULT result;
         bmd_mode_ = get_decklink_video_format(format_desc_.format);
@@ -95,10 +100,10 @@ namespace seeder::decklink
         vframe_buffer = (uint8_t*)malloc(format_desc_.height * ((display_mode_->GetWidth() + 47) / 48) * 128);
 
         // frame buffer pointer
-        if (playbackFrame_->GetBytes((void**)&vframe_buffer) != S_OK)
-        {
-            logger->error("Could not get DeckLinkVideoFrame buffer pointer");
-        }
+        // if (playbackFrame_->GetBytes((void**)&vframe_buffer) != S_OK)
+        // {
+        //     logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+        // }
 
         // enable audio output
         result = output_->EnableAudioOutput(format_desc.audio_sample_rate, format_desc.audio_samples, 
@@ -305,8 +310,9 @@ namespace seeder::decklink
      * @brief push a video frame into this output stream
      * 
      */
-    void decklink_output::display_video_frame(uint8_t* vframe)
+    void decklink_output::display_video_frame()
     {
+        auto start = std::chrono::steady_clock::now();
         HRESULT result;
         ////////////do not need format convert
         // fill playback frame
@@ -321,14 +327,17 @@ namespace seeder::decklink
 
         ///////////bmdFormat10BitYUV to bmdFormat8BitBGRA
         // fill playback frame
-        uint8_t* yuvBuffer = nullptr;
-        if (yuv10Frame_->GetBytes((void**)&yuvBuffer) != S_OK)
-        {
-            logger->error("Could not get DeckLinkVideoFrame buffer pointer");
-            return;
-        }
-        memset(yuvBuffer, 0, yuv10Frame_->GetRowBytes() * yuv10Frame_->GetHeight());
-        memcpy(yuvBuffer, vframe, yuv10Frame_->GetRowBytes() * yuv10Frame_->GetHeight());
+        // auto memcpy_start = std::chrono::steady_clock::now();
+        // uint8_t* yuvBuffer = nullptr;
+        // if (yuv10Frame_->GetBytes((void**)&yuvBuffer) != S_OK)
+        // {
+        //     logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+        //     return;
+        // }
+        // memset(yuvBuffer, 0, yuv10Frame_->GetRowBytes() * yuv10Frame_->GetHeight());
+        // memcpy(yuvBuffer, vframe, yuv10Frame_->GetRowBytes() * yuv10Frame_->GetHeight());
+        // auto memcpy_end = std::chrono::steady_clock::now();
+        // memcpy_us_sum += std::chrono::nanoseconds(memcpy_end - memcpy_start).count();
 
         if (pixel_format_ == bmdFormat10BitYUV) {
             result = output_->DisplayVideoFrameSync(yuv10Frame_);
@@ -341,8 +350,11 @@ namespace seeder::decklink
             }
 
             result = output_->DisplayVideoFrameSync(playbackFrame_);
+            frame_convert_count++;
         }
         display_frame_count++;
+        auto end = std::chrono::steady_clock::now();
+        display_frame_us_sum += std::chrono::nanoseconds(end - start).count();
 
         
         if (result != S_OK)
@@ -375,11 +387,11 @@ namespace seeder::decklink
      * @brief push a audio frame into this output stream
      * 
      */
-    void decklink_output::display_audio_frame(uint8_t* aframe)
+    void decklink_output::display_audio_frame()
     {
         HRESULT result;
         uint32_t n;
-        result = output_->WriteAudioSamplesSync(aframe, format_desc_.sample_num, &n);
+        result = output_->WriteAudioSamplesSync(aframe_buffer, format_desc_.sample_num, &n);
         if (result != S_OK)
         {
             logger->error("Unable to display audio output");
@@ -387,8 +399,27 @@ namespace seeder::decklink
     }
 
     void decklink_output::dump_stat() {
-        logger->info("decklink_output device_index={} display_frame_count={}", decklink_index_, display_frame_count);
+        logger->info("decklink_output device_index={} display_frame_count={} frame_convert_count={} display_frame_us_sum={} memcpy_us_sum={}", 
+            decklink_index_, display_frame_count, frame_convert_count, display_frame_us_sum, memcpy_us_sum);
 
         display_frame_count = 0;
+        display_frame_us_sum = 0;
+        frame_convert_count = 0;
+        memcpy_us_sum = 0;
+    }
+
+    void decklink_output::consume_st_video_frame(void *frame, uint32_t width, uint32_t height) {
+        uint8_t* yuvBuffer = nullptr;
+        if (yuv10Frame_->GetBytes((void**)&yuvBuffer) != S_OK)
+        {
+            logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+            return;
+        }
+        st20_rfc4175_422be10_to_v210((st20_rfc4175_422_10_pg2_be*)frame, yuvBuffer, width, height);
+    }
+
+    void decklink_output::consume_st_audio_frame(void *frame, size_t frame_size) {
+        memset(aframe_buffer, 0, frame_size);
+        memcpy(aframe_buffer, frame, frame_size);
     }
 }

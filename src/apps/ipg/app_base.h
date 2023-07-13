@@ -286,6 +286,8 @@ struct st_app_rx_video_session {
   bool measure_latency;
   uint64_t stat_latency_us_sum;
 
+  uint64_t stat_encode_us_sum;
+
   // video output handle
   std::shared_ptr<seeder::core::output> rx_output;
   st_app_rx_output output_info;

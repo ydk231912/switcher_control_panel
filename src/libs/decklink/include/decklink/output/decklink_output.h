@@ -49,6 +49,9 @@ namespace seeder::decklink
          */
         void stop();
 
+        void consume_st_video_frame(void *frame, uint32_t width, uint32_t height);
+        void consume_st_audio_frame(void *frame, size_t frame_size);
+
         /**
          * @brief push a frame into this output stream buffer
          * 
@@ -68,13 +71,13 @@ namespace seeder::decklink
          * @brief push a video frame into this output stream
          * 
          */
-        void display_video_frame(uint8_t* vframe);
+        void display_video_frame();
 
         /**
          * @brief push a audio frame into this output stream
          * 
          */
-        void display_audio_frame(uint8_t* aframe);
+        void display_audio_frame();
 
         void dump_stat();
 
@@ -82,7 +85,7 @@ namespace seeder::decklink
         int decklink_index_;
         core::video_format_desc format_desc_;
         BMDVideoInputFlags video_flags_;
-        BMDPixelFormat pixel_format_ = bmdFormat8BitBGRA;//bmdFormat8BitBGRA;bmdFormat10BitYUV
+        BMDPixelFormat pixel_format_ = bmdFormat10BitYUV;//bmdFormat8BitBGRA;bmdFormat10BitYUV
         std::string pixel_format_string_;
         BMDDisplayMode bmd_mode_;
         IDeckLinkDisplayMode* display_mode_;
@@ -90,6 +93,9 @@ namespace seeder::decklink
         IDeckLinkOutput* output_;
         std::atomic<bool> abort_ = { false };
         int display_frame_count = 0;
+        int frame_convert_count = 0;
+        uint64_t display_frame_us_sum = 0;
+        uint64_t memcpy_us_sum = 0;
 
         IDeckLinkMutableVideoFrame*	playbackFrame_ = nullptr;
         IDeckLinkMutableVideoFrame*	yuv10Frame_ = nullptr;
@@ -97,6 +103,9 @@ namespace seeder::decklink
         SwsContext* sws_ctx_ = nullptr;
         AVFrame* dst_frame_ = nullptr;
         uint8_t * dst_frame_buffer_ = nullptr;
+        // frame buffer pointer
+        uint8_t* vframe_buffer = nullptr;
+        uint8_t* aframe_buffer = nullptr;
 
         //buffer
         std::mutex frame_mutex_;

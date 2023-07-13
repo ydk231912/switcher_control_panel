@@ -44,8 +44,11 @@ static void app_rx_video_consume_frame(struct st_app_rx_video_session* s, void* 
     if(output)
     {
         // convert to v210
-        st20_rfc4175_422be10_to_v210((st20_rfc4175_422_10_pg2_be*)frame, output->vframe_buffer, s->width, s->height);
-        output->display_video_frame(output->vframe_buffer);
+        uint64_t cur_time_ns = st_app_get_monotonic_time();
+        output->consume_st_video_frame(frame, s->width, s->height);
+        uint64_t finish_time_ns = st_app_get_monotonic_time();
+        s->stat_encode_us_sum += (finish_time_ns - cur_time_ns);
+        output->display_video_frame();
      
     }
 
@@ -501,11 +504,12 @@ static void st_app_rx_video_session_stat(st_app_rx_video_session &s) {
     uint64_t cur_time_ns = st_app_get_monotonic_time();
     if (s.measure_latency && s.stat_frame_received) {
         double latency_ms = (double)s.stat_latency_us_sum / s.stat_frame_received / 1000;
-        logger->info("{}({}) , avrage latency {}ms", __func__, s.idx, latency_ms);
+        logger->info("{}({}) , avrage latency {}ms, stat_encode_us_sum={}", __func__, s.idx, latency_ms, s.stat_encode_us_sum);
         s.stat_latency_us_sum = 0;
     }
     s.stat_frame_received = 0;
     s.stat_last_time = cur_time_ns;
+    s.stat_encode_us_sum = 0;
 }
 
 int st_app_rx_video_sessions_stat(struct st_app_context* ctx) {

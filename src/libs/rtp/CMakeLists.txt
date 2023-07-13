@@ -1,7 +1,15 @@
 
-file(GLOB_RECURSE SRC_LIST src/*.cpp)
+add_library(
+    rtp
 
-add_library(rtp ${SRC_LIST})
+    src/consumer/rtp_st2110_consumer.cpp
+    src/input/rtp_st2110_input.cpp
+    src/output/rtp_st2110_output.cpp
+    src/producer/rtp_st2110_producer.cpp
+    src/packet.cpp
+    src/packets_buffer.cpp
+    src/util.cpp
+)
 
 target_include_directories(
     rtp

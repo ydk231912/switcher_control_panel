@@ -802,13 +802,17 @@ namespace seeder::rtp
      * @brief push a video frame into this output stream
      * 
      */
-    void rtp_st2110_output::display_video_frame(uint8_t* vframe){}
+    void rtp_st2110_output::display_video_frame(){}
 
     /**
      * @brief push a audio frame into this output stream
      * 
      */
-    void rtp_st2110_output::display_audio_frame(uint8_t* aframe){}
+    void rtp_st2110_output::display_audio_frame(){}
+
+    void rtp_st2110_output::consume_st_video_frame(void* frame, uint32_t width, uint32_t height) {}
+
+    void rtp_st2110_output::consume_st_audio_frame(void* frame, size_t frame_size) {}
 }
 
 ////////////////////////////////////////////////send_packet backup

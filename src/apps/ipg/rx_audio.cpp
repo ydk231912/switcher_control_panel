@@ -52,9 +52,8 @@ static void app_rx_audio_consume_frame(struct st_app_rx_audio_session* s, void* 
     auto output = s->rx_output;
     if(output)
     {
-        memset(output->aframe_buffer, 0, frame_size);
-        memcpy(output->aframe_buffer, frame, frame_size);
-        output->display_audio_frame((uint8_t*)frame);
+        output->consume_st_audio_frame(frame, frame_size);
+        output->display_audio_frame();
     }
 }
 
