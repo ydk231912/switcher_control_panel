@@ -333,6 +333,7 @@ static int st_rx_output_start(struct st_app_context* ctx)
     for (auto &[id, s] : ctx->rx_output) {
         st_rx_output_start(ctx, s.get());
     }
+    return 0;
 }
 
 static void st_app_sig_handler(int signo) 

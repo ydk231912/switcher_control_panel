@@ -9,6 +9,10 @@
  * 
  */
 
+#include <boost/core/noncopyable.hpp>
+#include <boost/lockfree/policies.hpp>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
 
 #include <boost/thread/thread.hpp>
@@ -20,7 +24,47 @@
 #include "core/util/color_conversion.h"
 #include "decklink/output/decklink_output.h"
 
+#include <memory>
 #include <mtl/st_convert_api.h>
+
+#include <boost/smart_ptr/intrusive_ptr.hpp>
+
+#include <boost/lockfree/queue.hpp>
+
+static void intrusive_ptr_add_ref(IUnknown *p) {
+    p->AddRef();
+}
+
+static void intrusive_ptr_release(IUnknown *p) {
+    p->Release();
+}
+
+namespace {
+    template<class T>
+    class frame_queue {
+    public:
+        explicit frame_queue(std::size_t size): producer_items(size), consumer_items(size) {}
+
+        bool producer_pop(T &ret) {
+            return producer_items.pop(ret);
+        }
+
+        bool producer_push(const T &v) {
+            return producer_items.bounded_push(v);
+        }
+
+        bool consumer_push(const T &v) {
+            return consumer_items.bounded_push(v);
+        }
+
+        bool consumer_pop(T &ret) {
+            return consumer_items.pop(ret);
+        }
+    private:
+        boost::lockfree::queue<T, boost::lockfree::fixed_sized<true>> producer_items;
+        boost::lockfree::queue<T, boost::lockfree::fixed_sized<true>> consumer_items;
+    };
+} // namespace
 
 using namespace seeder::core;
 using namespace seeder::decklink::util;
@@ -138,23 +182,25 @@ namespace seeder::decklink
 
     decklink_output::~decklink_output()
     {
-        if(display_mode_ != nullptr) display_mode_->Release();
+        if (display_mode_ != nullptr) display_mode_->Release();
+ 
+        if (output_ != nullptr) output_->Release();
+ 
+        if (decklink_ != nullptr) decklink_->Release();
+ 
+        if (playbackFrame_ != nullptr) playbackFrame_->Release();
+ 
+        if (sws_ctx_) sws_freeContext(sws_ctx_);
+ 
+        if (dst_frame_)  av_frame_free(&dst_frame_);
+ 
+        if (dst_frame_buffer_) av_free(dst_frame_buffer_);
+ 
+        if (aframe_buffer) free(aframe_buffer);
+ 
+        if (vframe_buffer) free(vframe_buffer);
 
-        if(output_ != nullptr) output_->Release();
-
-        if(decklink_ != nullptr) decklink_->Release();
-
-        if(playbackFrame_ != nullptr) playbackFrame_->Release();
-
-        if(sws_ctx_) sws_freeContext(sws_ctx_);
-
-        if(dst_frame_)  av_frame_free(&dst_frame_);
-
-        if(dst_frame_buffer_) av_free(dst_frame_buffer_);
-
-        if(aframe_buffer) free(aframe_buffer);
-
-        if(vframe_buffer) free(vframe_buffer);
+        if (frameConverter) frameConverter->Release();
     }
 
     /**
@@ -422,4 +468,335 @@ namespace seeder::decklink
         memset(aframe_buffer, 0, frame_size);
         memcpy(aframe_buffer, frame, frame_size);
     }
+
+
+    class PlayoutDelegate : public IDeckLinkVideoOutputCallback
+    {
+    public:
+        explicit PlayoutDelegate(decklink_async_output::impl *_p_impl): p_impl(_p_impl) {}
+
+        HRESULT	STDMETHODCALLTYPE QueryInterface (REFIID /*iid*/, LPVOID* /*ppv*/) {
+            return E_NOTIMPL;
+        }
+        ULONG STDMETHODCALLTYPE AddRef () {
+            return 1;
+        }
+        ULONG STDMETHODCALLTYPE Release () {
+            return 1;
+        }
+
+        HRESULT	STDMETHODCALLTYPE ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result);
+        
+        HRESULT	STDMETHODCALLTYPE ScheduledPlaybackHasStopped() {
+            return S_OK;
+        }
+    private:
+        decklink_async_output::impl *p_impl = nullptr;
+    };
+
+
+    class decklink_async_output::impl {
+        friend class decklink_async_output;
+        friend class PlayoutDelegate;
+
+        impl(
+            int device_id, 
+            const core::video_format_desc &format_desc, 
+            const std::string &pixel_format,
+            int frame_buffer_count
+        ):
+            decklink_index_(device_id - 1), 
+            format_desc_(format_desc),
+            video_frame_queue(frame_buffer_count)
+        {
+            pixel_format_string_ = pixel_format;
+            if (pixel_format == "bmdFormat10BitYUV") {
+                pixel_format_ = bmdFormat10BitYUV;
+            } else if (pixel_format == "bmdFormat8BitBGRA") {
+                pixel_format_ = bmdFormat8BitBGRA;
+            }
+
+            HRESULT result;
+            bmd_mode_ = get_decklink_video_format(format_desc_.format);
+            video_flags_ = 0;
+            
+            // get the decklink device
+            decklink_ = boost::intrusive_ptr<IDeckLink>(get_decklink(decklink_index_), false);
+            if(decklink_ == nullptr)
+            {
+                logger->error("Failed to get DeckLink device. Make sure that the device ID is valid");
+                throw std::runtime_error("Failed to get DeckLink device.");
+            }
+
+            IDeckLinkOutput *output = nullptr;
+            // get output interface of the decklink device
+            result = decklink_->QueryInterface(IID_IDeckLinkOutput, (void**)&output);
+            if(result != S_OK)
+            {
+                logger->error("Failed to get DeckLink output interface.");
+                throw std::runtime_error("Failed to get DeckLink output interface.");
+            }
+            output_ = boost::intrusive_ptr<IDeckLinkOutput>(output, false);
+
+            IDeckLinkDisplayMode *display_mode = nullptr;
+            // get decklink output mode
+            result = output_->GetDisplayMode(bmd_mode_, &display_mode);
+            display_mode_ = boost::intrusive_ptr<IDeckLinkDisplayMode>(display_mode, false);
+            if(result != S_OK)
+            {
+                logger->error("Failed to get DeckLink output mode.");
+                throw std::runtime_error("Failed to get DeckLink output mode.");
+            }
+
+            // enable video output
+            result = output_->EnableVideoOutput(bmd_mode_, bmdVideoOutputFlagDefault);
+            if (result != S_OK)
+            {
+                logger->error("Unable to enable video output");
+                throw std::runtime_error("Unable to enable video output");
+            }
+            auto PerRow = ((display_mode_->GetWidth() + 47) / 48) * 128; //display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
+            for (int i = 0; i < frame_buffer_count; ++i) {
+                IDeckLinkMutableVideoFrame *video_frame = nullptr;
+                result = output_->CreateVideoFrame(
+                    (int32_t)display_mode_->GetWidth(),
+                    (int32_t)display_mode_->GetHeight(),
+                    PerRow,
+                    bmdFormat10BitYUV,
+                    bmdFrameFlagDefault,
+                    &video_frame);
+                if(result != S_OK)
+                {
+                    logger->error("Unable to create video frame.");
+                    throw std::runtime_error("Unable to create video frame.");
+                }
+                video_frames_.emplace_back(video_frame, false);
+                video_frame_queue.producer_push(video_frame);
+            }
+            
+            auto outputBytesPerRow = display_mode_->GetWidth() * 4; //display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
+            IDeckLinkMutableVideoFrame *playbackFrame = nullptr;
+            result = output_->CreateVideoFrame(
+                (int32_t)display_mode_->GetWidth(),
+                (int32_t)display_mode_->GetHeight(),
+                outputBytesPerRow,
+                pixel_format_,
+                bmdFrameFlagDefault,
+                &playbackFrame);
+            playbackFrame_ = boost::intrusive_ptr(playbackFrame, false);
+                                        
+            if(result != S_OK)
+            {
+                logger->error("Unable to create video frame.");
+                throw std::runtime_error("Unable to create video frame.");
+            }
+
+            result = output_->EnableAudioOutput(format_desc.audio_sample_rate, format_desc.audio_samples, 
+                                                format_desc.audio_channels, bmdAudioOutputStreamTimestamped);
+            if (result != S_OK)
+            {
+                logger->error("Unable to enable video output");
+                throw std::runtime_error("Unable to enable video output");
+            }
+
+            IDeckLinkVideoConversion *_frameConverter = CreateVideoConversionInstance();
+            if (_frameConverter == nullptr)
+            {
+                logger->error("Unable to get Video Conversion interface");
+                throw std::runtime_error("Unable to get Video Conversion interface");
+            }
+            frameConverter = boost::intrusive_ptr(_frameConverter, false);
+
+            // create audio frame buffer
+            aframe_buffer = std::unique_ptr<uint8_t[]>(new uint8_t[format_desc_.st30_frame_size]);
+
+            result = display_mode_->GetFrameRate(&frame_duration, &frame_timescale);
+            if (result != S_OK)
+            {
+                logger->error("Unable to GetFrameRate");
+                throw std::runtime_error("Unable to GetFrameRate");
+            }
+            frame_per_second = (frame_timescale + (frame_duration - 1)) / frame_duration;
+            audio_buffer_sample_length = (frame_per_second * audio_sample_rate * frame_duration) / frame_timescale;
+
+            playout_delegate.reset(new PlayoutDelegate(this));
+
+            result = output_->SetScheduledFrameCompletionCallback(playout_delegate.get());
+            if (result != S_OK)
+            {
+                logger->error("Unable to SetScheduledFrameCompletionCallback");
+                throw std::runtime_error("Unable to SetScheduledFrameCompletionCallback");
+            }
+
+            std::size_t vframe_buffer_size = format_desc_.height * ((display_mode_->GetWidth() + 47) / 48) * 128;
+            vframe_buffer.reset(new uint8_t[vframe_buffer_size]);
+        }
+
+        int decklink_index_;
+        core::video_format_desc format_desc_;
+        BMDVideoInputFlags video_flags_;
+        BMDPixelFormat pixel_format_ = bmdFormat10BitYUV;//bmdFormat8BitBGRA;bmdFormat10BitYUV
+        std::string pixel_format_string_;
+        BMDDisplayMode bmd_mode_;
+
+        // IDeckLinkDisplayMode* display_mode_;
+        // IDeckLink* decklink_;
+        // IDeckLinkOutput* output_;
+        // IDeckLinkVideoConversion* frameConverter = nullptr;
+        boost::intrusive_ptr<IDeckLinkMutableVideoFrame> playbackFrame_;
+        std::vector<boost::intrusive_ptr<IDeckLinkMutableVideoFrame>> video_frames_;
+        frame_queue<IDeckLinkMutableVideoFrame *> video_frame_queue;
+        std::unique_ptr<uint8_t[]> vframe_buffer;
+        uint64_t total_playout_frames = 0;
+        BMDTimeValue frame_duration;
+        BMDTimeScale frame_timescale;
+        uint32_t frame_per_second;
+
+        boost::intrusive_ptr<IDeckLinkDisplayMode> display_mode_;
+        boost::intrusive_ptr<IDeckLink> decklink_;
+        boost::intrusive_ptr<IDeckLinkOutput> output_;
+        boost::intrusive_ptr<IDeckLinkVideoConversion> frameConverter;
+
+        int display_frame_count = 0;
+        int frame_convert_count = 0;
+        int scheduled_frame_completed_count = 0;
+        uint64_t display_frame_us_sum = 0;
+        std::unique_ptr<uint8_t[]> aframe_buffer;
+        uint64_t total_audio_scheduled = 0;
+        
+        uint32_t audio_buffer_sample_length;
+        const BMDAudioSampleRate audio_sample_rate = bmdAudioSampleRate48kHz;
+
+        std::unique_ptr<PlayoutDelegate> playout_delegate;
+    };
+
+
+    decklink_async_output::decklink_async_output(
+        const std::string &output_id, 
+        int device_id, 
+        const core::video_format_desc &format_desc, 
+        const std::string &pixel_format
+    ):
+        output(output_id), 
+        p_impl(new impl(
+            device_id, 
+            format_desc, 
+            pixel_format, 
+            6 // frame buffer count
+        ))
+    {
+        
+    }
+
+    decklink_async_output::~decklink_async_output() {}
+
+    void decklink_async_output::start() {
+        output::start();
+        HRESULT result;
+        logger->info("decklink_async_output start, device_index={}", p_impl->decklink_index_);
+        result = p_impl->output_->StartScheduledPlayback(0, p_impl->frame_timescale, 1.0);
+        if (result != S_OK)
+        {
+            logger->error("Unable to StartScheduledPlayback");
+        }
+    }
+    void decklink_async_output::stop() {}
+
+    void decklink_async_output::consume_st_video_frame(void *frame, uint32_t width, uint32_t height) {
+        IDeckLinkMutableVideoFrame *video_frame = nullptr;
+        uint8_t* yuvBuffer = nullptr;
+        if (p_impl->video_frame_queue.producer_pop(video_frame)) {
+            if (video_frame->GetBytes((void**)&yuvBuffer) != S_OK)
+            {
+                p_impl->video_frame_queue.producer_push(video_frame);
+                logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+                return;
+            }
+            st20_rfc4175_422be10_to_v210((st20_rfc4175_422_10_pg2_be*)frame, yuvBuffer, width, height);
+            p_impl->video_frame_queue.consumer_push(video_frame);
+        }
+    }
+    
+    void decklink_async_output::consume_st_audio_frame(void *frame, size_t frame_size) {
+        memset(p_impl->aframe_buffer.get(), 0, frame_size);
+        memcpy(p_impl->aframe_buffer.get(), frame, frame_size);
+    }
+
+    void decklink_async_output::display_video_frame() {
+        IDeckLinkMutableVideoFrame *video_frame = nullptr;
+        if (p_impl->video_frame_queue.consumer_pop(video_frame)) {
+            auto start = std::chrono::steady_clock::now();
+            HRESULT result;
+            if (p_impl->pixel_format_ == bmdFormat10BitYUV) {
+                result = p_impl->output_->ScheduleVideoFrame(
+                    video_frame, 
+                    p_impl->total_playout_frames * p_impl->frame_duration, 
+                    p_impl->frame_duration, 
+                    p_impl->frame_timescale
+                );
+            } else {
+                
+                if (p_impl->frameConverter->ConvertFrame(video_frame, p_impl->playbackFrame_.get()) != S_OK)
+                {
+                    logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+                    return;
+                }
+
+                result = p_impl->output_->ScheduleVideoFrame(
+                    p_impl->playbackFrame_.get(), 
+                    p_impl->total_playout_frames * p_impl->frame_duration, 
+                    p_impl->frame_duration, 
+                    p_impl->frame_timescale
+                );
+
+                p_impl->frame_convert_count++;
+            }
+            if (result != S_OK) {
+                logger->error("ScheduleVideoFrame error: {}", result);
+            }
+            p_impl->total_playout_frames++;
+            p_impl->display_frame_count++;
+            auto end = std::chrono::steady_clock::now();
+            p_impl->display_frame_us_sum += std::chrono::nanoseconds(end - start).count();
+        }
+    }
+
+    void decklink_async_output::display_audio_frame() {
+        HRESULT result;
+        result = p_impl->output_->ScheduleAudioSamples(
+            p_impl->aframe_buffer.get(), 
+            p_impl->format_desc_.sample_num, 
+            (p_impl->total_audio_scheduled * p_impl->audio_buffer_sample_length), 
+            p_impl->audio_sample_rate,
+            nullptr // when sampleFramesWritten is NULL, ScheduleAudioSamples will block until all audio samples are written to the scheduling buffer
+        );
+        p_impl->total_audio_scheduled++;
+        if (result != S_OK)
+        {
+            logger->error("Unable to display audio output");
+        }
+    }
+
+    void decklink_async_output::dump_stat() {
+        logger->info("decklink_async_output device_index={} display_frame_count={} frame_convert_count={} display_frame_us_sum={} scheduled_frame_completed_count={}", 
+            p_impl->decklink_index_, p_impl->display_frame_count, p_impl->frame_convert_count, p_impl->display_frame_us_sum, p_impl->scheduled_frame_completed_count);
+
+        p_impl->display_frame_count = 0;
+        p_impl->display_frame_us_sum = 0;
+        p_impl->frame_convert_count = 0;
+        p_impl->scheduled_frame_completed_count = 0;
+    }
+
+    HRESULT PlayoutDelegate::ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result) {
+        p_impl->video_frame_queue.producer_push(dynamic_cast<IDeckLinkMutableVideoFrame*>(completedFrame));
+        p_impl->scheduled_frame_completed_count++;
+        return S_OK;
+    }
+
+    void decklink_async_output::set_frame(std::shared_ptr<core::frame> frm) {}
+    void decklink_async_output::set_video_frame(std::shared_ptr<AVFrame> vframe) {}
+    void decklink_async_output::set_audio_frame(std::shared_ptr<AVFrame> aframe) {}
+    std::shared_ptr<core::frame> decklink_async_output::get_frame() { return {}; }
+    std::shared_ptr<AVFrame> decklink_async_output::get_video_frame() { return {}; }
+    std::shared_ptr<AVFrame> decklink_async_output::get_audio_frame() { return {}; }
 }

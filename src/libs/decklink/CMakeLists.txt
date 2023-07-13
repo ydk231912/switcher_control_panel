@@ -1,6 +1,12 @@
-file(GLOB_RECURSE SRC_LIST src/*.cpp)
+add_library(
+    decklink
 
-add_library(decklink ${SRC_LIST})
+    src/consumer/decklink_consumer.cpp
+    src/input/decklink_input.cpp
+    src/output/decklink_output.cpp
+    src/producer/decklink_producer.cpp
+    src/util.cpp
+)
 
 target_include_directories(
     decklink

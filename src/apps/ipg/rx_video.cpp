@@ -48,6 +48,7 @@ static void app_rx_video_consume_frame(struct st_app_rx_video_session* s, void* 
         output->consume_st_video_frame(frame, s->width, s->height);
         uint64_t finish_time_ns = st_app_get_monotonic_time();
         s->stat_encode_us_sum += (finish_time_ns - cur_time_ns);
+        // logger->info("encode_us={}", (finish_time_ns - cur_time_ns));
         output->display_video_frame();
      
     }
@@ -73,12 +74,40 @@ static void app_rx_video_consume_frame(struct st_app_rx_video_session* s, void* 
     // }
 }
 
+static void app_rx_video_thread_bind(struct st_app_rx_video_session* s) 
+{
+    if(s->lcore != -1) 
+    {
+        mtl_bind_to_lcore(s->st, pthread_self(), s->lcore);
+    }
+}
+
+static void app_rx_video_check_lcore(struct st_app_rx_video_session* s, bool rtp) 
+{
+    int sch_idx = st20_rx_get_sch_idx(s->handle);
+
+    if(!s->ctx->app_thread && (s->handle_sch_idx != sch_idx)) 
+    {
+        s->handle_sch_idx = sch_idx;
+        unsigned int lcore;
+        int ret = st_app_video_get_lcore(s->ctx, s->handle_sch_idx, rtp, &lcore);
+        if((ret >= 0) && (lcore != s->lcore)) 
+        {
+            s->lcore = lcore;
+            app_rx_video_thread_bind(s);
+            logger->debug("{}({}), bind to new lcore {}", __func__, s->idx, lcore);
+        }
+    }
+}
+
 static void* app_rx_video_frame_thread(void* arg)
 {
     struct st_app_rx_video_session* s = (st_app_rx_video_session*)arg;
     int idx = s->idx;
     int consumer_idx;
     struct st_rx_frame* framebuff;
+
+    app_rx_video_thread_bind(s);
 
     logger->info("{}({}), start", __func__, idx);
     while(!s->st20_app_thread_stop)
@@ -97,6 +126,8 @@ static void* app_rx_video_frame_thread(void* arg)
         st_pthread_mutex_unlock(&s->st20_wake_mutex);
 
         logger->debug("{}({}), frame idx {}", __func__, idx, consumer_idx);
+
+        app_rx_video_check_lcore(s, false);
         
         app_rx_video_consume_frame(s, framebuff->frame, framebuff->size);
         st20_rx_put_framebuff(s->handle, framebuff->frame);
@@ -385,13 +416,20 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
         return -EIO;
     }
     s->handle = handle;
-
+    s->handle_sch_idx = st20_rx_get_sch_idx(handle);
     s->st20_frame_size = st20_rx_get_framebuffer_size(handle);
     // rx output handle
     s->rx_output = ctx->rx_output[video->rx_output_id];
     s->rx_output_id = video->rx_output_id;
     //s->rx_output = ctx->tx_sources[video->tx_source_id];
     s->output_info = ctx->output_info[video->rx_output_id];
+
+    if(!ctx->app_thread) 
+    {
+        unsigned int lcore;
+        ret = st_app_video_get_lcore(ctx, s->handle_sch_idx, false, &lcore);
+        if (ret >= 0) s->lcore = lcore;
+    }
 
     ret = app_rx_video_init_frame_thread(s);
     if(ret < 0)
@@ -423,6 +461,8 @@ int st_app_rx_video_sessions_init(struct st_app_context* ctx)
         s->framebuff_cnt = fb_cnt;
         s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
         s->st20_dst_fd = -1;
+        s->lcore = -1;
+        s->ctx = ctx;
 
         ret = app_rx_video_init(ctx, ctx->json_ctx ? &ctx->json_ctx->rx_video_sessions[i] : NULL, s.get());
         if(ret < 0)
@@ -445,18 +485,21 @@ int st_app_rx_output_init(struct st_app_context* ctx, st_json_context *json_ctx)
             st_app_rx_output* s = &c->rx_output[i];
             auto &info = c->rx_audio_sessions[i].info;
             // auto session = c->rx_audio_sessions[i];
+            auto desc = seeder::core::video_format_desc(s->video_format);
+            st_set_video_foramt(info, &desc);
             if(s->type == "decklink")
             {
-                auto desc = seeder::core::video_format_desc(s->video_format);
-                st_set_video_foramt(info, &desc);
                 auto decklink = std::make_shared<seeder::decklink::decklink_output>(s->id, s->device_id, desc, s->pixel_format);
                 ctx->rx_output.emplace(s->id, decklink);
                 ctx->output_info.emplace(s->id, *s);
-            
                 // ctx->rx_video_sessions[i].rx_output = decklink;
                 //  ctx->rx_video_sessions[i].output_info = s;
                 // ctx->rx_audio_sessions[i].rx_output = decklink;
                 // ctx->rx_audio_sessions[i].output_info = s;
+            } else if (s->type == "decklink_async") {
+                auto decklink = std::make_shared<seeder::decklink::decklink_async_output>(s->id, s->device_id, desc, s->pixel_format);
+                ctx->rx_output.emplace(s->id, decklink);
+                ctx->output_info.emplace(s->id, *s);
             }
             // else if(s->type == "file")
             // {

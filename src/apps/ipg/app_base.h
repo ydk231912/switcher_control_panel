@@ -245,9 +245,12 @@ struct st_app_rx_video_session {
   std::string rx_output_id;
   mtl_handle st;
   st20_rx_handle handle;
+  int handle_sch_idx;
   int framebuff_cnt;
   int st20_frame_size;
   bool slice;
+  int lcore;
+  st_app_context *ctx;
 
   char st20_dst_url[ST_APP_URL_MAX_LEN];
   int st20_dst_fb_cnt; /* the count of recevied fbs will be saved to file */

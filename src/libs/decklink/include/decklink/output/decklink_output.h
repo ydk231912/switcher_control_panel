@@ -131,4 +131,35 @@ namespace seeder::decklink
         std::condition_variable aframe_cv_;
 
     };
+
+    class decklink_async_output : public core::output
+    {
+    public:
+      explicit decklink_async_output(const std::string &output_id, int device_id, const core::video_format_desc &format_desc, const std::string &pixel_format);
+      ~decklink_async_output();
+
+      void start();
+      void stop();
+
+      void consume_st_video_frame(void *frame, uint32_t width, uint32_t height);
+      void consume_st_audio_frame(void *frame, size_t frame_size);
+
+      void display_video_frame();
+      void display_audio_frame();
+
+      void dump_stat();
+
+      void set_frame(std::shared_ptr<core::frame> frm);
+      void set_video_frame(std::shared_ptr<AVFrame> vframe);
+      void set_audio_frame(std::shared_ptr<AVFrame> aframe);
+      std::shared_ptr<core::frame> get_frame();
+      std::shared_ptr<AVFrame> get_video_frame();
+      std::shared_ptr<AVFrame> get_audio_frame();
+
+    private:
+      class impl;
+      friend class impl;
+      friend class PlayoutDelegate;
+      std::unique_ptr<impl> p_impl;
+    };
 }
