@@ -139,6 +139,7 @@ private:
             text_err(res, "tx_source_id empty");
             return;
         }
+        auto lock = acquire_ctx_lock();
         std::error_code ec {};
         ec = st_app_remove_tx_session(app_ctx, tx_source_id);
         if (ec) {

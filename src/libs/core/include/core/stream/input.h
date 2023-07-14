@@ -37,7 +37,7 @@ namespace seeder::core
          * @brief stop input stream handle
          * 
          */
-        virtual void stop() = 0;
+        virtual void stop();
 
         /**
          * @brief push a frame into this input stream
@@ -95,9 +95,12 @@ namespace seeder::core
 
         virtual bool is_started() const;
 
+        virtual bool is_stopped() const;
+
         enum running_status {
           INIT = 0,
-          STARTED = 1
+          STARTED = 1,
+          STOPPED = 2
         };
 
       private:

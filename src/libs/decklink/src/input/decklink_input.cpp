@@ -121,7 +121,7 @@ namespace seeder::decklink
             //     logger->error("unknow");
             // }
 
-            logger->error("Failed to enable DeckLink video input.");
+            logger->error("Failed to enable DeckLink video input. {:#x}", result);
             throw std::runtime_error("Failed to enable DeckLink video input.");
         }
         // TODO parameters from config file
@@ -138,6 +138,8 @@ namespace seeder::decklink
             logger->error("Failed to start DeckLink input streams.");
             throw std::runtime_error("Failed to start DeckLink input streams.");
         }
+
+        logger->info("decklink_input start device_index={}", decklink_index_);
     }
 
     /**
@@ -148,10 +150,21 @@ namespace seeder::decklink
     {
         if(input_ != nullptr)
         {
-            input_->StopStreams();
-            input_->DisableAudioInput();
-            input_->DisableVideoInput();
+            HRESULT result;
+            result = input_->StopStreams();
+            if (FAILED(result)) {
+                logger->error("decklink_input::stop StopStreams error: {}", result);
+            }
+            result = input_->DisableAudioInput();
+            if (FAILED(result)) {
+                logger->error("decklink_input::stop DisableAudioInput error: {}", result);
+            }
+            result = input_->DisableVideoInput();
+            if (FAILED(result)) {
+                logger->error("decklink_input::stop DisableVideoInput error: {}", result);
+            }
         }
+        logger->info("decklink_input stop device_index={}", decklink_index_);
     }
 
     ULONG decklink_input::AddRef(void)

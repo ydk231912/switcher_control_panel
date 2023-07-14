@@ -354,6 +354,9 @@ static void st_app_sig_handler(int signo)
 // check args are correct
 int st_app_args_check(struct st_app_context *ctx)
 {
+    if (!ctx->json_ctx) {
+        return -1;
+    }
     if(ctx->json_ctx->tx_video_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||
         ctx->json_ctx->tx_st22p_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||
         ctx->json_ctx->tx_st20p_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||

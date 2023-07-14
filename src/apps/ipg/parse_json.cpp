@@ -496,8 +496,8 @@ static int st_json_parse_tx_video(int idx, json_object* video_obj,
   if (ret < 0) return ret;
 
   /* parse video url */
-  ret = parse_url(video_obj, "video_url", video->info.video_url);
-  if (ret < 0) return ret;
+  // ret = parse_url(video_obj, "video_url", video->info.video_url);
+  // if (ret < 0) return ret;
 
   return ST_JSON_SUCCESS;
 }
@@ -729,8 +729,8 @@ static int st_json_parse_tx_audio(int idx, json_object* audio_obj,
   if (ret < 0) return ret;
 
   /* parse audio url */
-  ret = parse_url(audio_obj, "audio_url", audio->info.audio_url);
-  if (ret < 0) return ret;
+  // ret = parse_url(audio_obj, "audio_url", audio->info.audio_url);
+  // if (ret < 0) return ret;
 
   return ST_JSON_SUCCESS;
 }
@@ -775,10 +775,10 @@ static int st_json_parse_rx_audio(int idx, json_object* audio_obj,
   if (ret < 0) return ret;
 
   /* parse audio url */
-  ret = parse_url(audio_obj, "audio_url", audio->info.audio_url);
-  if (ret < 0) {
-    logger->error("{}, no reference file", __func__);
-  }
+  // ret = parse_url(audio_obj, "audio_url", audio->info.audio_url);
+  // if (ret < 0) {
+  //   logger->error("{}, no reference file", __func__);
+  // }
 
   return ST_JSON_SUCCESS;
 }

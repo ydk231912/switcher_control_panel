@@ -3,6 +3,7 @@
 #include "tx_video.h"
 #include "tx_audio.h"
 #include <algorithm>
+#include <json/value.h>
 #include <string>
 #include <unordered_map>
 #include "app_error_code.h"
@@ -85,7 +86,8 @@ std::error_code st_app_remove_tx_session(st_app_context *ctx, const std::string 
     auto &json_tx_sessions = ctx->json_ctx->json_root["tx_sessions"];
     for (int i = 0; i < json_tx_sessions.size(); ) {
         if (json_tx_sessions[i]["id"] == tx_source_id) {
-            json_tx_sessions.removeIndex(i, nullptr);
+            Json::Value got;
+            json_tx_sessions.removeIndex(i, &got);
         } else {
             ++i;
         }

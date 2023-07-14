@@ -9,8 +9,16 @@ void input::start() {
     this->status.compare_exchange_strong(expected, running_status::STARTED);
 }
 
+void input::stop() {
+    this->status = running_status::STOPPED; 
+}
+
 bool input::is_started() const {
-    return this->status > running_status::INIT;
+    return this->status == running_status::STARTED;
+}
+
+bool input::is_stopped() const {
+    return this->status == running_status::STOPPED;
 }
 
 input::~input() {}
