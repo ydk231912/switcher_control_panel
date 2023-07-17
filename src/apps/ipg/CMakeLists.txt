@@ -36,7 +36,7 @@ target_link_libraries(
     mtl_deps
     jsonc_deps
     spdlog_deps
-    jsoncpp_lib_static
+    JsonCpp::JsonCpp
 )
 
 target_include_directories(

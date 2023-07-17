@@ -15,6 +15,7 @@
 #include "core/util/buffer.h"
 #include <boost/core/noncopyable.hpp>
 #include <atomic>
+#include <string>
 
 namespace seeder::core
 {

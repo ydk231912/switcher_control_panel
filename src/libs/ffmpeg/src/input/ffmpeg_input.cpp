@@ -109,8 +109,8 @@ namespace seeder::ffmpeg
         AVCodecParameters* codec_par = fmt_ctx->streams[v_idx]->codecpar;
         AVCodecParameters* codec_par_a = fmt_ctx->streams[a_idx]->codecpar;
 
-        AVCodec* codec = avcodec_find_decoder(codec_par->codec_id);
-        AVCodec* codec_a = avcodec_find_decoder(codec_par_a->codec_id);
+        const AVCodec* codec = avcodec_find_decoder(codec_par->codec_id);
+        const AVCodec* codec_a = avcodec_find_decoder(codec_par_a->codec_id);
         if(codec == NULL)
         {
             logger->error("Can not find video codec");

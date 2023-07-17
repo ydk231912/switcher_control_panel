@@ -14,6 +14,7 @@
 #include "core/frame/frame.h"
 #include <boost/core/noncopyable.hpp>
 #include <atomic>
+#include <string>
 
 namespace seeder::core
 {
@@ -36,7 +37,7 @@ namespace seeder::core
          * @brief stop output stream handle
          * 
          */
-        virtual void stop() = 0;
+        virtual void stop();
 
         virtual void consume_st_video_frame(void* frame, uint32_t width, uint32_t height) = 0;
 
@@ -99,11 +100,14 @@ namespace seeder::core
 
         const std::string & get_output_id() const;
 
-        virtual bool is_started() const;
+        virtual bool is_started() const noexcept;
+
+        virtual bool is_stopped() const noexcept;
 
         enum running_status {
           INIT = 0,
-          STARTED = 1
+          STARTED = 1,
+          STOPPED = 2
         };
 
       private:

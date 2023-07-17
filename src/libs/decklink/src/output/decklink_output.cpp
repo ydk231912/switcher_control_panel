@@ -253,6 +253,7 @@ namespace seeder::decklink
      */
     void decklink_output::stop()
     {
+        output::stop();
         abort_ = true;
         if (decklink_thread_->joinable()) {
             decklink_thread_->join();

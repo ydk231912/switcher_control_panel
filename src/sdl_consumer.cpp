@@ -163,7 +163,7 @@ namespace seeder
         }
 
         AVCodecParameters* codec_par = fmt_ctx->streams[v_idx]->codecpar;
-        AVCodec* codec = avcodec_find_decoder(codec_par->codec_id);
+        const AVCodec* codec = avcodec_find_decoder(codec_par->codec_id);
         if(codec == NULL)
         {
             printf("Can not find codec \n");

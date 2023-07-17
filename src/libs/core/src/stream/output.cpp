@@ -9,8 +9,16 @@ void output::start() {
     this->status.compare_exchange_strong(expected, running_status::STARTED);
 }
 
-bool output::is_started() const {
+bool output::is_started() const noexcept {
     return this->status > running_status::INIT;
+}
+
+void output::stop() {
+    status = running_status::STOPPED;
+}
+
+bool output::is_stopped() const noexcept {
+    return this->status == running_status::STOPPED;
 }
 
 output::~output() {}

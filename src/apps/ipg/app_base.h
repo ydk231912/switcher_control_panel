@@ -4,7 +4,6 @@
 #pragma once
 
 #include <SDL2/SDL.h>
-#include <json/forwards.h>
 #include <mutex>
 #include <unordered_map>
 #ifdef APP_HAS_SDL2_TTF

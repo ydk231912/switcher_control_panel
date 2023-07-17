@@ -9,8 +9,8 @@
  * @copyright Copyright (c) 2022
  * 
  */
-
 #include <memory>
+#include <cstdlib>
 
 #include "core/util/buffer.h"
 

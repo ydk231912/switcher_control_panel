@@ -1516,7 +1516,8 @@ int st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *root_obje
       tx_source.device_id = json_object_get_int(st_json_object_object_get(source, "device_id"));
       tx_source.file_url = safe_get_string(source, "file_url");
       tx_source.video_format = safe_get_string(source, "video_format");
-      tx_source.id = safe_get_string(source, "id");
+      
+      tx_source.id = safe_get_string(tx_group, "id");
       if (tx_source.id.empty()) {
         tx_source.id = seeder::core::generate_uuid();
       }
@@ -1850,10 +1851,12 @@ int st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *root_obje
       std::string fu = safe_get_string(output, "file_url");
       if(!(fu.empty())) rx_output.file_url = fu;
       rx_output.video_format = safe_get_string(output, "video_format");
+      rx_output.pixel_format = safe_get_string(output, "pixel_format");
+
+      rx_output.id = safe_get_string(rx_group, "id");
       if (rx_output.id.empty()) {
         rx_output.id = seeder::core::generate_uuid();
       }
-      rx_output.pixel_format = safe_get_string(output, "pixel_format");
     }
 
     std::unordered_map<std::string, int> output_id_map;

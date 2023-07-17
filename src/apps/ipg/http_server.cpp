@@ -18,7 +18,6 @@
 #include <fstream>
 #include <thread>
 #include <boost/filesystem.hpp>
-#include <json/json.h>
 #include <core/util/fs.h>
 #include "parse_json.h"
 #include "app_session.h"
@@ -114,6 +113,15 @@ private:
     }
     
     void update_session(const Request& req, Response& res) {
+        auto root = parse_json_body(req);
+        if (!check_require_tx_source_id(root)) {
+            text_err(res, "check_require_tx_source_id error");
+            return;
+        }
+        if (!check_require_rx_output_id(root)) {
+            text_err(res, "check_require_rx_output_id error");
+            return;
+        }
         auto lock = acquire_ctx_lock();
         std::unique_ptr<st_json_context_t> new_ctx;
         std::error_code ec {};
@@ -148,6 +156,34 @@ private:
             return;
         }
         json_ok(res);
+    }
+
+    bool check_require_tx_source_id(Json::Value &root) {
+        auto &tx_sessions = root["tx_sessions"];
+        if (!tx_sessions.isArray()) {
+            return true;
+        }
+        for (Json::ArrayIndex i = 0; i < tx_sessions.size(); ++i) {
+            auto &s = tx_sessions[i];
+            if (!s["id"].isString() || s["id"].asString().empty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool check_require_rx_output_id(Json::Value &root) {
+        auto &rx_sessions = root["rx_sessions"];
+        if (!rx_sessions.isArray()) {
+            return true;
+        }
+        for (Json::ArrayIndex i = 0; i < rx_sessions.size(); ++i) {
+            auto &s = rx_sessions[i];
+            if (!s["id"].isString() || s["id"].asString().empty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     std::unique_lock<std::mutex> acquire_ctx_lock() {
