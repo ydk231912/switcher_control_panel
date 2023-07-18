@@ -110,6 +110,9 @@ namespace seeder::core
           STOPPED = 2
         };
 
+      protected:
+        virtual void do_stop();
+
       private:
         std::string output_id;
         std::atomic<int> status = {running_status::INIT};

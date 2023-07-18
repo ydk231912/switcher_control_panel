@@ -17,6 +17,7 @@ extern "C"
 #include "decklink/input/decklink_input.h"
 #include "core/util/logger.h"
 #include "decklink/util.h"
+#include "decklink/manager.h"
 
 using namespace seeder::decklink::util;
 using namespace seeder::core;
@@ -42,7 +43,7 @@ namespace seeder::decklink
         bmd_mode_ = get_decklink_video_format(format_desc_.format);
         
         // get the decklink device
-        decklink_ = get_decklink(decklink_index_);
+        decklink_ = device_manager::instance().get_decklink(decklink_index_);
         if(decklink_ == nullptr)
         {
             logger->error("Failed to get DeckLink device. Make sure that the device ID is valid");
@@ -83,9 +84,6 @@ namespace seeder::decklink
 
         if(input_ != nullptr)
             input_->Release();
-
-        if(decklink_ != nullptr)
-            decklink_->Release();
     }
 
     /**
@@ -146,7 +144,7 @@ namespace seeder::decklink
      * @brief stop input stream handle
      * 
      */
-    void decklink_input::stop()
+    void decklink_input::do_stop()
     {
         if(input_ != nullptr)
         {

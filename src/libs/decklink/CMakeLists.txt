@@ -6,6 +6,7 @@ add_library(
     src/output/decklink_output.cpp
     src/producer/decklink_producer.cpp
     src/util.cpp
+    src/manager.cpp
 )
 
 target_include_directories(

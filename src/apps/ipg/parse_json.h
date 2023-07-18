@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include <string>
+#include <system_error>
 #include <vector>
 #include <memory>
 
@@ -26,14 +27,6 @@
 
 
 #define ST_APP_URL_MAX_LEN (256)
-
-enum return_type {
-  ST_JSON_SUCCESS = 0,
-  ST_JSON_PARSE_FAIL,
-  ST_JSON_NOT_VALID,
-  ST_JSON_NULL,
-  ST_JSON_MAX,
-};
 
 enum pacing {
   PACING_GAP,
@@ -238,15 +231,15 @@ typedef struct st_json_context {
   ~st_json_context();
 } st_json_context_t;
 
-int st_app_parse_json(st_json_context_t* ctx, const char* filename);
+std::error_code st_app_parse_json(st_json_context_t* ctx, const char* filename);
 
 enum st_fps st_app_get_fps(enum video_format fmt);
 uint32_t st_app_get_width(enum video_format fmt);
 uint32_t st_app_get_height(enum video_format fmt);
 bool st_app_get_interlaced(enum video_format fmt);
 
-int st_app_parse_json_add(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
-int st_app_parse_json_update(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
+std::error_code st_app_parse_json_add(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
+std::error_code st_app_parse_json_update(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
 
 Json::Value st_app_get_fmts(st_json_context_t* ctx);
 

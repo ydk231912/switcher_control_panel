@@ -10,8 +10,16 @@ void input::start() {
 }
 
 void input::stop() {
-    this->status = running_status::STOPPED; 
+    int current_status = status;
+    if (current_status == running_status::STOPPED) {
+        return;
+    }
+    if (status.compare_exchange_strong(current_status, running_status::STOPPED)) {
+        do_stop();
+    }
 }
+
+void input::do_stop() {}
 
 bool input::is_started() const {
     return this->status == running_status::STARTED;

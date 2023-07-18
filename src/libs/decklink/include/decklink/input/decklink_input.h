@@ -70,7 +70,7 @@ namespace seeder::decklink
          * @brief stop input stream handle
          * 
          */
-        void stop();
+        void do_stop();
 
         /**
          * @brief push a frame into this input stream

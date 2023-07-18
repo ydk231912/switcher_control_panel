@@ -16,22 +16,26 @@
 #include "interop/DeckLinkAPI.h"
 #include "core/video_format.h"
 
+
+[[maybe_unused]]
+inline static void intrusive_ptr_add_ref(IUnknown *p) {
+    p->AddRef();
+}
+
+[[maybe_unused]]
+inline static void intrusive_ptr_release(IUnknown *p) {
+    p->Release();
+}
+
 namespace seeder::decklink::util
 {
-    /**
-     * @brief get decklink by selected device index
-     * 
-     * @param decklink_index 
-     * @return IDeckLink* 
-     */
-    IDeckLink* get_decklink(int decklink_index);
-    
     /**
      * @brief Get the decklink video format object
      * 
      * @param fmt 
      * @return BMDDisplayMode 
      */
+    [[maybe_unused]]
     static BMDDisplayMode get_decklink_video_format(core::video_fmt fmt)
     {
         switch (fmt) {
@@ -112,6 +116,7 @@ namespace seeder::decklink::util
      * @param fmt 
      * @return core::video_format 
      */
+    [[maybe_unused]]
     static core::video_fmt get_seeder_video_format(BMDDisplayMode fmt)
     {
         switch (fmt) {

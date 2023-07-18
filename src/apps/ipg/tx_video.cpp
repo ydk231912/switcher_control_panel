@@ -156,6 +156,18 @@ int st_app_tx_video_session_uinit(struct st_app_tx_video_session* s)
         st_app_free(s->framebuffs);
         s->framebuffs = NULL;
     }
+
+    s->st20_app_thread_stop = true;
+    if(s->st20_app_thread)
+    {
+        /* wake up the thread */
+        st_pthread_mutex_lock(&s->st20_wake_mutex);
+        st_pthread_cond_signal(&s->st20_wake_cond);
+        st_pthread_mutex_unlock(&s->st20_wake_mutex);
+        logger->info("{}({}), wait app thread stop", __func__, s->idx);
+        pthread_join(s->st20_app_thread, NULL);
+    }
+
     st_pthread_mutex_destroy(&s->st20_wake_mutex);
     st_pthread_cond_destroy(&s->st20_wake_cond);
 
@@ -436,69 +448,6 @@ int st_tx_video_source_start(st_app_context *ctx, seeder::core::input *s) {
 }
 
 
-// int st_app_tx_video_sessions_init_add(struct st_app_context* ctx,st_json_context_t* c) 
-// {
-//     // st_app_tx_video_session* tx_video_sessions  = (struct st_app_tx_video_session*)st_app_zmalloc(
-//     //     sizeof(struct st_app_tx_video_session) * c->tx_video_session_cnt);
-//     int count = ctx->tx_video_session_cnt;
-//     int ret=0;
-//     struct st_app_tx_video_session* s;
-//     for(int i = 0; i < c->tx_video_session_cnt; i++)
-//     {
-//         count= count+i;
-//         ctx->tx_video_session_cnt+=1;
-//         s = &ctx->tx_video_sessions[count];
-//         s->idx = i;
-//         s->lcore = -1;
-//         ret = app_tx_video_init(
-//             ctx,c ? &c->tx_video_sessions[i] : NULL, s);
-//         if (ret < 0) 
-//         {
-//             logger->error("{}({}), app_tx_video_init fail {}", __func__, i, ret);
-//             return ret;
-//         }   
-//     }
-//     return 0;
-// }
-
-
-/*
-int st_app_tx_video_sessions_uinit_update(struct st_app_context* ctx,int id,st_json_context_t* c) 
-{
-    int i,ret;
-    struct st_app_tx_video_session* s;
-    struct st_app_tx_video_session* s_new;
-    s_new = (struct st_app_tx_video_session*)st_app_zmalloc(sizeof(struct st_app_tx_video_session));
-    if(!ctx->tx_video_sessions) return 0;
-
-    for(int i =0;i<ctx->tx_video_session_cnt;i++){
-      if (ctx->tx_video_sessions[i].id == id)
-      {
-        s = &ctx->tx_video_sessions[i];
-        app_tx_video_uinit(s);
-        for(int j =0 ;i<c->tx_video_session_cnt;j++)
-        {
-            if(c->tx_video_sessions->tx_source_id == id)
-            {
-                s_new->idx = i;
-                s_new->lcore = -1;
-                ret = app_tx_video_init(
-                    ctx,c ? &c->tx_video_sessions[j] : NULL, s_new);
-                if (ret < 0) 
-                {
-                    logger->error("{}({}), app_tx_video_init fail {}", __func__, i, ret);
-                    return ret;
-                }
-            }
-        }
-        ctx->tx_video_sessions[i] = *s_new;
-      }
-    }
-    return 0;
-}
-*/
-
-
 int st_app_tx_video_sessions_uinit(struct st_app_context* ctx) 
 {
     for (auto &s : ctx->tx_video_sessions) {
@@ -517,5 +466,5 @@ int st_app_tx_video_sessions_result(struct st_app_context* ctx)
     for (auto &s : ctx->tx_video_sessions) {
         ret += app_tx_video_result(s.get());
     }
-    return 0;
+    return ret;
 }

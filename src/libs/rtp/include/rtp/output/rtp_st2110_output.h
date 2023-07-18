@@ -45,12 +45,6 @@ namespace seeder::rtp
         void start();
             
         /**
-         * @brief stop output stream handle
-         * 
-         */
-        void stop();
-
-        /**
          * @brief encode the frame data into st2110 rtp packet
          * one frame may be divided into multiple fragment in multiple thread 
          */
@@ -148,7 +142,10 @@ namespace seeder::rtp
          * 
          */
         void display_audio_frame();
-      
+
+      protected:
+        void do_stop();
+
       private:
         rtp_context context_;
         bool abort = false;

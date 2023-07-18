@@ -14,8 +14,16 @@ bool output::is_started() const noexcept {
 }
 
 void output::stop() {
-    status = running_status::STOPPED;
+    int current_status = status;
+    if (current_status == running_status::STOPPED) {
+        return;
+    }
+    if (status.compare_exchange_strong(current_status, running_status::STOPPED)) {
+        do_stop();
+    }
 }
+
+void output::do_stop() {}
 
 bool output::is_stopped() const noexcept {
     return this->status == running_status::STOPPED;

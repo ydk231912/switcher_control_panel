@@ -21,6 +21,7 @@
 
 #include "core/util/logger.h"
 #include "decklink/util.h"
+#include "decklink/manager.h"
 #include "core/util/color_conversion.h"
 #include "decklink/output/decklink_output.h"
 
@@ -30,14 +31,6 @@
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 
 #include <boost/lockfree/queue.hpp>
-
-static void intrusive_ptr_add_ref(IUnknown *p) {
-    p->AddRef();
-}
-
-static void intrusive_ptr_release(IUnknown *p) {
-    p->Release();
-}
 
 namespace {
     template<class T>
@@ -90,7 +83,7 @@ namespace seeder::decklink
         video_flags_ = 0;
         
         // get the decklink device
-        decklink_ = get_decklink(decklink_index_);
+        decklink_ = device_manager::instance().get_decklink(decklink_index_);
         if(decklink_ == nullptr)
         {
             logger->error("Failed to get DeckLink device. Make sure that the device ID is valid");
@@ -186,8 +179,6 @@ namespace seeder::decklink
  
         if (output_ != nullptr) output_->Release();
  
-        if (decklink_ != nullptr) decklink_->Release();
- 
         if (playbackFrame_ != nullptr) playbackFrame_->Release();
  
         if (sws_ctx_) sws_freeContext(sws_ctx_);
@@ -251,13 +242,15 @@ namespace seeder::decklink
      * @brief stop output stream handle
      * 
      */
-    void decklink_output::stop()
+    void decklink_output::do_stop()
     {
-        output::stop();
         abort_ = true;
         if (decklink_thread_->joinable()) {
             decklink_thread_->join();
         }
+
+	    output_->DisableVideoOutput();
+        output_->DisableAudioOutput();
     }
 
     /**
@@ -522,7 +515,7 @@ namespace seeder::decklink
             video_flags_ = 0;
             
             // get the decklink device
-            decklink_ = boost::intrusive_ptr<IDeckLink>(get_decklink(decklink_index_), false);
+            decklink_ = device_manager::instance().get_decklink(decklink_index_);
             if(decklink_ == nullptr)
             {
                 logger->error("Failed to get DeckLink device. Make sure that the device ID is valid");
@@ -654,7 +647,7 @@ namespace seeder::decklink
         uint32_t frame_per_second;
 
         boost::intrusive_ptr<IDeckLinkDisplayMode> display_mode_;
-        boost::intrusive_ptr<IDeckLink> decklink_;
+        IDeckLink *decklink_;
         boost::intrusive_ptr<IDeckLinkOutput> output_;
         boost::intrusive_ptr<IDeckLinkVideoConversion> frameConverter;
 
@@ -689,7 +682,9 @@ namespace seeder::decklink
         
     }
 
-    decklink_async_output::~decklink_async_output() {}
+    decklink_async_output::~decklink_async_output() {
+        stop();
+    }
 
     void decklink_async_output::start() {
         output::start();
@@ -701,7 +696,11 @@ namespace seeder::decklink
             logger->error("Unable to StartScheduledPlayback");
         }
     }
-    void decklink_async_output::stop() {}
+    void decklink_async_output::do_stop() {
+        p_impl->output_->StopScheduledPlayback(0, NULL, 0);
+        p_impl->output_->DisableVideoOutput();
+        p_impl->output_->DisableAudioOutput();
+    }
 
     void decklink_async_output::consume_st_video_frame(void *frame, uint32_t width, uint32_t height) {
         IDeckLinkMutableVideoFrame *video_frame = nullptr;

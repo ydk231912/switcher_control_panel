@@ -235,7 +235,7 @@ static int app_args_dma_dev(struct mtl_init_params* p, char* in_dev) {
 static int app_args_json(struct st_app_context* ctx, struct mtl_init_params* p,
                          char* json_file) {
   ctx->json_ctx = std::shared_ptr<st_json_context_t>(new st_json_context_t {});
-  int ret = st_app_parse_json(ctx->json_ctx.get(), json_file);
+  int ret = st_app_parse_json(ctx->json_ctx.get(), json_file).value();
   if (ret < 0) {
     logger->error("{}, st_app_parse_json fail {}", __func__, ret);
     ctx->json_ctx.reset();

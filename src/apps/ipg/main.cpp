@@ -20,6 +20,7 @@
 #include "core/util/logger.h"
 #include "core/video_format.h"
 #include "decklink/input/decklink_input.h"
+#include "decklink/manager.h"
 #include "decklink/output/decklink_output.h"
 #include "ffmpeg/input/ffmpeg_input.h"
 
@@ -402,6 +403,16 @@ int st_app_args_check(struct st_app_context *ctx)
     return 0;
 }
 
+static void init_decklink(st_app_context *ctx) {
+    auto &manager = seeder::decklink::device_manager::instance();
+    for (auto &device : manager.get_device_status()) {
+        logger->info(
+            "decklink index={} display_name={} persistent_id={} device_label={}",
+            device.index, device.display_name, device.persistent_id, device.device_label
+        );
+    }
+}
+
 // initialize app context
 std::unique_ptr<st_app_context> ctx;
 
@@ -443,6 +454,8 @@ int main(int argc, char **argv)
                       ST_APP_MAX_RX_VIDEO_SESSIONS);
         return -EINVAL;
     }
+
+    init_decklink(ctx.get());
 
     ctx->st = mtl_init(&ctx->para);
     if(!ctx->st)

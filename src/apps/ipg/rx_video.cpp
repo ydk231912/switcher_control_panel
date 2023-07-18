@@ -1,11 +1,13 @@
 
 #include "rx_video.h"
+#include "app_base.h"
 #include "core/util/logger.h"
 #include "core/stream/output.h"
 // #include "player.h"
 #include "fmt.h"
 #include "decklink/output/decklink_output.h"
 #include "tx_video.h"
+#include <memory>
 #include <mutex>
 
 
@@ -237,7 +239,7 @@ static int app_rx_video_detected(void* priv, const struct st20_detect_meta* meta
     return 0;
 }
 
-static int app_rx_video_uinit(struct st_app_rx_video_session* s)
+int st_app_rx_video_session_uinit(struct st_app_rx_video_session* s)
 {
     int ret, idx = s->idx;
 
@@ -412,7 +414,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     if(!handle)
     {
         logger->error("{}({}), st20_rx_create fail", __func__, idx);
-        app_rx_video_uinit(s);
+        st_app_rx_video_session_uinit(s);
         return -EIO;
     }
     s->handle = handle;
@@ -435,7 +437,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     if(ret < 0)
     {
         logger->error("{}({}), app_rx_video_init_thread fail {}, type {}", __func__, idx, ret, ops.type);
-        app_rx_video_uinit(s);
+        st_app_rx_video_session_uinit(s);
         return -EIO;
     }
 
@@ -445,31 +447,46 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     return 0;
 }
 
+static int st_app_rx_video_session_init(st_app_context* ctx, st_json_video_session_t *json_video, st_app_rx_video_session *s) {
+    int fb_cnt = ctx->rx_video_fb_cnt;
+    if(fb_cnt <= 0) fb_cnt = 6;
+    s->idx = ctx->next_rx_video_session_idx++;
+    s->st = ctx->st;
+    s->framebuff_cnt = fb_cnt;
+    s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
+    s->st20_dst_fd = -1;
+    s->lcore = -1;
+    s->ctx = ctx;
+    int ret = app_rx_video_init(ctx, json_video, s);
+    if (ret)
+    {
+        logger->debug("{}({}), app_rx_video_init fail {}", __func__, s->idx, ret);
+        return ret;
+    }
+    return ret;
+}
+
 int st_app_rx_video_sessions_init(struct st_app_context* ctx) 
 {
     int ret = 0;
-    int fb_cnt = ctx->rx_video_fb_cnt;
-    if(fb_cnt <= 0) fb_cnt = 6;
-
     ctx->rx_video_sessions.resize(ctx->json_ctx->rx_video_sessions.size());
     for(auto i = 0; i < ctx->rx_video_sessions.size(); i++) 
     {
         auto &s = ctx->rx_video_sessions[i];
         s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
-        s->idx = ctx->next_rx_video_session_idx++;
-        s->st = ctx->st;
-        s->framebuff_cnt = fb_cnt;
-        s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
-        s->st20_dst_fd = -1;
-        s->lcore = -1;
-        s->ctx = ctx;
+        ret = st_app_rx_video_session_init(ctx, &ctx->json_ctx->rx_video_sessions[i], s.get());
+        if (ret) return ret;
+    }
+    return ret;
+}
 
-        ret = app_rx_video_init(ctx, ctx->json_ctx ? &ctx->json_ctx->rx_video_sessions[i] : NULL, s.get());
-        if(ret < 0)
-        {
-            logger->debug("{}({}), app_rx_video_init fail {}", __func__, i, ret);
-            return ret;
-        }
+int st_app_rx_video_sessions_add(struct st_app_context* ctx, st_json_context_t *new_json_ctx) {
+    int ret = 0;
+    for (auto &json_video : new_json_ctx->rx_video_sessions) {
+        auto s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
+        ret = st_app_rx_video_session_init(ctx, &json_video, s.get());
+        if (ret) return ret;
+        ctx->rx_video_sessions.push_back(s);
     }
     return ret;
 }
@@ -536,7 +553,7 @@ int st_app_rx_video_sessions_uinit(struct st_app_context* ctx)
 {
     for (auto &s : ctx->rx_video_sessions) {
         if (s) {
-            app_rx_video_uinit(s.get());
+            st_app_rx_video_session_uinit(s.get());
         }
     }
 

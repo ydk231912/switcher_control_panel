@@ -51,12 +51,6 @@ namespace seeder::sdl
         void start();
             
         /**
-         * @brief stop output stream handle
-         * 
-         */
-        void stop();
-
-        /**
          * @brief push a frame into this output stream buffer
          * 
          */
@@ -110,6 +104,9 @@ namespace seeder::sdl
 
         void consume_st_video_frame(void* frame, uint32_t width, uint32_t height);
         void consume_st_audio_frame(void* frame, size_t frame_size);
+
+      protected:
+        void do_stop();
 
       private:
         core::video_format_desc format_desc_;

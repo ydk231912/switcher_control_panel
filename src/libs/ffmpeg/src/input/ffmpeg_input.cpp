@@ -49,7 +49,7 @@ namespace seeder::ffmpeg
      * @brief stop output stream handle
      * 
      */
-    void ffmpeg_input::stop()
+    void ffmpeg_input::do_stop()
     {
         abort = true;
     }

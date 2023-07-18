@@ -128,7 +128,7 @@ namespace seeder::sdl
      * @brief stop output stream handle
      * 
      */
-    void sdl_output::stop()
+    void sdl_output::do_stop()
     {
         abort = true;
     }

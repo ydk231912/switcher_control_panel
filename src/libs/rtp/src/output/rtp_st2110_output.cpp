@@ -102,7 +102,7 @@ namespace seeder::rtp
      * @brief stop output stream handle
      * 
      */
-    void rtp_st2110_output::stop()
+    void rtp_st2110_output::do_stop()
     {
         abort = true;
     }

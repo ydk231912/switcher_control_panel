@@ -10,41 +10,9 @@
  */
 
 #include "decklink/util.h"
+#include "decklink/manager.h"
 
 namespace seeder::decklink::util
 {
-    /**
-     * @brief get decklink by selected device index
-     * 
-     * @param decklink_index 
-     * @return IDeckLink* 
-     */
-    IDeckLink* get_decklink(int decklink_index)
-    {
-        IDeckLink* decklink;
-        IDeckLinkIterator* decklink_interator = CreateDeckLinkIteratorInstance();
-        int i = 0;
-        HRESULT result;
-        if(!decklink_interator)
-        {
-            return nullptr;
-        }
 
-        while((result = decklink_interator->Next(&decklink)) == S_OK)
-        {
-            if(i >= decklink_index)
-                break;
-                
-            i++;
-            decklink->Release();
-        }
-
-        decklink_interator->Release();
-
-        if(result != S_OK)
-            return nullptr;
-
-        return decklink;
-    }
-
-} // namespace seeder::decklink
+} // seeder::decklink::util

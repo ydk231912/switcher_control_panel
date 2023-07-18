@@ -97,16 +97,22 @@ private:
         auto lock = acquire_ctx_lock();
         std::unique_ptr<st_json_context_t> new_ctx;
         std::error_code ec {};
-        ec = make_app_error_code(st_app_parse_json_add(app_ctx->json_ctx.get(), req.body, new_ctx));
+        ec = st_app_parse_json_add(app_ctx->json_ctx.get(), req.body, new_ctx);
         if (ec) {
             logger->error("st_app_parse_json_add error {}", ec.value());
-            text_err(res, "st_app_parse_json_add error");
+            text_err(res, "st_app_parse_json_add error", ec);
             return;
         }
-        ec = st_app_add_session(app_ctx, new_ctx.get());
+        ec = st_app_add_tx_sessions(app_ctx, new_ctx.get());
         if (ec) {
-            logger->error("st_app_add_session error {}", ec.value());
-            text_err(res, "st_app_add_session error");
+            logger->error("st_app_add_tx_sessions error {}", ec.value());
+            text_err(res, "st_app_add_tx_sessions error", ec);
+            return;
+        }
+        ec = st_app_add_rx_sessions(app_ctx, new_ctx.get());
+        if (ec) {
+            logger->error("st_app_add_rx_sessions error {}", ec.value());
+            text_err(res, "st_app_add_rx_sessions error", ec);
             return;
         }
         json_ok(res);
@@ -125,16 +131,22 @@ private:
         auto lock = acquire_ctx_lock();
         std::unique_ptr<st_json_context_t> new_ctx;
         std::error_code ec {};
-        ec = make_app_error_code(st_app_parse_json_update(app_ctx->json_ctx.get(), req.body, new_ctx));
+        ec = st_app_parse_json_update(app_ctx->json_ctx.get(), req.body, new_ctx);
         if (ec) {
             logger->error("st_app_parse_json_update error {}", ec.value());
-            text_err(res, "st_app_parse_json_update error");
+            text_err(res, "st_app_parse_json_update error", ec);
             return;
         }
-        ec = st_app_update_session(app_ctx, new_ctx.get());
+        ec = st_app_update_tx_sessions(app_ctx, new_ctx.get());
         if (ec) {
-            logger->error("st_app_update_session error {}", ec.value());
-            text_err(res, "st_app_update_session error");
+            logger->error("st_app_update_tx_sessions error {}", ec.value());
+            text_err(res, "st_app_update_tx_sessions error", ec);
+            return;
+        }
+        ec = st_app_update_rx_sessions(app_ctx, new_ctx.get());
+        if (ec) {
+            logger->error("st_app_update_rx_sessions error {}", ec.value());
+            text_err(res, "st_app_update_rx_sessions error", ec);
             return;
         }
         json_ok(res);
@@ -153,6 +165,24 @@ private:
         if (ec) {
             logger->error("st_app_remove_tx_session error {}", ec.value());
             text_err(res, "st_app_remove_tx_session error");
+            return;
+        }
+        json_ok(res);
+    }
+
+    void remove_rx_session(const Request& req, Response& res) {
+        auto root = parse_json_body(req);
+        auto rx_output_id = root["rx_output_id"].asString();
+        if (rx_output_id.empty()) {
+            text_err(res, "rx_output_id empty");
+            return;
+        }
+        auto lock = acquire_ctx_lock();
+        std::error_code ec {};
+        ec = st_app_remove_rx_session(app_ctx, rx_output_id);
+        if (ec) {
+            logger->error("st_app_remove_rx_session error {}", ec.value());
+            text_err(res, "st_app_remove_rx_session error");
             return;
         }
         json_ok(res);
@@ -190,10 +220,6 @@ private:
         return std::unique_lock<std::mutex>(app_ctx->mutex);
     }
 
-    static std::error_code make_app_error_code(int code) {
-        return {code, st_app_error_category()};
-    }
-
     static void json_ok(Response& res) {
         res.status = 200;
         res.set_content("{}", "application/json");
@@ -213,6 +239,10 @@ private:
     static void text_err(Response& res, const std::string &message) {
         res.status = 400;
         res.set_content(message, "text/plain");
+    }
+
+    static void text_err(Response& res, const std::string &message, const std::error_code &ec) {
+        text_err(res, message + ": " + ec.message());
     }
 
     static Json::Value parse_json_body(const Request req) {
@@ -272,6 +302,18 @@ void st_http_server::start() {
 
     server.Post("/api/remove_tx_json", [&p] (const Request& req, Response& res) {
         p.remove_tx_session(req, res);
+    });
+
+    server.Post("/api/add_rx_json", [&p] (const Request& req, Response& res) {
+        p.add_session(req, res);
+    });
+
+    server.Post("/api/update_rx_json", [&p] (const Request& req, Response& res) {
+        p.update_session(req, res);
+    });
+
+    server.Post("/api/remove_rx_json", [&p] (const Request& req, Response& res) {
+        p.remove_rx_session(req, res);
     });
 
     p.server_thread = std::thread([&] {

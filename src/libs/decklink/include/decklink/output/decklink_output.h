@@ -43,12 +43,6 @@ namespace seeder::decklink
          */
         void start();
             
-        /**
-         * @brief stop output stream handle
-         * 
-         */
-        void stop();
-
         void consume_st_video_frame(void *frame, uint32_t width, uint32_t height);
         void consume_st_audio_frame(void *frame, size_t frame_size);
 
@@ -80,6 +74,13 @@ namespace seeder::decklink
         void display_audio_frame();
 
         void dump_stat();
+
+      protected:
+        /**
+         * @brief stop output stream handle
+         * 
+         */
+        void do_stop();
 
       private:
         int decklink_index_;
@@ -139,7 +140,6 @@ namespace seeder::decklink
       ~decklink_async_output();
 
       void start();
-      void stop();
 
       void consume_st_video_frame(void *frame, uint32_t width, uint32_t height);
       void consume_st_audio_frame(void *frame, size_t frame_size);
@@ -155,6 +155,9 @@ namespace seeder::decklink
       std::shared_ptr<core::frame> get_frame();
       std::shared_ptr<AVFrame> get_video_frame();
       std::shared_ptr<AVFrame> get_audio_frame();
+
+    protected:
+      void do_stop();
 
     private:
       class impl;

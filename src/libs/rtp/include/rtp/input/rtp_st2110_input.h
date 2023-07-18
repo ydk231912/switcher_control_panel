@@ -47,7 +47,7 @@ namespace seeder::rtp
          */
         void start();
 
-        void stop();
+        void do_stop();
 
         void decode();
 

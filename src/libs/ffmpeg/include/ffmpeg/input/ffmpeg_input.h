@@ -52,7 +52,7 @@ namespace seeder::ffmpeg
          * @brief stop output stream handle
          * 
          */
-        void stop();
+        void do_stop();
 
         void run();
 

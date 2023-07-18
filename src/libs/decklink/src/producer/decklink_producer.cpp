@@ -14,6 +14,7 @@
 #include "decklink/producer/decklink_producer.h"
 #include "core/util/logger.h"
 #include "decklink/util.h"
+#include "decklink/manager.h"
 
 using namespace seeder::core;
 using namespace seeder::decklink::util;
@@ -32,7 +33,7 @@ namespace seeder::decklink {
         video_flags_ = 0;
         
         // get the decklink device
-        decklink_ = get_decklink(decklink_index_);
+        decklink_ = device_manager::instance().get_decklink(decklink_index_);
         if(decklink_ == nullptr)
         {
             logger->error("Failed to get DeckLink device. Make sure that the device ID is valid");
@@ -73,9 +74,6 @@ namespace seeder::decklink {
 
         if(input_ != nullptr)
             input_->Release();
-
-        if(decklink_ != nullptr)
-            decklink_->Release();
     }
 
     /**

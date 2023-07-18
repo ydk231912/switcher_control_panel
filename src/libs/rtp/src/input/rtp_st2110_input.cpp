@@ -60,7 +60,7 @@ namespace seeder::rtp
         }));
     }
 
-    void rtp_st2110_input::stop()
+    void rtp_st2110_input::do_stop()
     {
         abort = false;
     }
