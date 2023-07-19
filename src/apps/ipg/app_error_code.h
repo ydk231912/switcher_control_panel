@@ -13,6 +13,8 @@ enum class st_app_errc {
   VIDEO_SESSION_REQUIRED, // 缺少video session的配置
   AUDIO_SESSION_REQUIRED, // 缺少audio session的配置,
   DECKLINK_DEVICE_USED, // decklink device 已被使用
+  ADDRESS_CONFLICT, // 地址冲突，ip地址和端口号已被占用
+  ID_INVALID, // id不存在
 };
 
 namespace std

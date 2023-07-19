@@ -14,6 +14,8 @@ static std::string map_code_to_string(st_app_errc c) {
     case st_app_errc::VIDEO_SESSION_REQUIRED: return "缺少video配置";
     case st_app_errc::AUDIO_SESSION_REQUIRED: return "缺少audio配置";
     case st_app_errc::DECKLINK_DEVICE_USED: return "SDI设备已被占用";
+    case st_app_errc::ADDRESS_CONFLICT: return "地址冲突，IP地址或端口号已被占用";
+    case st_app_errc::ID_INVALID: return "配置ID不存在";
     default:
       return "未知异常";
     }

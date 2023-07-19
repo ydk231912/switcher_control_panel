@@ -238,12 +238,6 @@ int st_app_rx_audio_session_uinit(struct st_app_rx_audio_session* s)
 {
     int ret, idx = s->idx;
 
-    if(s->framebuffs) 
-    {
-        st_app_free(s->framebuffs);
-        s->framebuffs = NULL;
-    }
-
     s->st30_app_thread_stop = true;
     if(s->st30_app_thread)
     {
@@ -255,15 +249,21 @@ int st_app_rx_audio_session_uinit(struct st_app_rx_audio_session* s)
         pthread_join(s->st30_app_thread, NULL);
     }
 
-    st_pthread_mutex_destroy(&s->st30_wake_mutex);
-    st_pthread_cond_destroy(&s->st30_wake_cond);
-
     if(s->handle)
     {
         ret = st30_rx_free(s->handle);
         if(ret < 0) logger->error("{}({}), st30_rx_free fail {}", __func__, idx, ret);
         s->handle = NULL;
     }
+
+    if(s->framebuffs) 
+    {
+        st_app_free(s->framebuffs);
+        s->framebuffs = NULL;
+    }
+
+    st_pthread_mutex_destroy(&s->st30_wake_mutex);
+    st_pthread_cond_destroy(&s->st30_wake_cond);
 
     return 0;
 }

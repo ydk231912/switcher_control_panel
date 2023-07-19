@@ -74,13 +74,17 @@ private:
     std::shared_ptr<spdlog::logger> logger;
 
     void get_config(const Request& req, Response& res) {
-        auto lock = acquire_ctx_lock();
-        json_ok(res, app_ctx->json_ctx->json_root);
+        Json::Value root;
+        {
+            auto lock = acquire_ctx_lock();
+            root.copy(app_ctx->json_ctx->json_root);
+        }
+        json_ok(res, root);
     }
 
     void save_config(const Request& req, Response& res) {
         if (req.body.empty()) {
-            text_err(res, "empty body");
+            json_err(res, "empty body");
             return;
         }
         auto lock = acquire_ctx_lock();
@@ -99,33 +103,34 @@ private:
         std::error_code ec {};
         ec = st_app_parse_json_add(app_ctx->json_ctx.get(), req.body, new_ctx);
         if (ec) {
-            logger->error("st_app_parse_json_add error {}", ec.value());
-            text_err(res, "st_app_parse_json_add error", ec);
+            logger->warn("st_app_parse_json_add error {} {}", ec.value(), ec.message());
+            json_err(res, ec);
             return;
         }
         ec = st_app_add_tx_sessions(app_ctx, new_ctx.get());
         if (ec) {
-            logger->error("st_app_add_tx_sessions error {}", ec.value());
-            text_err(res, "st_app_add_tx_sessions error", ec);
+            logger->warn("st_app_add_tx_sessions error {} {}", ec.value(), ec.message());
+            json_err(res, ec);
             return;
         }
         ec = st_app_add_rx_sessions(app_ctx, new_ctx.get());
         if (ec) {
-            logger->error("st_app_add_rx_sessions error {}", ec.value());
-            text_err(res, "st_app_add_rx_sessions error", ec);
+            logger->warn("st_app_add_rx_sessions error {} {}", ec.value(), ec.message());
+            json_err(res, ec);
             return;
         }
+        save_config_file();
         json_ok(res);
     }
     
     void update_session(const Request& req, Response& res) {
         auto root = parse_json_body(req);
         if (!check_require_tx_source_id(root)) {
-            text_err(res, "check_require_tx_source_id error");
+            json_err(res, "check_require_tx_source_id error");
             return;
         }
         if (!check_require_rx_output_id(root)) {
-            text_err(res, "check_require_rx_output_id error");
+            json_err(res, "check_require_rx_output_id error");
             return;
         }
         auto lock = acquire_ctx_lock();
@@ -133,22 +138,23 @@ private:
         std::error_code ec {};
         ec = st_app_parse_json_update(app_ctx->json_ctx.get(), req.body, new_ctx);
         if (ec) {
-            logger->error("st_app_parse_json_update error {}", ec.value());
-            text_err(res, "st_app_parse_json_update error", ec);
+            logger->warn("st_app_parse_json_update error {} {}", ec.value(), ec.message());
+            json_err(res, ec);
             return;
         }
         ec = st_app_update_tx_sessions(app_ctx, new_ctx.get());
         if (ec) {
-            logger->error("st_app_update_tx_sessions error {}", ec.value());
-            text_err(res, "st_app_update_tx_sessions error", ec);
+            logger->warn("st_app_update_tx_sessions error {} {}", ec.value(), ec.message());
+            json_err(res, ec);
             return;
         }
         ec = st_app_update_rx_sessions(app_ctx, new_ctx.get());
         if (ec) {
-            logger->error("st_app_update_rx_sessions error {}", ec.value());
-            text_err(res, "st_app_update_rx_sessions error", ec);
+            logger->warn("st_app_update_rx_sessions error {} {}", ec.value(), ec.message());
+            json_err(res, ec);
             return;
         }
+        save_config_file();
         json_ok(res);
     }
 
@@ -156,17 +162,18 @@ private:
         auto root = parse_json_body(req);
         auto tx_source_id = root["tx_source_id"].asString();
         if (tx_source_id.empty()) {
-            text_err(res, "tx_source_id empty");
+            json_err(res, "tx_source_id empty");
             return;
         }
         auto lock = acquire_ctx_lock();
         std::error_code ec {};
         ec = st_app_remove_tx_session(app_ctx, tx_source_id);
         if (ec) {
-            logger->error("st_app_remove_tx_session error {}", ec.value());
-            text_err(res, "st_app_remove_tx_session error");
+            logger->warn("st_app_remove_tx_session error {} {}", ec.value(), ec.message());
+            json_err(res, "st_app_remove_tx_session error");
             return;
         }
+        save_config_file();
         json_ok(res);
     }
 
@@ -174,18 +181,26 @@ private:
         auto root = parse_json_body(req);
         auto rx_output_id = root["rx_output_id"].asString();
         if (rx_output_id.empty()) {
-            text_err(res, "rx_output_id empty");
+            json_err(res, "rx_output_id empty");
             return;
         }
         auto lock = acquire_ctx_lock();
         std::error_code ec {};
         ec = st_app_remove_rx_session(app_ctx, rx_output_id);
         if (ec) {
-            logger->error("st_app_remove_rx_session error {}", ec.value());
-            text_err(res, "st_app_remove_rx_session error");
+            logger->warn("st_app_remove_rx_session error {} {}", ec.value(), ec.message());
+            json_err(res, "st_app_remove_rx_session error");
             return;
         }
+        save_config_file();
         json_ok(res);
+    }
+
+    void save_config_file() {
+        Json::FastWriter writer;
+        std::string output = writer.write(app_ctx->json_ctx->json_root);
+        write_string_to_file(app_ctx->config_file_path, output);
+        logger->info("save config file {}", app_ctx->config_file_path);
     }
 
     bool check_require_tx_source_id(Json::Value &root) {
@@ -243,6 +258,28 @@ private:
 
     static void text_err(Response& res, const std::string &message, const std::error_code &ec) {
         text_err(res, message + ": " + ec.message());
+    }
+
+    static void json_err_content(Response& res, const Json::Value &value) {
+        Json::FastWriter writer;
+        std::string output = writer.write(value);
+        res.status = 400;
+        res.set_content(output, "application/json");
+    }
+
+    static void json_err(Response& res, const std::string &message) {
+        Json::Value root;
+        root["error_code"] = 0;
+        root["error_message"] = message;
+        json_err_content(res, root);
+    }
+
+    static void json_err(Response& res, const std::error_code &ec) {
+        Json::Value root;
+        root["error_code"] = ec.value();
+        root["error_category"] = ec.category().name();
+        root["error_message"] = ec.message();
+        json_err_content(res, root);
     }
 
     static Json::Value parse_json_body(const Request req) {

@@ -1,4 +1,5 @@
 #include <mtl/mtl_api.h>
+#include <sys/socket.h>
 #include "app_base.h"
 #include "tx_video.h"
 #include "tx_audio.h"
@@ -103,4 +104,13 @@ void st_set_video_foramt(struct st_json_audio_info info, seeder::core::video_for
     else 
         desc->audio_samples = 16;
 
+}
+
+std::string st_app_ip_addr_to_string(void *addr) {
+    char buf[16];
+    const char *result = inet_ntop(AF_INET, addr, buf, 16);
+    if (result) {
+        return result;
+    }
+    return "";
 }

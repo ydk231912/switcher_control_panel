@@ -110,6 +110,17 @@ int st_app_tx_audio_session_uinit(struct st_app_tx_audio_session* s)
 {
     int ret;
 
+    s->st30_app_thread_stop = true;
+    if(s->st30_app_thread)
+    {
+        /* wake up the thread */
+        st_pthread_mutex_lock(&s->st30_wake_mutex);
+        st_pthread_cond_signal(&s->st30_wake_cond);
+        st_pthread_mutex_unlock(&s->st30_wake_mutex);
+        logger->info("{}({}), wait app thread stop", __func__, s->idx);
+        pthread_join(s->st30_app_thread, NULL);
+    }
+
     //app_tx_audio_stop_source(s);
     if(s->handle)
     {
@@ -124,17 +135,6 @@ int st_app_tx_audio_session_uinit(struct st_app_tx_audio_session* s)
     {
         st_app_free(s->framebuffs);
         s->framebuffs = NULL;
-    }
-
-    s->st30_app_thread_stop = true;
-    if(s->st30_app_thread)
-    {
-        /* wake up the thread */
-        st_pthread_mutex_lock(&s->st30_wake_mutex);
-        st_pthread_cond_signal(&s->st30_wake_cond);
-        st_pthread_mutex_unlock(&s->st30_wake_mutex);
-        logger->info("{}({}), wait app thread stop", __func__, s->idx);
-        pthread_join(s->st30_app_thread, NULL);
     }
 
     st_pthread_mutex_destroy(&s->st30_wake_mutex);

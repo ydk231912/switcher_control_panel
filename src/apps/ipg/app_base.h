@@ -612,3 +612,5 @@ int st_app_video_get_lcore(struct st_app_context* ctx, int sch_idx, bool rtp,
                            unsigned int* lcore);
 
 void st_set_video_foramt(struct st_json_audio_info info, seeder::core::video_format_desc* desc);
+
+std::string st_app_ip_addr_to_string(void *addr);

@@ -1,4 +1,5 @@
 
+#include <exception>
 #include <memory>
 
 #include "tx_video.h"
@@ -149,14 +150,6 @@ static int app_tx_video_handle_free(struct st_app_tx_video_session* s)
 
 int st_app_tx_video_session_uinit(struct st_app_tx_video_session* s) 
 {
-    app_tx_video_handle_free(s);
-
-    if(s->framebuffs) 
-    {
-        st_app_free(s->framebuffs);
-        s->framebuffs = NULL;
-    }
-
     s->st20_app_thread_stop = true;
     if(s->st20_app_thread)
     {
@@ -166,6 +159,14 @@ int st_app_tx_video_session_uinit(struct st_app_tx_video_session* s)
         st_pthread_mutex_unlock(&s->st20_wake_mutex);
         logger->info("{}({}), wait app thread stop", __func__, s->idx);
         pthread_join(s->st20_app_thread, NULL);
+    }
+
+    app_tx_video_handle_free(s);
+
+    if(s->framebuffs) 
+    {
+        st_app_free(s->framebuffs);
+        s->framebuffs = NULL;
     }
 
     st_pthread_mutex_destroy(&s->st20_wake_mutex);
@@ -407,32 +408,26 @@ int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_jso
 }
 
 int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {
-    try
-    {
-        for(int i = 0; i < c->tx_sources.size(); i++)
-        {
-            auto &s = c->tx_sources[i];
-            auto &info = c->tx_audio_sessions[i].info;
-            if(s.type == "decklink")
-            {
-                auto format_desc = seeder::core::video_format_desc(s.video_format);
+    for(int i = 0; i < c->tx_sources.size(); i++) {
+        auto &s = c->tx_sources[i];
+        auto &info = c->tx_audio_sessions[i].info;
+        auto format_desc = seeder::core::video_format_desc::get(s.video_format);
+        try {
+            if(s.type == "decklink") {
+                
                 st_set_video_foramt(info, &format_desc);
                 auto decklink = std::make_shared<seeder::decklink::decklink_input>(s.id, s.device_id, format_desc);
                 ctx->tx_sources.emplace(decklink->get_source_id(), decklink);
                 ctx->source_info.emplace(decklink->get_source_id(), s);
-            }
-            else if(s.type == "file")
-            {
-                auto format_desc = seeder::core::video_format_desc(s.video_format);
+            } else if(s.type == "file") {
                 auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s.id, s.file_url, format_desc);
                 ctx->tx_sources.emplace(ffmpeg->get_source_id(), ffmpeg);
                 ctx->source_info.emplace(ffmpeg->get_source_id(), s);
             }
+        } catch (std::exception &e) {
+            logger->info("tx_video_source_init failed {} device_id={} video_format={}", e.what(), s.device_id, s.video_format);
+            return -1;
         }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
     }
     
     return 0;

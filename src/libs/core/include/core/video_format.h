@@ -89,10 +89,12 @@ namespace seeder::core
                         int              duration,
                         std::string      name,
                         std::vector<int> audio_cadence);
-
-        video_format_desc(std::string format_name);
         
         video_format_desc();
+
+        static const video_format_desc & get(video_fmt f);
+
+        static const video_format_desc & get(const std::string &name);
     };
 
     extern const std::vector<video_format_desc> format_descs;

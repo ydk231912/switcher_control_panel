@@ -9,8 +9,8 @@
  * 
  */
 
-#include <boost/algorithm/string.hpp>
 #include "core/video_format.h"
+#include <unordered_map>
 
 namespace seeder::core
 {
@@ -76,24 +76,48 @@ namespace seeder::core
     , audio_cadence(std::move(audio_cadence))
     {
     }
-
-    video_format_desc::video_format_desc(std::string name)
-    {
-        *this = format_descs.at(static_cast<int>(video_fmt::invalid));
-        for (auto it = std::begin(format_descs); it != std::end(format_descs) - 1; ++it) 
-        {
-            if (boost::iequals(it->name, name)) 
-            {
-                *this = *it;
-                break;
-            }
-        }
-    }
     
 
     video_format_desc::video_format_desc()
     {
         *this = format_descs.at(static_cast<int>(video_fmt::invalid));
     }
+
+    static std::unordered_map<video_fmt, video_format_desc> init_format_map() {
+        std::unordered_map<video_fmt, video_format_desc> fmt_map;
+        for (auto &f : format_descs) {
+            fmt_map.emplace(f.format, f);
+        }
+        return fmt_map;
+    }
+
+    const video_format_desc & video_format_desc::get(video_fmt f) {
+        static const std::unordered_map<video_fmt, video_format_desc> format_map = init_format_map();
+        static const video_format_desc invalid_instance;
+        auto it = format_map.find(f);
+        if (it != format_map.end()) {
+            return it->second;
+        }
+        return invalid_instance;
+    }
+
+    static std::unordered_map<std::string, video_format_desc> init_format_name_map() {
+        std::unordered_map<std::string, video_format_desc> fmt_map;
+        for (auto &f : format_descs) {
+            fmt_map.emplace(f.name, f);
+        }
+        return fmt_map;
+    }
+
+    const video_format_desc & video_format_desc::get(const std::string &name) {
+        static const std::unordered_map<std::string, video_format_desc> format_map = init_format_name_map();
+        static const video_format_desc invalid_instance;
+        auto it = format_map.find(name);
+        if (it != format_map.end()) {
+            return it->second;
+        }
+        return invalid_instance;
+    }
+
 
 } // namespace seeder::core

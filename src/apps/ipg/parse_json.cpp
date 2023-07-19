@@ -47,6 +47,7 @@ static inline json_object* st_json_object_object_get(json_object* obj, const cha
 static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     {
         .fmt = VIDEO_FORMAT_480I_59FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i480i59",
         .width = 720,
         .height = 480,
@@ -54,6 +55,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_576I_50FPS,
+        .core_fmt = seeder::core::video_fmt::pal,
         .name = "i576i50",
         .width = 720,
         .height = 576,
@@ -61,6 +63,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_119FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i720p119",
         .width = 1280,
         .height = 720,
@@ -68,6 +71,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_59FPS,
+        .core_fmt = seeder::core::video_fmt::x720p5994,
         .name = "i720p59",
         .width = 1280,
         .height = 720,
@@ -75,6 +79,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_50FPS,
+        .core_fmt = seeder::core::video_fmt::x720p5000,
         .name = "i720p50",
         .width = 1280,
         .height = 720,
@@ -82,6 +87,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_29FPS,
+        .core_fmt = seeder::core::video_fmt::x720p2997,
         .name = "i720p29",
         .width = 1280,
         .height = 720,
@@ -89,6 +95,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_25FPS,
+        .core_fmt = seeder::core::video_fmt::x720p2500,
         .name = "i720p25",
         .width = 1280,
         .height = 720,
@@ -96,6 +103,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_60FPS,
+        .core_fmt = seeder::core::video_fmt::x720p6000,
         .name = "i720p60",
         .width = 1280,
         .height = 720,
@@ -103,6 +111,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_30FPS,
+        .core_fmt = seeder::core::video_fmt::x720p3000,
         .name = "i720p30",
         .width = 1280,
         .height = 720,
@@ -110,6 +119,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_119FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i1080p119",
         .width = 1920,
         .height = 1080,
@@ -117,6 +127,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_59FPS,
+        .core_fmt = seeder::core::video_fmt::x1080p5994,
         .name = "i1080p59",
         .width = 1920,
         .height = 1080,
@@ -124,6 +135,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_50FPS,
+        .core_fmt = seeder::core::video_fmt::x1080p5000,
         .name = "i1080p50",
         .width = 1920,
         .height = 1080,
@@ -131,6 +143,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_29FPS,
+        .core_fmt = seeder::core::video_fmt::x1080p2997,
         .name = "i1080p29",
         .width = 1920,
         .height = 1080,
@@ -138,6 +151,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_25FPS,
+        .core_fmt = seeder::core::video_fmt::x1080p2500,
         .name = "i1080p25",
         .width = 1920,
         .height = 1080,
@@ -145,6 +159,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_60FPS,
+        .core_fmt = seeder::core::video_fmt::x1080p6000,
         .name = "i1080p60",
         .width = 1920,
         .height = 1080,
@@ -152,6 +167,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_30FPS,
+        .core_fmt = seeder::core::video_fmt::x1080p3000,
         .name = "i1080p30",
         .width = 1920,
         .height = 1080,
@@ -159,6 +175,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080I_59FPS,
+        .core_fmt = seeder::core::video_fmt::x1080i5994,
         .name = "i1080i59",
         .width = 1920,
         .height = 1080,
@@ -166,6 +183,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080I_50FPS,
+        .core_fmt = seeder::core::video_fmt::x1080i5000,
         .name = "i1080i50",
         .width = 1920,
         .height = 1080,
@@ -173,6 +191,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_119FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i2160p119",
         .width = 3840,
         .height = 2160,
@@ -180,6 +199,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_59FPS,
+        .core_fmt = seeder::core::video_fmt::x2160p5994,
         .name = "i2160p59",
         .width = 3840,
         .height = 2160,
@@ -187,6 +207,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_50FPS,
+        .core_fmt = seeder::core::video_fmt::x2160p5000,
         .name = "i2160p50",
         .width = 3840,
         .height = 2160,
@@ -194,6 +215,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_29FPS,
+        .core_fmt = seeder::core::video_fmt::x2160p2997,
         .name = "i2160p29",
         .width = 3840,
         .height = 2160,
@@ -201,6 +223,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_25FPS,
+        .core_fmt = seeder::core::video_fmt::x2160p2500,
         .name = "i2160p25",
         .width = 3840,
         .height = 2160,
@@ -208,6 +231,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_60FPS,
+        .core_fmt = seeder::core::video_fmt::x2160p6000,
         .name = "i2160p60",
         .width = 3840,
         .height = 2160,
@@ -215,6 +239,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_30FPS,
+        .core_fmt = seeder::core::video_fmt::x2160p3000,
         .name = "i2160p30",
         .width = 3840,
         .height = 2160,
@@ -222,6 +247,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_4320P_119FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i4320p119",
         .width = 7680,
         .height = 4320,
@@ -229,6 +255,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_4320P_59FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i4320p59",
         .width = 7680,
         .height = 4320,
@@ -236,6 +263,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_4320P_50FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i4320p50",
         .width = 7680,
         .height = 4320,
@@ -243,6 +271,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_4320P_29FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i4320p29",
         .width = 7680,
         .height = 4320,
@@ -250,6 +279,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_4320P_25FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i4320p25",
         .width = 7680,
         .height = 4320,
@@ -257,6 +287,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_4320P_60FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i4320p60",
         .width = 7680,
         .height = 4320,
@@ -264,6 +295,7 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_4320P_30FPS,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "i4320p30",
         .width = 7680,
         .height = 4320,
@@ -271,12 +303,45 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_AUTO,
+        .core_fmt = seeder::core::video_fmt::invalid,
         .name = "auto",
         .width = 1920,
         .height = 1080,
         .fps = ST_FPS_P59_94,
     },
 };
+
+static std::vector<st_video_fmt_desc> st_app_init_video_fmts() {
+  std::vector<st_video_fmt_desc> v;
+  for (int i = 0; i < ARRAY_SIZE(st_video_fmt_descs); i++) {
+    if (st_video_fmt_descs[i].core_fmt != seeder::core::video_fmt::invalid) {
+      v.push_back(st_video_fmt_descs[i]);
+    }
+  }
+  return std::vector<st_video_fmt_desc>(v.rbegin(), v.rend());
+}
+
+static const std::vector<st_video_fmt_desc> & st_app_get_video_fmts() {
+  static std::vector<st_video_fmt_desc> fmts = st_app_init_video_fmts();
+  return fmts;
+}
+
+static std::unordered_map<std::string, st_video_fmt_desc> init_fmt_core_name_map() {
+  std::unordered_map<std::string, st_video_fmt_desc> name_map;
+  for (auto &f : st_app_get_video_fmts()) {
+    name_map.emplace(seeder::core::video_format_desc::get(f.core_fmt).name, f);
+  }
+  return name_map;
+}
+
+static const st_video_fmt_desc * get_video_fmt_from_core_fmt_name(const std::string &name) {
+  static std::unordered_map<std::string, st_video_fmt_desc> name_map = init_fmt_core_name_map();
+  auto it = name_map.find(name);
+  if (it != name_map.end()) {
+    return &it->second;
+  }
+  return nullptr;
+}
 
 #define VNAME(name) (#name)
 
@@ -497,8 +562,8 @@ static st_app_errc st_json_parse_tx_video(int idx, json_object* video_obj,
   ERRC_EXPECT_SUCCESS(ret);
 
   /* parse video format */
-  ret = parse_video_format(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
+  // ret = parse_video_format(video_obj, video);
+  // ERRC_EXPECT_SUCCESS(ret);
 
   /* parse pixel group format */
   ret = parse_video_pg_format(video_obj, video);
@@ -543,8 +608,8 @@ static st_app_errc st_json_parse_rx_video(int idx, json_object* video_obj,
   ERRC_EXPECT_SUCCESS(ret);
 
   /* parse video format */
-  ret = parse_video_format(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
+  // ret = parse_video_format(video_obj, video);
+  // ERRC_EXPECT_SUCCESS(ret);
 
   /* parse pixel group format */
   ret = parse_video_pg_format(video_obj, video);
@@ -1424,6 +1489,7 @@ st_app_errc json_put_string(json_object *o, const std::string &key, const std::s
   if (json_object_object_add(o, key.c_str(), val)) {
     json_object_put(val);
   }
+  return st_app_errc::SUCCESS;
 }
 
 st_app_errc st_app_parse_json_sch(st_json_context_t* ctx, json_object *root_object) {
@@ -1660,6 +1726,14 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
 
             // video source handle id
             ctx->tx_video_sessions[num_video].tx_source_id = tx_source.id;
+            ctx->tx_video_sessions[num_video].base.id = tx_source.id;
+
+            const st_video_fmt_desc *fmt_desc = get_video_fmt_from_core_fmt_name(tx_source.video_format);
+            if (!fmt_desc) {
+              logger->error("tx_sessions.video.video_format={} get_video_fmt_from_core_fmt_name failed", tx_source.video_format);
+              return st_app_errc::JSON_NOT_VALID;
+            }
+            ctx->tx_video_sessions[num_video].info.video_format = fmt_desc->fmt;
 
             num_video++;
           }
@@ -1711,6 +1785,7 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
 
             // audio source handle id
             ctx->tx_audio_sessions[num_audio].tx_source_id = tx_source.id;
+            ctx->tx_audio_sessions[num_audio].base.id = tx_source.id;
 
             num_audio++;
           }
@@ -1804,6 +1879,7 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       }
     }
   }
+
   return ret;
 }
 
@@ -1978,6 +2054,14 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
 
             // video output handle id
             ctx->rx_video_sessions[num_video].rx_output_id = rx_output.id;
+            ctx->rx_video_sessions[num_video].base.id = rx_output.id;
+
+            const st_video_fmt_desc *fmt_desc = get_video_fmt_from_core_fmt_name(rx_output.video_format);
+            if (!fmt_desc) {
+              logger->error("rx_sessions.video.video_format={} get_video_fmt_from_core_fmt_name failed", rx_output.video_format);
+              return st_app_errc::JSON_NOT_VALID;
+            }
+            ctx->rx_video_sessions[num_video].info.video_format = fmt_desc->fmt;
 
             num_video++;
           }
@@ -2011,6 +2095,7 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
 
             // video output handle id
             ctx->rx_audio_sessions[num_audio].rx_output_id = rx_output.id;
+            ctx->rx_audio_sessions[num_audio].base.id = rx_output.id;
 
             num_audio++;
           }
@@ -2311,14 +2396,21 @@ struct st_app_json_fmt_group {
         {
           {"frame", "frame"},
           {"rtp", "rtp"},
-          {"slice", "slice"}
+          // {"slice", "slice"},
         }
       },
       {
         "video.pacing",
         {
+          {"gap", "gap"},
+          {"linear", "linear"}
+        }
+      },
+      {
+        "video.packing",
+        {
           {"BPM", "BPM"},
-          {"GPM_SL", "GPM_SL"},
+          {"GPM SL", "GPM_SL"},
           {"GPM", "GPM"},
         }
       },
@@ -2332,17 +2424,17 @@ struct st_app_json_fmt_group {
       {
         "video.pg_format",
         {
-          {"YUV_422_10bit", "YUV_422_10bit"},
-          {"YUV_422_8bit", "YUV_422_8bit"},
-          {"YUV_422_12bit", "YUV_422_12bit"},
-          {"YUV_422_16bit", "YUV_422_16bit"},
-          {"YUV_420_8bit", "YUV_420_8bit"},
-          {"YUV_420_10bit", "YUV_420_10bit"},
-          {"YUV_420_12bit", "YUV_420_12bit"},
-          {"RGB_8bit", "RGB_8bit"},
-          {"RGB_10bit", "RGB_10bit"},
-          {"RGB_12bit", "RGB_12bit"},
-          {"RGB_16bit", "RGB_16bit"},
+          {"YUV 422 10bit", "YUV_422_10bit"},
+          {"YUV 422 8bit", "YUV_422_8bit"},
+          {"YUV 422 12bit", "YUV_422_12bit"},
+          {"YUV 422 16bit", "YUV_422_16bit"},
+          {"YUV 420 8bit", "YUV_420_8bit"},
+          {"YUV 420 10bit", "YUV_420_10bit"},
+          {"YUV 420 12bit", "YUV_420_12bit"},
+          {"RGB 8bit", "RGB_8bit"},
+          {"RGB 10bit", "RGB_10bit"},
+          {"RGB 12bit", "RGB_12bit"},
+          {"RGB 16bit", "RGB_16bit"},
         }
       },
       {
@@ -2359,12 +2451,12 @@ struct st_app_json_fmt_group {
         }
       },
       {
-        "audio_format",
+        "audio.audio_format",
         {
-          {"PCM16", "PCM16"},
-          {"PCM8", "PCM8"},
-          {"PCM24", "PCM24"},
-          {"AM824", "AM824"}
+          {"PCM 16", "PCM16"},
+          {"PCM 8", "PCM8"},
+          {"PCM 24", "PCM24"},
+          {"AM 824", "AM824"}
         }
       },
       {
@@ -2407,7 +2499,7 @@ struct st_app_json_fmt_group {
       {
         "ancillary.ancillary_format",
         {
-          {"closed_caption", "closed_caption"}
+          {"closed caption", "closed_caption"}
         }
       },
       {
@@ -2437,12 +2529,11 @@ Json::Value st_app_get_fmts(st_json_context_t* ctx) {
   root["tx_sessions.source.type"].append(make_fmt_item("decklink", "decklink"));
   root["rx_sessions.output.type"].append(make_fmt_item("decklink", "decklink"));
   auto &tx_source_video_format = root["tx_sessions.source.video_format"];
-  for (auto &desc : seeder::core::format_descs) {
-    tx_source_video_format.append(make_fmt_item(desc.name, desc.name));
-  }
   auto &rx_output_video_format = root["rx_sessions.output.video_format"];
-  for (auto &desc : seeder::core::format_descs) {
-    rx_output_video_format.append(make_fmt_item(desc.name, desc.name));
+  for (auto &f : st_app_get_video_fmts()) {
+    auto &core_fmt = seeder::core::video_format_desc::get(f.core_fmt);
+    tx_source_video_format.append(make_fmt_item(core_fmt.name, core_fmt.name));
+    rx_output_video_format.append(make_fmt_item(core_fmt.name, core_fmt.name));
   }
 
   const std::vector<std::string> session_types {
@@ -2451,10 +2542,10 @@ Json::Value st_app_get_fmts(st_json_context_t* ctx) {
   };
 
   for (auto &sessions : session_types) {
-    auto video_video_format_key = sessions + ".video.video_format";
-    for (int i = 0; i < ARRAY_SIZE(st_video_fmt_descs); i++) {
-      root[video_video_format_key].append(make_fmt_item(st_video_fmt_descs[i].name, st_video_fmt_descs[i].name));
-    }
+    // auto video_video_format_key = sessions + ".video.video_format";
+    // for (auto &f : st_app_get_video_fmts()) {
+    //   root[video_video_format_key].append(make_fmt_item(f.name, f.name));
+    // }
 
     for (auto &group : st_app_json_fmt_group::get_common_groups()) {
       auto group_key = sessions + "." + group.name;

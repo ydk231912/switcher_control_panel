@@ -110,7 +110,7 @@ namespace seeder::decklink
         result = output_->EnableVideoOutput(bmd_mode_, bmdVideoOutputFlagDefault);
         if (result != S_OK)
         {
-            logger->error("Unable to enable video output");
+            logger->error("Unable to enable video output {}", result);
             throw std::runtime_error("Unable to enable video output");
         }
 
@@ -147,8 +147,8 @@ namespace seeder::decklink
                                             format_desc.audio_channels, bmdAudioOutputStreamTimestamped);
         if (result != S_OK)
         {
-            logger->error("Unable to enable video output");
-            throw std::runtime_error("Unable to enable video output");
+            logger->error("Unable to enable audio output {}", result);
+            throw std::runtime_error("Unable to enable audio output");
         }
 
         frameConverter = CreateVideoConversionInstance();
@@ -175,6 +175,8 @@ namespace seeder::decklink
 
     decklink_output::~decklink_output()
     {
+        stop();
+        
         if (display_mode_ != nullptr) display_mode_->Release();
  
         if (output_ != nullptr) output_->Release();
@@ -245,12 +247,13 @@ namespace seeder::decklink
     void decklink_output::do_stop()
     {
         abort_ = true;
-        if (decklink_thread_->joinable()) {
+        if (decklink_thread_ && decklink_thread_->joinable()) {
             decklink_thread_->join();
         }
 
 	    output_->DisableVideoOutput();
         output_->DisableAudioOutput();
+        logger->info("decklink_output device_index={} stopped", decklink_index_);
     }
 
     /**
@@ -700,6 +703,7 @@ namespace seeder::decklink
         p_impl->output_->StopScheduledPlayback(0, NULL, 0);
         p_impl->output_->DisableVideoOutput();
         p_impl->output_->DisableAudioOutput();
+        logger->info("decklink_output device_index={} stopped", p_impl->decklink_index_);
     }
 
     void decklink_async_output::consume_st_video_frame(void *frame, uint32_t width, uint32_t height) {

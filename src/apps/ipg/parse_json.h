@@ -16,6 +16,7 @@
 #include <memory>
 
 #include "app_platform.h"
+#include "core/video_format.h"
 #include "fmt.h"
 #include <json/json.h>
 #ifndef _ST_APP_PARSE_JSON_HEAD_H_
@@ -84,6 +85,7 @@ enum anc_format {
 
 struct st_video_fmt_desc {
   enum video_format fmt;
+  enum seeder::core::video_fmt core_fmt;
   const char* name;
   uint32_t width;
   uint32_t height;
@@ -165,14 +167,14 @@ typedef struct st_json_video_session {
   st_json_video_info_t info;
 
   // tx only
-  std::string tx_source_id; // tx_source.id
+  std::string tx_source_id; // tx_source.id, same as this.base.id
   
   /* rx only items */
   enum user_pg_fmt user_pg_format;
   bool display;
   bool measure_latency;
 
-  std::string rx_output_id; // rx_output.id
+  std::string rx_output_id; // rx_output.id, same as this.base.id
 } st_json_video_session_t;
 
 typedef struct st_json_audio_session {

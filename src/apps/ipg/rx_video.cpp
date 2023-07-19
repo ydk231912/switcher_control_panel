@@ -243,18 +243,6 @@ int st_app_rx_video_session_uinit(struct st_app_rx_video_session* s)
 {
     int ret, idx = s->idx;
 
-    //st_app_uinit_display(s->display);
-    if(s->display)
-    {
-        st_app_free(s->display);
-    }
-
-    if(s->framebuffs) 
-    {
-        st_app_free(s->framebuffs);
-        s->framebuffs = NULL;
-    }
-
     s->st20_app_thread_stop = true;
     if(s->st20_app_thread)
     {
@@ -266,15 +254,27 @@ int st_app_rx_video_session_uinit(struct st_app_rx_video_session* s)
         pthread_join(s->st20_app_thread, NULL);
     }
 
-    st_pthread_mutex_destroy(&s->st20_wake_mutex);
-    st_pthread_cond_destroy(&s->st20_wake_cond);
-
     if(s->handle)
     {
         ret = st20_rx_free(s->handle);
         if(ret < 0) logger->error("{}({}), st20_rx_free fail {}", __func__, idx, ret);
         s->handle = NULL;
     }
+
+    if(s->framebuffs) 
+    {
+        st_app_free(s->framebuffs);
+        s->framebuffs = NULL;
+    }
+
+    //st_app_uinit_display(s->display);
+    if(s->display)
+    {
+        st_app_free(s->display);
+    }
+
+    st_pthread_mutex_destroy(&s->st20_wake_mutex);
+    st_pthread_cond_destroy(&s->st20_wake_cond);
 
     return 0;
 }
@@ -494,18 +494,15 @@ int st_app_rx_video_sessions_add(struct st_app_context* ctx, st_json_context_t *
 int st_app_rx_output_init(struct st_app_context* ctx, st_json_context *json_ctx)
 {
     st_json_context_t* c = json_ctx;
-    try
-    {
-        for(int i = 0; i < c->rx_output.size(); i++)
-        {
-
-            st_app_rx_output* s = &c->rx_output[i];
-            auto &info = c->rx_audio_sessions[i].info;
-            // auto session = c->rx_audio_sessions[i];
-            auto desc = seeder::core::video_format_desc(s->video_format);
-            st_set_video_foramt(info, &desc);
-            if(s->type == "decklink")
-            {
+    
+    for(int i = 0; i < c->rx_output.size(); i++) {
+        st_app_rx_output* s = &c->rx_output[i];
+        auto &info = c->rx_audio_sessions[i].info;
+        // auto session = c->rx_audio_sessions[i];
+        auto desc = seeder::core::video_format_desc::get(s->video_format);
+        st_set_video_foramt(info, &desc);
+        try {
+            if(s->type == "decklink") {
                 auto decklink = std::make_shared<seeder::decklink::decklink_output>(s->id, s->device_id, desc, s->pixel_format);
                 ctx->rx_output.emplace(s->id, decklink);
                 ctx->output_info.emplace(s->id, *s);
@@ -525,11 +522,11 @@ int st_app_rx_output_init(struct st_app_context* ctx, st_json_context *json_ctx)
             //     ctx->rx_output.emplace(s->id, ffmpeg);
             //     ctx->output_info.emplace(s->id, *s);
             // }
+        
+        } catch (std::exception& e) {
+            logger->error("rx_output_init failed {} device_id={} video_format={}", e.what(), s->device_id, s->video_format);
+            return -1;
         }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
     }
     
     return 0;

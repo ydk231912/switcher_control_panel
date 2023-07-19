@@ -48,4 +48,4 @@ target_include_directories(
 set_target_properties(ipg PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # file(COPY ./ipg_config.xml DESTINATION  ${PROJECT_SOURCE_DIR}/build/bin)
-file(COPY ./test_tx_1port_1v_1a_1anc.json DESTINATION  ${CMAKE_BINARY_DIR}/bin)
+# file(COPY ./test_tx_1port_1v_1a_1anc.json DESTINATION  ${CMAKE_BINARY_DIR}/bin)
