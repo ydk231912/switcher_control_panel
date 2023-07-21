@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <json/value.h>
 #include <string>
+#include <system_error>
 #include <unordered_map>
 #include <unordered_set>
 #include "app_error_code.h"
@@ -152,16 +153,14 @@ static std::error_code make_device_error(int code) {
     return {code, st_app_device_error_category::instance()};
 }
 
-
-std::error_code st_app_add_tx_sessions(st_app_context *ctx, st_json_context *new_json_ctx) {
-    std::error_code ec = st_app_check_device_status(ctx, new_json_ctx);
-    if (ec) return ec;
+static std::error_code st_app_add_tx_sessions_device(st_app_context *ctx, st_json_context *new_json_ctx) {
     int ret = 0;
     // tx source init
     if ((ret = st_tx_video_source_init(ctx, new_json_ctx))) return make_device_error(ret);
     // tx session init
     if ((ret = st_app_tx_video_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
     if ((ret = st_app_tx_audio_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
+
     // tx source start
     std::unordered_map<std::string, st_app_tx_source *> json_tx_source_map;
     for (auto &s : new_json_ctx->tx_sources) {
@@ -174,7 +173,11 @@ std::error_code st_app_add_tx_sessions(st_app_context *ctx, st_json_context *new
             }
         }
     }
-    
+
+    return {};
+}
+
+static void st_app_add_tx_sessions_udpate_json_ctx(st_app_context *ctx, st_json_context *new_json_ctx) {
     for (auto &s : new_json_ctx->tx_video_sessions) {
         ctx->json_ctx->tx_video_sessions.push_back(s);
     }
@@ -187,25 +190,34 @@ std::error_code st_app_add_tx_sessions(st_app_context *ctx, st_json_context *new
     for (auto &v : new_json_ctx->json_root["tx_sessions"]) {
         ctx->json_ctx->json_root["tx_sessions"].append(v);
     }
-    
-    return {};
 }
 
+static void st_app_remove_tx_session_update_json_ctx(st_app_context *ctx, const std::string &tx_source_id) {
+    ctx->tx_sources.erase(tx_source_id);
+    ctx->source_info.erase(tx_source_id);
 
+    boost::remove_if(ctx->json_ctx->tx_video_sessions, [&tx_source_id] (auto &s) {
+        return s.base.id == tx_source_id;
+    });
+    boost::remove_if(ctx->json_ctx->tx_audio_sessions, [&tx_source_id] (auto &s) {
+        return s.base.id == tx_source_id;
+    });
+    boost::remove_if(ctx->json_ctx->tx_sources, [&tx_source_id] (auto &s) {
+        return s.id == tx_source_id;
+    });
 
-std::error_code st_app_update_tx_sessions(st_app_context *ctx, st_json_context *new_json_ctx) {
-    std::error_code ec = st_app_update_check_id(ctx, new_json_ctx);
-    if (ec) return ec;
-    ec = st_app_check_device_status(ctx, new_json_ctx);
-    if (ec) return ec;
-    for (auto &s : new_json_ctx->tx_sources) {
-        st_app_remove_tx_session(ctx, s.id);
+    auto &json_tx_sessions = ctx->json_ctx->json_root["tx_sessions"];
+    for (int i = 0; i < json_tx_sessions.size(); ) {
+        if (json_tx_sessions[i]["id"] == tx_source_id) {
+            Json::Value got;
+            json_tx_sessions.removeIndex(i, &got);
+        } else {
+            ++i;
+        }
     }
-    st_app_add_tx_sessions(ctx, new_json_ctx);
-    return {};
 }
 
-std::error_code st_app_remove_tx_session(st_app_context *ctx, const std::string &tx_source_id) {
+static void st_app_remove_tx_session_device(st_app_context *ctx, const std::string &tx_source_id) {
     for (auto iter = ctx->tx_video_sessions.begin(); iter != ctx->tx_video_sessions.end();) {
         auto &s = *iter;
         if (s->tx_source_id == tx_source_id) {
@@ -227,81 +239,62 @@ std::error_code st_app_remove_tx_session(st_app_context *ctx, const std::string 
             ++iter;
         }
     }
-
-    ctx->tx_sources.erase(tx_source_id);
-    ctx->source_info.erase(tx_source_id);
-
-    boost::remove_if(ctx->json_ctx->tx_video_sessions, [&tx_source_id] (auto &s) {
-        return s.tx_source_id == tx_source_id;
-    });
-    boost::remove_if(ctx->json_ctx->tx_sources, [&tx_source_id] (auto &s) {
-        return s.id == tx_source_id;
-    });
-
-    auto &json_tx_sessions = ctx->json_ctx->json_root["tx_sessions"];
-    for (int i = 0; i < json_tx_sessions.size(); ) {
-        if (json_tx_sessions[i]["id"] == tx_source_id) {
-            Json::Value got;
-            json_tx_sessions.removeIndex(i, &got);
-        } else {
-            ++i;
-        }
-    }
-    
-    return {};
 }
 
-std::error_code st_app_add_rx_sessions(st_app_context *ctx, st_json_context *new_json_ctx) {
+std::error_code st_app_add_tx_sessions(st_app_context *ctx, st_json_context *new_json_ctx) {
     std::error_code ec = st_app_check_device_status(ctx, new_json_ctx);
     if (ec) return ec;
-    int ret = 0;
-    // tx source init
-    if ((ret = st_app_rx_output_init(ctx, new_json_ctx))) return make_device_error(ret);
-    // tx session init
-    if ((ret = st_app_rx_video_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
-    if ((ret = st_app_rx_audio_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
-    // tx source start
-    std::unordered_map<std::string, st_app_rx_output *> json_rx_output_map;
-    for (auto &s : new_json_ctx->rx_output) {
-        json_rx_output_map[s.id] = &s;
-    }
-    for (auto &[source_id, output] : ctx->rx_output) {
-        if (json_rx_output_map.find(source_id) != json_rx_output_map.end()) {
-            if (!output->is_started()) {
-                output->start();
-            }
+    ec = st_app_add_tx_sessions_device(ctx, new_json_ctx);
+    if (ec) {
+        // 如果初始化session失败的话，则删除已初始化的session
+        std::vector<std::string> new_ids;
+        for (auto &s : new_json_ctx->tx_sources) {
+            new_ids.push_back(s.id);
         }
+        for (auto &id : new_ids) {
+            st_app_remove_tx_session_device(ctx, id);
+        }
+        return ec;
     }
-    
-    for (auto &s : new_json_ctx->rx_video_sessions) {
-        ctx->json_ctx->rx_video_sessions.push_back(s);
-    }
-    for (auto &s : new_json_ctx->rx_audio_sessions) {
-        ctx->json_ctx->rx_audio_sessions.push_back(s);
-    }
-    for (auto &s : new_json_ctx->rx_output) {
-        ctx->json_ctx->rx_output.push_back(s);
-    }
-    for (auto &v : new_json_ctx->json_root["rx_sessions"]) {
-        ctx->json_ctx->json_root["rx_sessions"].append(v);
-    }
+    st_app_add_tx_sessions_udpate_json_ctx(ctx, new_json_ctx);
     
     return {};
 }
 
-std::error_code st_app_update_rx_sessions(st_app_context *ctx, st_json_context *new_json_ctx) {
+std::error_code st_app_remove_tx_session(st_app_context *ctx, const std::string &tx_source_id) {
+    st_app_remove_tx_session_device(ctx, tx_source_id);
+
+    st_app_remove_tx_session_update_json_ctx(ctx, tx_source_id);
+    
+    return {};
+}
+
+std::error_code st_app_update_tx_sessions(st_app_context *ctx, st_json_context *new_json_ctx) {
     std::error_code ec = st_app_update_check_id(ctx, new_json_ctx);
     if (ec) return ec;
     ec = st_app_check_device_status(ctx, new_json_ctx);
     if (ec) return ec;
-    for (auto &s : new_json_ctx->rx_output) {
-        st_app_remove_rx_session(ctx, s.id);
+    for (auto &s : new_json_ctx->tx_sources) {
+        st_app_remove_tx_session(ctx, s.id);
     }
-    st_app_add_rx_sessions(ctx, new_json_ctx);
+
+    ec = st_app_add_tx_sessions_device(ctx, new_json_ctx);
+    if (ec) {
+        // 如果初始化session失败的话，则删除已初始化的session
+        std::vector<std::string> new_ids;
+        for (auto &s : new_json_ctx->tx_sources) {
+            new_ids.push_back(s.id);
+        }
+        for (auto &id : new_ids) {
+            st_app_remove_tx_session_device(ctx, id);
+        }
+    }
+    st_app_add_tx_sessions_udpate_json_ctx(ctx, new_json_ctx);
     return {};
 }
 
-std::error_code st_app_remove_rx_session(st_app_context *ctx, const std::string &rx_output_id) {
+
+static void st_app_remove_rx_session_device(st_app_context *ctx, const std::string &rx_output_id) {
     for (auto iter = ctx->rx_video_sessions.begin(); iter != ctx->rx_video_sessions.end();) {
         auto &s = *iter;
         if (s->rx_output_id == rx_output_id) {
@@ -326,9 +319,75 @@ std::error_code st_app_remove_rx_session(st_app_context *ctx, const std::string 
 
     ctx->rx_output.erase(rx_output_id);
     ctx->output_info.erase(rx_output_id);
+}
 
+static std::error_code st_app_add_rx_sessions_device(st_app_context *ctx, st_json_context *new_json_ctx) {
+    int ret = 0;
+    // tx source init
+    if ((ret = st_app_rx_output_init(ctx, new_json_ctx))) return make_device_error(ret);
+    // tx session init
+    if ((ret = st_app_rx_video_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
+    if ((ret = st_app_rx_audio_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
+
+    // rx_output start
+    std::unordered_map<std::string, st_app_rx_output *> json_rx_output_map;
+    for (auto &s : new_json_ctx->rx_output) {
+        json_rx_output_map[s.id] = &s;
+    }
+    for (auto &[source_id, output] : ctx->rx_output) {
+        if (json_rx_output_map.find(source_id) != json_rx_output_map.end()) {
+            if (!output->is_started()) {
+                output->start();
+            }
+        }
+    }
+
+    return {};
+}
+
+static void st_app_add_rx_sessions_update_json_ctx(st_app_context *ctx, st_json_context *new_json_ctx) {
+    for (auto &s : new_json_ctx->rx_video_sessions) {
+        ctx->json_ctx->rx_video_sessions.push_back(s);
+    }
+    for (auto &s : new_json_ctx->rx_audio_sessions) {
+        ctx->json_ctx->rx_audio_sessions.push_back(s);
+    }
+    for (auto &s : new_json_ctx->rx_output) {
+        ctx->json_ctx->rx_output.push_back(s);
+    }
+    for (auto &v : new_json_ctx->json_root["rx_sessions"]) {
+        ctx->json_ctx->json_root["rx_sessions"].append(v);
+    }
+}
+
+
+std::error_code st_app_add_rx_sessions(st_app_context *ctx, st_json_context *new_json_ctx) {
+    std::error_code ec = st_app_check_device_status(ctx, new_json_ctx);
+    if (ec) return ec;
+    ec = st_app_add_rx_sessions_device(ctx, new_json_ctx);
+    if (ec) {
+        // 如果初始化session失败的话，则删除已初始化的session
+        std::vector<std::string> new_ids;
+        for (auto &s : new_json_ctx->rx_output) {
+            new_ids.push_back(s.id);
+        }
+        for (auto &id : new_ids) {
+            st_app_remove_rx_session_device(ctx, id);
+        }
+        return ec;
+    }
+
+    st_app_add_rx_sessions_update_json_ctx(ctx, new_json_ctx);
+    
+    return {};
+}
+
+static void st_app_remove_rx_session_update_json_ctx(st_app_context *ctx, const std::string &rx_output_id) {
     boost::remove_if(ctx->json_ctx->rx_video_sessions, [&rx_output_id] (auto &s) {
-        return s.rx_output_id == rx_output_id;
+        return s.base.id == rx_output_id;
+    });
+    boost::remove_if(ctx->json_ctx->rx_audio_sessions, [&rx_output_id] (auto &s) {
+        return s.base.id == rx_output_id;
     });
     boost::remove_if(ctx->json_ctx->rx_output, [&rx_output_id] (auto &s) {
         return s.id == rx_output_id;
@@ -343,6 +402,37 @@ std::error_code st_app_remove_rx_session(st_app_context *ctx, const std::string 
             ++i;
         }
     }
+}
+
+std::error_code st_app_remove_rx_session(st_app_context *ctx, const std::string &rx_output_id) {
+    st_app_remove_rx_session_device(ctx, rx_output_id);
+    st_app_remove_rx_session_update_json_ctx(ctx, rx_output_id);
     
+    return {};
+}
+
+
+std::error_code st_app_update_rx_sessions(st_app_context *ctx, st_json_context *new_json_ctx) {
+    std::error_code ec = st_app_update_check_id(ctx, new_json_ctx);
+    if (ec) return ec;
+    ec = st_app_check_device_status(ctx, new_json_ctx);
+    if (ec) return ec;
+    for (auto &s : new_json_ctx->rx_output) {
+        st_app_remove_rx_session(ctx, s.id);
+    }
+    
+    ec = st_app_add_rx_sessions_device(ctx, new_json_ctx);
+    if (ec) {
+        // 如果初始化session失败的话，则删除已初始化的session
+        std::vector<std::string> new_ids;
+        for (auto &s : new_json_ctx->rx_output) {
+            new_ids.push_back(s.id);
+        }
+        for (auto &id : new_ids) {
+            st_app_remove_rx_session_device(ctx, id);
+        }
+    }
+
+    st_app_add_rx_sessions_update_json_ctx(ctx, new_json_ctx);
     return {};
 }

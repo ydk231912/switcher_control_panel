@@ -8,14 +8,14 @@ const char* st_app_error_category::name() const noexcept {
 static std::string map_code_to_string(st_app_errc c) {
     switch (c) {
     case st_app_errc::SUCCESS: return "成功";
-    case st_app_errc::JSON_PARSE_FAIL: return "配置文件参数解析异常";
-    case st_app_errc::JSON_NOT_VALID: return "配置文件参数不正确";
-    case st_app_errc::JSON_NULL: return "配置文件参数不正确";
+    case st_app_errc::JSON_PARSE_FAIL: return "参数解析异常";
+    case st_app_errc::JSON_NOT_VALID: return "参数错误";
+    case st_app_errc::JSON_NULL: return "参数错误：不能为空";
     case st_app_errc::VIDEO_SESSION_REQUIRED: return "缺少video配置";
     case st_app_errc::AUDIO_SESSION_REQUIRED: return "缺少audio配置";
     case st_app_errc::DECKLINK_DEVICE_USED: return "SDI设备已被占用";
     case st_app_errc::ADDRESS_CONFLICT: return "地址冲突，IP地址或端口号已被占用";
-    case st_app_errc::ID_INVALID: return "配置ID不存在";
+    case st_app_errc::ID_INVALID: return "参数错误：无效的ID";
     default:
       return "未知异常";
     }

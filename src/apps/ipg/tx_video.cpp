@@ -351,9 +351,9 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     if (ops.type == ST20_TYPE_RTP_LEVEL) rtp = true;
 
     // tx video source
-    s->tx_source = ctx->tx_sources[video->tx_source_id];
-    s->tx_source_id = video->tx_source_id;
-    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[video->tx_source_id]);
+    s->tx_source = ctx->tx_sources[video->base.id];
+    s->tx_source_id = video->base.id;
+    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[video->base.id]);
 
     if(!ctx->app_thread) 
     {
@@ -385,13 +385,14 @@ static int st_app_tx_video_session_init(st_app_context* ctx, st_json_video_sessi
 int st_app_tx_video_sessions_init(struct st_app_context* ctx) 
 {
     int ret = 0;
-    ctx->tx_video_sessions.resize(ctx->json_ctx->tx_video_sessions.size());
-    
-    for (auto i = 0; i < ctx->tx_video_sessions.size(); ++i) {
-        auto &s = ctx->tx_video_sessions[i];
-        s = std::shared_ptr<st_app_tx_video_session>(new st_app_tx_video_session {});
-        ret = st_app_tx_video_session_init(ctx, &ctx->json_ctx->tx_video_sessions[i], s.get());
+    for (auto &json_video : ctx->json_ctx->tx_video_sessions) {
+        if (!json_video.base.enable) {
+            continue;
+        }
+        auto s = std::shared_ptr<st_app_tx_video_session>(new st_app_tx_video_session {});
+        ret = st_app_tx_video_session_init(ctx, &json_video, s.get());
         if (ret) return ret;
+        ctx->tx_video_sessions.push_back(s);
     }
     return 0;
 }
@@ -399,6 +400,9 @@ int st_app_tx_video_sessions_init(struct st_app_context* ctx)
 int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_json_ctx) {
     int ret = 0;
     for (auto &json_video : new_json_ctx->tx_video_sessions) {
+        if (!json_video.base.enable) {
+            continue;
+        }
         auto s = std::shared_ptr<st_app_tx_video_session>(new st_app_tx_video_session {});
         ret = st_app_tx_video_session_init(ctx, &json_video, s.get());
         if (ret) return ret;

@@ -299,6 +299,9 @@ struct st_app_rx_audio_session {
   int idx;
   std::string rx_output_id;
   st30_rx_handle handle;
+  mtl_handle st;
+  st_app_context *ctx;
+  int lcore;
   int framebuff_cnt;
   int st30_frame_size;
   int pkt_len;
@@ -611,6 +614,6 @@ static inline uint64_t st_app_get_monotonic_time() {
 int st_app_video_get_lcore(struct st_app_context* ctx, int sch_idx, bool rtp,
                            unsigned int* lcore);
 
-void st_set_video_foramt(struct st_json_audio_info info, seeder::core::video_format_desc* desc);
+void st_set_video_foramt(const struct st_json_audio_info &info, seeder::core::video_format_desc* desc);
 
 std::string st_app_ip_addr_to_string(void *addr);

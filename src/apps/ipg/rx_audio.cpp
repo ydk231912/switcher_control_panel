@@ -57,12 +57,25 @@ static void app_rx_audio_consume_frame(struct st_app_rx_audio_session* s, void* 
     }
 }
 
+[[maybe_unused]]
+static void app_rx_audio_thread_bind(struct st_app_rx_audio_session* s) 
+{
+    if(s->lcore != -1) 
+    {
+        if (mtl_bind_to_lcore(s->st, pthread_self(), s->lcore)) {
+            logger->warn("app_rx_audio_thread_bind failed");
+        }
+    }
+}
+
 static void* app_rx_audio_frame_thread(void* arg)
 {
     struct st_app_rx_audio_session* s = (st_app_rx_audio_session*)arg;
     int idx = s->idx;
     int consumer_idx;
     struct st_rx_frame* framebuff;
+
+    // app_rx_audio_thread_bind(s);
 
     logger->info("{}({}), start", __func__, idx);
     while(!s->st30_app_thread_stop)
@@ -218,9 +231,15 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
         return -EIO;
     }
     s->handle = handle;
-    s->rx_output = ctx->rx_output[audio->rx_output_id];
-    s->rx_output_id = audio->rx_output_id;
-    s->output_info = ctx->output_info[audio->rx_output_id];
+    s->rx_output = ctx->rx_output[audio->base.id];
+    s->rx_output_id = audio->base.id;
+    s->output_info = ctx->output_info[audio->base.id];
+    if(!ctx->app_thread) 
+    {
+        unsigned int lcore;
+        ret = st_app_video_get_lcore(ctx, (s->idx + 8) % ST_APP_MAX_LCORES, false, &lcore);
+        if (ret >= 0) s->lcore = lcore;
+    }
     
     ret = app_rx_audio_init_frame_thread(s);
     if(ret < 0)
@@ -270,8 +289,11 @@ int st_app_rx_audio_session_uinit(struct st_app_rx_audio_session* s)
 
 static int st_app_rx_audio_session_init(struct st_app_context* ctx, st_json_audio_session_t *json_audio, st_app_rx_audio_session *s) {
     s->idx = ctx->next_rx_audio_session_idx++;
-    s->framebuff_cnt = 2;
+    s->framebuff_cnt = 8;
     s->st30_ref_fd = -1;
+    s->st = ctx->st;
+    s->lcore = -1;
+    s->ctx = ctx;
     int ret = app_rx_audio_init(ctx, json_audio, s);
     if(ret < 0) 
     {
@@ -284,13 +306,15 @@ static int st_app_rx_audio_session_init(struct st_app_context* ctx, st_json_audi
 int st_app_rx_audio_sessions_init(struct st_app_context* ctx)
 {
     int ret;
-    ctx->rx_audio_sessions.resize(ctx->json_ctx->rx_audio_sessions.size());
-    for(auto i = 0; i < ctx->rx_audio_sessions.size(); i++)
+    for(auto &json_audio : ctx->json_ctx->rx_audio_sessions)
     {
-        auto &s = ctx->rx_audio_sessions[i];
-        s = std::shared_ptr<st_app_rx_audio_session>(new st_app_rx_audio_session {});
-        ret = st_app_rx_audio_session_init(ctx, &ctx->json_ctx->rx_audio_sessions[i], s.get());
+        if (!json_audio.base.enable) {
+            continue;
+        }
+        auto s = std::shared_ptr<st_app_rx_audio_session>(new st_app_rx_audio_session {});
+        ret = st_app_rx_audio_session_init(ctx, &json_audio, s.get());
         if (ret) return ret;
+        ctx->rx_audio_sessions.push_back(s);
     }
 
     return 0;
@@ -299,6 +323,9 @@ int st_app_rx_audio_sessions_init(struct st_app_context* ctx)
 int st_app_rx_audio_sessions_add(struct st_app_context* ctx, st_json_context_t *new_json_ctx) {
     int ret = 0;
     for (auto &json_audio : new_json_ctx->rx_audio_sessions) {
+        if (!json_audio.base.enable) {
+            continue;
+        }
         auto s = std::shared_ptr<st_app_rx_audio_session>(new st_app_rx_audio_session {});
         ret = st_app_rx_audio_session_init(ctx, &json_audio, s.get());
         if (ret) return ret;

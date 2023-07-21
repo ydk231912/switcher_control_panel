@@ -421,10 +421,10 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     s->handle_sch_idx = st20_rx_get_sch_idx(handle);
     s->st20_frame_size = st20_rx_get_framebuffer_size(handle);
     // rx output handle
-    s->rx_output = ctx->rx_output[video->rx_output_id];
-    s->rx_output_id = video->rx_output_id;
+    s->rx_output = ctx->rx_output[video->base.id];
+    s->rx_output_id = video->base.id;
     //s->rx_output = ctx->tx_sources[video->tx_source_id];
-    s->output_info = ctx->output_info[video->rx_output_id];
+    s->output_info = ctx->output_info[video->base.id];
 
     if(!ctx->app_thread) 
     {
@@ -469,13 +469,15 @@ static int st_app_rx_video_session_init(st_app_context* ctx, st_json_video_sessi
 int st_app_rx_video_sessions_init(struct st_app_context* ctx) 
 {
     int ret = 0;
-    ctx->rx_video_sessions.resize(ctx->json_ctx->rx_video_sessions.size());
-    for(auto i = 0; i < ctx->rx_video_sessions.size(); i++) 
+    for(auto &json_video : ctx->json_ctx->rx_video_sessions) 
     {
-        auto &s = ctx->rx_video_sessions[i];
-        s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
-        ret = st_app_rx_video_session_init(ctx, &ctx->json_ctx->rx_video_sessions[i], s.get());
+        if (!json_video.base.enable) {
+            continue;
+        }
+        auto s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
+        ret = st_app_rx_video_session_init(ctx, &json_video, s.get());
         if (ret) return ret;
+        ctx->rx_video_sessions.push_back(s);
     }
     return ret;
 }
@@ -483,6 +485,9 @@ int st_app_rx_video_sessions_init(struct st_app_context* ctx)
 int st_app_rx_video_sessions_add(struct st_app_context* ctx, st_json_context_t *new_json_ctx) {
     int ret = 0;
     for (auto &json_video : new_json_ctx->rx_video_sessions) {
+        if (!json_video.base.enable) {
+            continue;
+        }
         auto s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
         ret = st_app_rx_video_session_init(ctx, &json_video, s.get());
         if (ret) return ret;

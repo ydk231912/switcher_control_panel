@@ -95,7 +95,8 @@ namespace seeder::decklink
         std::atomic<bool> abort_ = { false };
         int display_frame_count = 0;
         int frame_convert_count = 0;
-        uint64_t display_frame_us_sum = 0;
+        uint64_t display_video_frame_us_sum = 0;
+        uint64_t display_audio_frame_us_sum = 0;
         uint64_t memcpy_us_sum = 0;
 
         IDeckLinkMutableVideoFrame*	playbackFrame_ = nullptr;

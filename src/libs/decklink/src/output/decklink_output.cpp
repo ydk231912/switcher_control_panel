@@ -397,7 +397,7 @@ namespace seeder::decklink
         }
         display_frame_count++;
         auto end = std::chrono::steady_clock::now();
-        display_frame_us_sum += std::chrono::nanoseconds(end - start).count();
+        display_video_frame_us_sum += std::chrono::nanoseconds(end - start).count();
 
         
         if (result != S_OK)
@@ -434,7 +434,10 @@ namespace seeder::decklink
     {
         HRESULT result;
         uint32_t n;
+        auto start = std::chrono::steady_clock::now();
         result = output_->WriteAudioSamplesSync(aframe_buffer, format_desc_.sample_num, &n);
+        auto end = std::chrono::steady_clock::now();
+        display_audio_frame_us_sum += std::chrono::nanoseconds(end - start).count();
         if (result != S_OK)
         {
             logger->error("Unable to display audio output");
@@ -442,13 +445,14 @@ namespace seeder::decklink
     }
 
     void decklink_output::dump_stat() {
-        logger->info("decklink_output device_index={} display_frame_count={} frame_convert_count={} display_frame_us_sum={} memcpy_us_sum={}", 
-            decklink_index_, display_frame_count, frame_convert_count, display_frame_us_sum, memcpy_us_sum);
+        logger->info("decklink_output device_index={} display_frame_count={} frame_convert_count={} display_video_frame_us_sum={} memcpy_us_sum={} display_audio_frame_us_sum={}", 
+            decklink_index_, display_frame_count, frame_convert_count, display_video_frame_us_sum, memcpy_us_sum, display_audio_frame_us_sum);
 
         display_frame_count = 0;
-        display_frame_us_sum = 0;
+        display_video_frame_us_sum = 0;
         frame_convert_count = 0;
         memcpy_us_sum = 0;
+        display_audio_frame_us_sum = 0;
     }
 
     void decklink_output::consume_st_video_frame(void *frame, uint32_t width, uint32_t height) {
@@ -657,7 +661,8 @@ namespace seeder::decklink
         int display_frame_count = 0;
         int frame_convert_count = 0;
         int scheduled_frame_completed_count = 0;
-        uint64_t display_frame_us_sum = 0;
+        uint64_t display_video_frame_us_sum = 0;
+        uint64_t display_audio_frame_us_sum = 0;
         std::unique_ptr<uint8_t[]> aframe_buffer;
         uint64_t total_audio_scheduled = 0;
         
@@ -703,7 +708,8 @@ namespace seeder::decklink
         p_impl->output_->StopScheduledPlayback(0, NULL, 0);
         p_impl->output_->DisableVideoOutput();
         p_impl->output_->DisableAudioOutput();
-        logger->info("decklink_output device_index={} stopped", p_impl->decklink_index_);
+        p_impl->output_.detach()->Release(); // ??? wei sha zhe yang jiu ke yi ???
+        logger->info("decklink_async_output device_index={} stopped", p_impl->decklink_index_);
     }
 
     void decklink_async_output::consume_st_video_frame(void *frame, uint32_t width, uint32_t height) {
@@ -761,12 +767,14 @@ namespace seeder::decklink
             p_impl->total_playout_frames++;
             p_impl->display_frame_count++;
             auto end = std::chrono::steady_clock::now();
-            p_impl->display_frame_us_sum += std::chrono::nanoseconds(end - start).count();
+            p_impl->display_video_frame_us_sum += std::chrono::nanoseconds(end - start).count();
         }
     }
 
     void decklink_async_output::display_audio_frame() {
         HRESULT result;
+        auto start = std::chrono::steady_clock::now();
+
         result = p_impl->output_->ScheduleAudioSamples(
             p_impl->aframe_buffer.get(), 
             p_impl->format_desc_.sample_num, 
@@ -774,6 +782,10 @@ namespace seeder::decklink
             p_impl->audio_sample_rate,
             nullptr // when sampleFramesWritten is NULL, ScheduleAudioSamples will block until all audio samples are written to the scheduling buffer
         );
+
+        auto end = std::chrono::steady_clock::now();
+        p_impl->display_audio_frame_us_sum += std::chrono::nanoseconds(end - start).count();
+
         p_impl->total_audio_scheduled++;
         if (result != S_OK)
         {
@@ -782,13 +794,14 @@ namespace seeder::decklink
     }
 
     void decklink_async_output::dump_stat() {
-        logger->info("decklink_async_output device_index={} display_frame_count={} frame_convert_count={} display_frame_us_sum={} scheduled_frame_completed_count={}", 
-            p_impl->decklink_index_, p_impl->display_frame_count, p_impl->frame_convert_count, p_impl->display_frame_us_sum, p_impl->scheduled_frame_completed_count);
+        logger->info("decklink_async_output device_index={} display_frame_count={} frame_convert_count={} display_video_frame_us_sum={} scheduled_frame_completed_count={} display_audio_frame_us_sum={}", 
+            p_impl->decklink_index_, p_impl->display_frame_count, p_impl->frame_convert_count, p_impl->display_video_frame_us_sum, p_impl->scheduled_frame_completed_count, p_impl->display_audio_frame_us_sum);
 
         p_impl->display_frame_count = 0;
-        p_impl->display_frame_us_sum = 0;
+        p_impl->display_video_frame_us_sum = 0;
         p_impl->frame_convert_count = 0;
         p_impl->scheduled_frame_completed_count = 0;
+        p_impl->display_audio_frame_us_sum = 0;
     }
 
     HRESULT PlayoutDelegate::ScheduledFrameCompleted(IDeckLinkVideoFrame* completedFrame, BMDOutputFrameCompletionResult result) {

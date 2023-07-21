@@ -104,6 +104,7 @@ typedef struct st_json_session_base {
   int num_inf;
   uint16_t udp_port;
   uint8_t payload_type;
+  bool enable;
 } st_json_session_base_t;
 
 typedef struct st_json_video_info {
@@ -165,26 +166,16 @@ typedef struct st_json_st20p_info {
 typedef struct st_json_video_session {
   st_json_session_base_t base;
   st_json_video_info_t info;
-
-  // tx only
-  std::string tx_source_id; // tx_source.id, same as this.base.id
   
   /* rx only items */
   enum user_pg_fmt user_pg_format;
   bool display;
   bool measure_latency;
-
-  std::string rx_output_id; // rx_output.id, same as this.base.id
 } st_json_video_session_t;
 
 typedef struct st_json_audio_session {
   st_json_session_base_t base;
   st_json_audio_info_t info;
-
-  // tx_source.id
-  std::string tx_source_id;
-  // rx_ourput.id
-  std::string rx_output_id;
 
 } st_json_audio_session_t;
 

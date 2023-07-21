@@ -295,9 +295,9 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 
     s->st30_pcap_input = false;
     //tx audio source
-    s->tx_source = ctx->tx_sources[audio->tx_source_id];
-    s->tx_source_id = audio->tx_source_id;
-    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[audio->tx_source_id]);
+    s->tx_source = ctx->tx_sources[audio->base.id];
+    s->tx_source_id = audio->base.id;
+    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[audio->base.id]);
 
     // s->st30_pcap_input = false;
     ops.type = audio ? audio->info.type : ST30_TYPE_FRAME_LEVEL;
@@ -343,13 +343,15 @@ static int st_app_tx_audio_sessions_init(struct st_app_context* ctx, st_json_aud
 int st_app_tx_audio_sessions_init(struct st_app_context* ctx) 
 {
     int ret;
-    ctx->tx_audio_sessions.resize(ctx->json_ctx->tx_audio_sessions.size());
-    for(std::size_t i = 0; i < ctx->tx_audio_sessions.size(); i++) 
+    for(auto &json_audio : ctx->json_ctx->tx_audio_sessions) 
     {
-        auto &s = ctx->tx_audio_sessions[i];
-        s = std::shared_ptr<st_app_tx_audio_session>(new st_app_tx_audio_session {});
-        ret = st_app_tx_audio_sessions_init(ctx, &ctx->json_ctx->tx_audio_sessions[i], s.get());
+        if (!json_audio.base.enable) {
+            continue;
+        }
+        auto s = std::shared_ptr<st_app_tx_audio_session>(new st_app_tx_audio_session {});
+        ret = st_app_tx_audio_sessions_init(ctx, &json_audio, s.get());
         if (ret) return ret;
+        ctx->tx_audio_sessions.push_back(s);
     }
 
     return 0;
@@ -358,6 +360,9 @@ int st_app_tx_audio_sessions_init(struct st_app_context* ctx)
 int st_app_tx_audio_sessions_add(struct st_app_context* ctx, st_json_context_t *new_json_ctx) {
     int ret = 0;
     for (auto &json_audio : new_json_ctx->tx_audio_sessions) {
+        if (!json_audio.base.enable) {
+            continue;
+        }
         auto s = std::shared_ptr<st_app_tx_audio_session>(new st_app_tx_audio_session {});
         ret = st_app_tx_audio_sessions_init(ctx, &json_audio, s.get());
         if (ret) return ret;

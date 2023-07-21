@@ -34,7 +34,7 @@ namespace seeder::decklink
     ,video_flags_(bmdVideoInputFlagDefault)
     ,pixel_format_(bmdFormat10BitYUV) //bmdFormat8BitYUV
     {
-        sample_type_ = bmdAudioSampleType32bitInteger;
+        sample_type_ = bmdAudioSampleType16bitInteger; //bmdAudioSampleType32bitInteger;
         if(format_desc_.audio_samples == 32)
             sample_type_ = bmdAudioSampleType32bitInteger;
         

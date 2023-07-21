@@ -73,7 +73,7 @@ st_app_context::~st_app_context() {
     }
 }
 
-void st_set_video_foramt(struct st_json_audio_info info, seeder::core::video_format_desc* desc)
+void st_set_video_foramt(const struct st_json_audio_info &info, seeder::core::video_format_desc* desc)
 {
     auto sample_size = st30_get_sample_size(info.audio_format); //ST30_FMT_PCM8 1 byte, ST30_FMT_PCM16 2 bytes, ST30_FMT_PCM24 3 bytes
     auto ptime = info.audio_ptime; // ST30_PTIME_1MS, ST30_PTIME_4MS
