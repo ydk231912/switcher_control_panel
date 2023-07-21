@@ -35,7 +35,7 @@ namespace seeder::decklink
     ,pixel_format_(bmdFormat10BitYUV) //bmdFormat8BitYUV
     {
         sample_type_ = bmdAudioSampleType16bitInteger; //bmdAudioSampleType32bitInteger;
-        if(format_desc_.audio_samples == 32)
+        if(format_desc_.audio_samples > 16)
             sample_type_ = bmdAudioSampleType32bitInteger;
         
 
@@ -274,13 +274,35 @@ namespace seeder::decklink
             int nb = format_desc_.st30_fps / format_desc_.fps; // slice number
             auto size = format_desc_.st30_frame_size;
             void* audio_bytes = nullptr;
+            // auto sample_frame_count = audio->GetSampleFrameCount(); sample_frame_count = 960
             
             if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
             {
                 for(int i = 0; i < nb; i++)
                 {
                     auto aframe = std::make_shared<buffer>(format_desc_.st30_frame_size);
-                    memcpy(aframe->begin(), (char*) audio_bytes + i * size , size);
+                    if (sample_type_ == bmdAudioSampleType16bitInteger) {
+                        // memcpy(aframe->begin(), (char*) audio_bytes + i * size , size);
+                        // for (int j = 0; j < size; j += 2) {
+                        //     std::swap(aframe->begin()[j], aframe->begin()[j + 1]);
+                        // }
+                        for (int j = 0; j < size; j += 2) {
+                            char *b = reinterpret_cast<char*>(audio_bytes) + i * size;
+                            aframe->begin()[j] = b[j + 1];
+                            aframe->begin()[j + 1] = b[j];
+                        }
+                    } else if (format_desc_.audio_samples == 24) {
+                        int sample_count = size / 3;
+                        for (int j = 0; j < sample_count; ++j) {
+                            char *b = reinterpret_cast<char*>(audio_bytes) + i * size + j * 4;
+                            aframe->begin()[j * 3] = b[3];
+                            aframe->begin()[j * 3 + 1] = b[2];
+                            aframe->begin()[j * 3 + 2] = b[1];
+                        }
+                    } else {
+                        memcpy(aframe->begin(), (char*) audio_bytes + i * size , size);
+                    }
+                    
                     this->set_audio_frame_slice(aframe);
                 }
             }

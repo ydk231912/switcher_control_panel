@@ -2514,7 +2514,7 @@ struct st_app_json_fmt_group {
         {
           {"PCM 16", "PCM16"},
           // {"PCM 8", "PCM8"},
-          // {"PCM 24", "PCM24"},
+          {"PCM 24", "PCM24"},
           {"AM 824", "AM824"}
         }
       },
