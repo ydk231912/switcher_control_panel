@@ -2,12 +2,19 @@
  * Copyright(c) 2022 Intel Corporation
  */
 
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/variables_map.hpp>
 #include <getopt.h>
 #include <inttypes.h>
+#include <spdlog/common.h>
 
 #include "app_base.h"
-#define DEBUG
 #include "core/util/logger.h"
+#include <boost/program_options.hpp>
+
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 using namespace seeder::core;
 
@@ -269,7 +276,7 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
     //if(cmd == -2) break;
     //cmd = ST_ARG_CONFIG_FILE;
     if (cmd == -1) break;
-    logger->debug("{}, cmd {} {}", __func__, cmd, optarg);
+    logger->trace("{}, cmd {} {}", __func__, cmd, optarg);
 
     switch (cmd) {
       case ST_ARG_P_PORT:
@@ -538,4 +545,49 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
   };
 
   return 0;
+}
+
+void st_app_init_logger_from_args(int argc, char **argv) {
+  namespace po = boost::program_options;
+
+  std::string log_level = "info";
+  std::string console_level;
+  std::string file_level;
+  std::string log_path;
+  int max_size_mb = 10;
+  int max_files = 30;
+  po::options_description desc("Command Line Options For Logger");
+  desc.add_options()
+    ("log_level", po::value(&log_level), "logging level")
+    ("console_log_level", po::value(&console_level), "logging level for console")
+    ("log_path", po::value(&log_path), "logging output file path")
+    ("file_log_level", po::value(&file_level), "logging level for file")
+    ("file_log_max_size", po::value(&max_size_mb), "logging output file max size in MB")
+    ("file_log_max_files", po::value(&max_files), "logging output file max rotation files");
+  po::parsed_options parsed = po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
+  po::variables_map po_vm;
+  po::store(parsed, po_vm);
+  po::notify(po_vm);
+
+  if (console_level.empty()) {
+    console_level = log_level;
+  }
+  std::vector<spdlog::sink_ptr> sinks;
+  auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  sinks.push_back(console_sink);
+  console_sink->set_level(spdlog::level::from_str(console_level));
+
+  if (!log_path.empty()) {
+    if (file_level.empty()) {
+      file_level = log_level;
+    }
+    auto size = 1048576 * max_size_mb ; //MB
+    auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(log_path, size, max_files);
+    if (file_sink) {
+      sinks.push_back(file_sink);
+    }
+    file_sink->set_level(spdlog::level::from_str(file_level));
+  }
+  seeder::core::logger = std::make_shared<spdlog::logger>("SEEDER ST2110", sinks.begin(), sinks.end());
+  logger->set_level(spdlog::level::from_str(log_level));
 }

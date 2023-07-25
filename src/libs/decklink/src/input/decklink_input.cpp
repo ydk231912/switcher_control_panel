@@ -446,7 +446,7 @@ namespace seeder::decklink
         {
             auto f = asframe_buffer_[0];
             asframe_buffer_.pop_front(); // discard the oldest frame
-            logger->debug("{}, The audio frame is discarded", __func__);
+            logger->trace("{}, The audio frame is discarded", __func__);
         }
         asframe_buffer_.push_back(asframe);
         asframe_cv_.notify_all();

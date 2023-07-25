@@ -25,7 +25,7 @@ static int app_tx_audio_next_frame(void* priv, uint16_t* next_frame_idx,
     st_pthread_mutex_lock(&s->st30_wake_mutex);
     if(ST_TX_FRAME_READY == framebuff->stat) 
     {
-        logger->debug("{}({}), next frame idx {}", __func__, s->idx, consumer_idx);
+        logger->trace("{}({}), next frame idx {}", __func__, s->idx, consumer_idx);
         ret = 0;
         framebuff->stat = ST_TX_FRAME_IN_TRANSMITTING;
         *next_frame_idx = consumer_idx;
@@ -38,7 +38,7 @@ static int app_tx_audio_next_frame(void* priv, uint16_t* next_frame_idx,
     {
         /* not ready */
         ret = -EIO;
-        logger->debug("{}({}), idx {} err stat {}", __func__, s->idx, consumer_idx, framebuff->stat);
+        logger->trace("{}({}), idx {} err stat {}", __func__, s->idx, consumer_idx, framebuff->stat);
     }
     st_pthread_cond_signal(&s->st30_wake_cond);
     st_pthread_mutex_unlock(&s->st30_wake_mutex);
@@ -58,7 +58,7 @@ static int app_tx_audio_frame_done(void* priv, uint16_t frame_idx,
     {
         ret = 0;
         framebuff->stat = ST_TX_FRAME_FREE;
-        logger->debug("{}({}), done_idx {}", __func__, s->idx, frame_idx);
+        logger->trace("{}({}), done_idx {}", __func__, s->idx, frame_idx);
     }
     else
     {
@@ -70,7 +70,7 @@ static int app_tx_audio_frame_done(void* priv, uint16_t frame_idx,
     st_pthread_mutex_unlock(&s->st30_wake_mutex);
 
     s->st30_frame_done_cnt++;
-    logger->debug("{}({}), framebuffer index {}", __func__, s->idx, frame_idx);
+    logger->trace("{}({}), framebuffer index {}", __func__, s->idx, frame_idx);
 
     return ret;
 }

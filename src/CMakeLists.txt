@@ -33,6 +33,7 @@ find_package(Boost REQUIRED
     timer
     chrono
     iostreams
+    program_options
 )
 add_library(boost_deps INTERFACE)
 target_link_libraries(
@@ -44,6 +45,7 @@ target_link_libraries(
     Boost::timer
     Boost::chrono
     Boost::iostreams
+    Boost::program_options
 )
 
 # DeckLink
@@ -69,23 +71,23 @@ target_link_libraries(spdlog_deps INTERFACE spdlog::spdlog)
 add_subdirectory(libs)
 add_subdirectory(apps)
 
-aux_source_directory(./ SRC_LIST)
-add_executable(app ${SRC_LIST})
+# aux_source_directory(./ SRC_LIST)
+# add_executable(app ${SRC_LIST})
 
-target_link_libraries(app
-    PRIVATE
-    core
-    rtp
-    st2110
-    net
-    decklink
-    sdl
+# target_link_libraries(app
+#     PRIVATE
+#     core
+#     rtp
+#     st2110
+#     net
+#     decklink
+#     sdl
 
-    ffmpeg_deps
-    sdl2_deps
-    boost_deps
-    decklink_deps
-    mtl_deps
-    jsonc_deps
-    spdlog_deps
-)
+#     ffmpeg_deps
+#     sdl2_deps
+#     boost_deps
+#     decklink_deps
+#     mtl_deps
+#     jsonc_deps
+#     spdlog_deps
+# )

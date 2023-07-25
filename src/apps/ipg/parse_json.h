@@ -95,6 +95,7 @@ struct st_video_fmt_desc {
 typedef struct st_json_interface {
   char name[MTL_PORT_MAX_LEN];
   uint8_t ip_addr[MTL_IP_ADDR_LEN];
+  std::string ip_addr_str;
 } st_json_interface_t;
 
 typedef struct st_json_session_base {

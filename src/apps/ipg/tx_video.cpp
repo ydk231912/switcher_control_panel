@@ -24,7 +24,7 @@ static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx, struct 
     st_pthread_mutex_lock(&s->st20_wake_mutex);
     if(ST_TX_FRAME_READY == framebuff->stat) 
     {
-        logger->debug("{}({}), next frame idx {}", __func__, s->idx, consumer_idx);
+        logger->trace("{}({}), next frame idx {}", __func__, s->idx, consumer_idx);
         ret = 0;
         framebuff->stat = ST_TX_FRAME_IN_TRANSMITTING;
         *next_frame_idx = consumer_idx;
@@ -37,7 +37,7 @@ static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx, struct 
     {
         /* not ready */
         ret = -EIO;
-        logger->debug("{}({}), idx {} err stat {}", __func__, s->idx, consumer_idx, framebuff->stat);
+        logger->trace("{}({}), idx {} err stat {}", __func__, s->idx, consumer_idx, framebuff->stat);
     }
     st_pthread_cond_signal(&s->st20_wake_cond);
     st_pthread_mutex_unlock(&s->st20_wake_mutex);
@@ -56,7 +56,7 @@ static int app_tx_video_frame_done(void* priv, uint16_t frame_idx, struct st20_t
     {
         ret = 0;
         framebuff->stat = ST_TX_FRAME_FREE;
-        logger->debug("{}({}), done_idx {}", __func__, s->idx, frame_idx);
+        logger->trace("{}({}), done_idx {}", __func__, s->idx, frame_idx);
     }else
     {
         ret = -EIO;

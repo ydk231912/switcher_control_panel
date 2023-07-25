@@ -93,7 +93,7 @@ static void* app_rx_audio_frame_thread(void* arg)
         }
         st_pthread_mutex_unlock(&s->st30_wake_mutex);
 
-        logger->debug("{}({}), frame idx {}", __func__, idx, consumer_idx);
+        logger->trace("{}({}), frame idx {}", __func__, idx, consumer_idx);
         app_rx_audio_consume_frame(s, framebuff->frame, framebuff->size);
         st30_rx_put_framebuff(s->handle, framebuff->frame);
         /* point to next */

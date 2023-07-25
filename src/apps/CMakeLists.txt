@@ -2,3 +2,4 @@
 # add_subdirectory(ip2sdi)
 # add_subdirectory(decklink_test)
 add_subdirectory(ipg)
+add_subdirectory(ipg-monitor)

@@ -37,6 +37,7 @@ target_link_libraries(
     jsonc_deps
     spdlog_deps
     JsonCpp::JsonCpp
+    httplib
 )
 
 target_include_directories(

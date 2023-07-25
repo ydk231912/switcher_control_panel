@@ -127,7 +127,7 @@ static void* app_rx_video_frame_thread(void* arg)
         }
         st_pthread_mutex_unlock(&s->st20_wake_mutex);
 
-        logger->debug("{}({}), frame idx {}", __func__, idx, consumer_idx);
+        logger->trace("{}({}), frame idx {}", __func__, idx, consumer_idx);
 
         app_rx_video_check_lcore(s, false);
         
@@ -194,7 +194,7 @@ static int app_rx_video_frame_ready(void* priv, void* frame, struct st20_rx_fram
         {
             latency_ns = ptp_ns - meta->timestamp;
         }
-        logger->debug("{}, latency_us {}", __func__, latency_ns / 1000);
+        logger->trace("{}, latency_us {}", __func__, latency_ns / 1000);
         s->stat_latency_us_sum += latency_ns / 1000;
     }
     s->stat_frame_total_received++;

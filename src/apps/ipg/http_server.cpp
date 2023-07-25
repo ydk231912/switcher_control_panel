@@ -82,6 +82,10 @@ private:
         json_ok(res, root);
     }
 
+    void get_health(const Request& req, Response& res) {
+        json_ok(res);
+    }
+
     void save_config(const Request& req, Response& res) {
         if (req.body.empty()) {
             json_err(res, "empty body");
@@ -323,6 +327,10 @@ void st_http_server::start() {
 
     server.Get("/api/get_fmt", [&p] (const Request& req, Response& res) {
         p.get_fmts(req, res);
+    });
+
+    server.Get("/api/health", [&p] (const Request& req, Response& res) {
+        p.get_health(req, res);
     });
 
     server.Post("/api/saveConfig", [&p] (const Request& req, Response& res) {

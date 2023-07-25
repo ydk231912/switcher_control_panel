@@ -154,78 +154,6 @@ static void st_app_ctx_init(struct st_app_context *ctx)
     }
 }
 
-/*
-static int st_tx_video_source_init_update(struct st_app_context* ctx,st_json_context_t* c,int id)
-{
-    try
-    {
-        for(int i = 0; i < c->tx_source_cnt; i++)
-        {
-            if (id == c->tx_video_sessions[i].tx_source_id)
-            {
-                struct st_app_tx_source* s = &c->tx_sources[i];
-                if(s->type == "decklink")
-                {
-                    auto format_desc = seeder::core::video_format_desc(s->video_format);
-                    auto info = c->tx_audio_sessions[i].info;
-                    set_video_foramt(info, &format_desc);
-                    auto decklink = std::make_shared<seeder::decklink::decklink_input>(s->device_id, format_desc);
-                    ctx->tx_sources[id] =decklink;
-                    ctx->source_info[id] = s;
-                }
-                else if(s->type == "file")
-                {
-                    auto format_desc = seeder::core::video_format_desc(s->video_format);
-                    auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s->file_url, format_desc);
-                    ctx->tx_sources[id] =ffmpeg ;
-                    ctx->source_info[id] = s;
-                }
-            }
-        }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
-    } 
-    return 0;
-}
-*/
-
-/*
-static int st_tx_video_source_init_add(struct st_app_context* ctx,st_json_context_t* c)
-{
-    try
-    {
-        for(int i = 0; i < c->tx_source_cnt; i++)
-        {
-            struct st_app_tx_source* s = &c->tx_sources[i];
-            if(s->type == "decklink")
-            {
-                auto format_desc = seeder::core::video_format_desc(s->video_format);
-                auto info = c->tx_audio_sessions[i].info;
-                set_video_foramt(info, &format_desc);
-                auto decklink = std::make_shared<seeder::decklink::decklink_input>(s->device_id, format_desc);
-                ctx->tx_sources.push_back(decklink);
-                ctx->source_info.push_back(s);
-            }
-            else if(s->type == "file")
-            {
-                auto format_desc = seeder::core::video_format_desc(s->video_format);
-                auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s->file_url, format_desc);
-                ctx->tx_sources.push_back(ffmpeg);
-                ctx->source_info.push_back(s);
-            }
-        }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-    return 0;
-}
-*/
-
-
 
 static int st_tx_video_source_start(struct st_app_context* ctx)
 {
@@ -234,100 +162,6 @@ static int st_tx_video_source_start(struct st_app_context* ctx)
     }
     return 0;
 } 
-
-/*
-
-
-// initialize video output 
-static int st_rx_output_init_add(struct st_app_context* ctx,st_json_context_t* c)
-{
-    try
-    {
-        for(int i = 0; i < c->rx_output_cnt; i++)
-        {
-            st_app_rx_output* s = &c->rx_output[i];
-            auto info = c->rx_audio_sessions[i].info;
-            auto session = c->rx_audio_sessions[i];
-            if(s->type == "decklink")
-            {
-                auto desc = seeder::core::video_format_desc(s->video_format);
-                set_video_foramt(info, &desc);
-
-                auto decklink = std::make_shared<seeder::decklink::decklink_output>(s->device_id, desc);
-                ctx->rx_output.push_back(decklink);
-                ctx->output_info.push_back(s);
-            
-                //  ctx->rx_video_sessions[i].rx_output = decklink;
-                //  ctx->rx_video_sessions[i].output_info = s;
-                // ctx->rx_audio_sessions[i].rx_output = decklink;
-                // ctx->rx_audio_sessions[i].output_info = s;
-            }
-            else if(s->type == "file")
-            {
-                 auto format_desc = seeder::core::video_format_desc(s->video_format);
-                 auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s->file_url, format_desc);
-                //   ctx->rx_output.push_back(ffmpeg);
-                //   ctx->output_info.push_back(s);
-            }
-        }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-    
-    return 0;
-}
-
-
-static int st_rx_output_init_update(struct st_app_context* ctx,st_json_context_t* c,int id)
-{
-    try
-    {
-        for(int i = 0; i < c->rx_output_cnt; i++)
-        {
-            st_app_rx_output* s = &c->rx_output[i];
-             auto info = c->rx_audio_sessions[i].info;
-            if(c->rx_audio_sessions[i].rx_output_id  == id)
-            {
-            auto session = ctx->rx_audio_sessions[i];
-
-            if(s->type == "decklink")
-            {
-                auto desc = seeder::core::video_format_desc(s->video_format);
-                set_video_foramt(info, &desc);
-
-                auto decklink = std::make_shared<seeder::decklink::decklink_output>(s->device_id, desc);
-                ctx->rx_output[id]= decklink;
-                ctx->output_info[id] = s;
-                // ctx->rx_video_sessions[i].rx_output = decklink;
-                // ctx->rx_video_sessions[i].output_info = s;
-                // ctx->rx_audio_sessions[i].rx_output = decklink;
-                // ctx->rx_audio_sessions[i].output_info = s;
-            }
-            else if(s->type == "file")
-            {
-                // auto format_desc = seeder::core::video_format_desc(s->video_format);
-                // auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s->file_url,format_desc);
-                // ctx->tx_sources[i] = ffmpeg;
-                // ctx->source_info[i] = s;
-            }
-                
-            }
-        }
-    }
-    catch(const std::exception& e)
-    {
-        return -1;
-    }
-    
-    return 0;
-}
-
-
-
-
-*/
 
 static int st_rx_output_start(struct st_app_context* ctx)
 {
@@ -425,7 +259,7 @@ int main(int argc, char **argv)
     try
     {
         // create logger
-        logger = create_logger("info", "error","./log/log.txt", 10, 30);
+        st_app_init_logger_from_args(argc, argv);
     }
     catch (std::exception &e)
     {

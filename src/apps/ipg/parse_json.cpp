@@ -386,6 +386,7 @@ static st_app_errc st_json_parse_interfaces(json_object* interface_obj,
 
   const char* ip = json_object_get_string(st_json_object_object_get(interface_obj, "ip"));
   if (ip) {
+    interface->ip_addr_str = ip;
     st_app_errc ret = parse_ip_addr_str(ip, interface->ip_addr);
     ERRC_EXPECT_SUCCESS(ret);
   }
@@ -1690,10 +1691,6 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
         if (len == 2) {
           dip_r = json_object_array_get_idx(dip_array, 1);
         }
-        num_inf = len;
-      } else {
-        logger->error("{}, can not parse dip_array", __func__);
-        return st_app_errc::JSON_PARSE_FAIL;
       }
 
       /* parse interface */
@@ -1702,10 +1699,7 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       if (interface_array != NULL &&
           json_object_get_type(interface_array) == json_type_array) {
         int len = json_object_array_length(interface_array);
-        if (len != num_inf) {
-          logger->error("{}, wrong interface number", __func__);
-          return st_app_errc::JSON_NOT_VALID;
-        }
+        num_inf = len;
         inf_p = json_object_get_int(json_object_array_get_idx(interface_array, 0));
         if (inf_p < 0 || inf_p > num_interfaces) {
           logger->error("{}, wrong interface index", __func__);
@@ -2045,10 +2039,6 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
         if (len == 2) {
           ip_r = json_object_array_get_idx(ip_array, 1);
         }
-        num_inf = len;
-      } else {
-        logger->error("{}, can not parse dip_array", __func__);
-        return st_app_errc::JSON_PARSE_FAIL;
       }
 
       /* parse interface */
@@ -2057,10 +2047,7 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
       if (interface_array != NULL &&
           json_object_get_type(interface_array) == json_type_array) {
         int len = json_object_array_length(interface_array);
-        if (len != num_inf) {
-          logger->error("{}, wrong interface number", __func__);
-          return st_app_errc::JSON_NOT_VALID;
-        }
+        num_inf = len;
         inf_p = json_object_get_int(json_object_array_get_idx(interface_array, 0));
         if (inf_p < 0 || inf_p > num_interfaces) {
           logger->error("{}, wrong interface index", __func__);
@@ -2322,10 +2309,12 @@ std::error_code st_app_parse_json(st_json_context_t* ctx, const char* filename) 
   //logger->info("{}, using json-c version: {}", __func__, json_c_version());
 
   std::unique_ptr<json_object, JsonObjectDeleter> root_object { json_object_from_file(filename) };
-  if (root_object == NULL) {
+  if (root_object == nullptr) {
     logger->error("{}, can not parse json file {}, please check the format", __func__, filename);
     return st_app_errc::JSON_PARSE_FAIL;
   }
+  const char *json_content = json_object_to_json_string(root_object.get());
+  logger->info("st_app_parse_json(): {}", json_content);
   st_app_errc ret = st_app_parse_json(ctx, root_object.get());
   set_json_root(ctx, root_object.get());
   return ret;
@@ -2620,8 +2609,12 @@ Json::Value st_app_get_fmts(st_json_context_t* ctx) {
   Json::Value root;
 
   for (int i = 0; i < ctx->interfaces.size(); ++i) {
-    root["tx_sessions.interface"].append(make_fmt_item(ctx->interfaces[i].name, i));
-    root["rx_sessions.interface"].append(make_fmt_item(ctx->interfaces[i].name, i));
+    auto inf_name = "WAN" + std::to_string(i + 1);
+    if (!ctx->interfaces[i].ip_addr_str.empty()) {
+      inf_name.append(" (").append(ctx->interfaces[i].ip_addr_str).append(")");
+    }
+    root["tx_sessions.interface"].append(make_fmt_item(inf_name, i));
+    root["rx_sessions.interface"].append(make_fmt_item(inf_name, i));
   }
 
   root["tx_sessions.source.type"].append(make_fmt_item("decklink", "decklink"));
@@ -2657,8 +2650,9 @@ Json::Value st_app_get_fmts(st_json_context_t* ctx) {
   auto &decklink_manager = seeder::decklink::device_manager::instance();
   int decklink_device_count = decklink_manager.get_device_status().size();
   for (int i = 0; i < decklink_device_count; ++i) {
-    root["tx_sessions.source.device_id"].append(make_fmt_item(std::to_string(i + 1), std::to_string(i + 1)));
-    root["rx_sessions.output.device_id"].append(make_fmt_item(std::to_string(i + 1), std::to_string(i + 1)));
+    auto device_name = "SDI " + std::to_string(i + 1);
+    root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
+    root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
   }
 
   return root;
