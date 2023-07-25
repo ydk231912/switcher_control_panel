@@ -78,6 +78,9 @@ namespace seeder::decklink
         } else if (pixel_format == "bmdFormat8BitBGRA") {
             pixel_format_ = bmdFormat8BitBGRA;
         }
+        sample_type_ = bmdAudioSampleType16bitInteger; //bmdAudioSampleType32bitInteger;
+        if(format_desc_.audio_samples > 16)
+            sample_type_ = bmdAudioSampleType32bitInteger;
         HRESULT result;
         bmd_mode_ = get_decklink_video_format(format_desc_.format);
         video_flags_ = 0;
@@ -143,7 +146,7 @@ namespace seeder::decklink
         // }
 
         // enable audio output
-        result = output_->EnableAudioOutput(format_desc.audio_sample_rate, format_desc.audio_samples, 
+        result = output_->EnableAudioOutput(format_desc.audio_sample_rate, sample_type_, 
                                             format_desc.audio_channels, bmdAudioOutputStreamTimestamped);
         if (result != S_OK)
         {
@@ -467,7 +470,23 @@ namespace seeder::decklink
 
     void decklink_output::consume_st_audio_frame(void *frame, size_t frame_size) {
         memset(aframe_buffer, 0, frame_size);
-        memcpy(aframe_buffer, frame, frame_size);
+        uint8_t *st_frame_data = reinterpret_cast<uint8_t *>(frame);
+        if (sample_type_ == bmdAudioSampleType16bitInteger) {
+            for (int i = 0; i < frame_size; i += 2) {
+                aframe_buffer[i] = st_frame_data[i + 1];
+                aframe_buffer[i + 1] = st_frame_data[i];
+            }
+        } else if (format_desc_.audio_samples == 24) {
+            // frame (network byte order 24bits) to aframe_buffer (little byte order 32bits)
+            int sample_count = frame_size / 3;
+            for (int j = 0; j < sample_count; ++j) {
+                aframe_buffer[j * 4 + 1] = st_frame_data[j * 3 + 2];
+                aframe_buffer[j * 4 + 2] = st_frame_data[j * 3 + 1];
+                aframe_buffer[j * 4 + 3] = st_frame_data[j * 3 + 0];
+            }
+        } else {
+            memcpy(aframe_buffer, frame, frame_size);
+        }
     }
 
 

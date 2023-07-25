@@ -108,6 +108,8 @@ namespace seeder::decklink
         // frame buffer pointer
         uint8_t* vframe_buffer = nullptr;
         uint8_t* aframe_buffer = nullptr;
+        // audio
+        _BMDAudioSampleType sample_type_;
 
         //buffer
         std::mutex frame_mutex_;

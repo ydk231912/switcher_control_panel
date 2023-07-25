@@ -2089,13 +2089,32 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
             logger->error("{}, invalid replicas number: {}", __func__, replicas);
             return st_app_errc::JSON_NOT_VALID;
           }
+          // 取video对象的ip，没有的话用外层的ip
+          json_object* video_sip_p = NULL;
+          json_object* video_sip_r = NULL;
+          json_object* video_sip_array = st_json_object_object_get(video_session, "ip");
+          if (video_sip_array != NULL && json_object_get_type(video_sip_array) == json_type_array) {
+            int len = json_object_array_length(video_sip_array);
+            if (len < 1 || len > MTL_PORT_MAX) {
+              logger->error("{}, wrong dip number", __func__);
+              return st_app_errc::JSON_NOT_VALID;
+            }
+            video_sip_p = json_object_array_get_idx(video_sip_array, 0);
+            if (len == 2) {
+              video_sip_r = json_object_array_get_idx(video_sip_array, 1);
+            }
+          } else {
+            video_sip_p = ip_p;
+            video_sip_r = ip_r;
+          }
+          
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(ip_p), ctx->rx_video_sessions[num_video].base.ip[0]);
+            ret = parse_ip_addr_str(json_object_get_string(video_sip_p), ctx->rx_video_sessions[num_video].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->rx_video_sessions[num_video].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(ip_r), ctx->rx_video_sessions[num_video].base.ip[1]);
+              ret = parse_ip_addr_str(json_object_get_string(video_sip_r), ctx->rx_video_sessions[num_video].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->rx_video_sessions[num_video].base.inf[1] = ctx->interfaces[inf_r];
@@ -2131,13 +2150,32 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
             logger->error("{}, invalid replicas number: {}", __func__, replicas);
             return st_app_errc::JSON_NOT_VALID;
           }
+          // 取audio对象的dip，没有的话用外层的dip
+          json_object* audio_sip_p = NULL;
+          json_object* audio_sip_r = NULL;
+          json_object* audio_sip_array = st_json_object_object_get(audio_session, "ip");
+          if (audio_sip_array != NULL && json_object_get_type(audio_sip_array) == json_type_array) {
+            int len = json_object_array_length(audio_sip_array);
+            if (len < 1 || len > MTL_PORT_MAX) {
+              logger->error("{}, wrong dip number", __func__);
+              return st_app_errc::JSON_NOT_VALID;
+            }
+            audio_sip_p = json_object_array_get_idx(audio_sip_array, 0);
+            if (len == 2) {
+              audio_sip_r = json_object_array_get_idx(audio_sip_array, 1);
+            }
+          } else {
+            audio_sip_p = ip_p;
+            audio_sip_r = ip_r;
+          }
+
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(ip_p), ctx->rx_audio_sessions[num_audio].base.ip[0]);
+            ret = parse_ip_addr_str(json_object_get_string(audio_sip_p), ctx->rx_audio_sessions[num_audio].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->rx_audio_sessions[num_audio].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(ip_r), ctx->rx_audio_sessions[num_audio].base.ip[1]);
+              ret = parse_ip_addr_str(json_object_get_string(audio_sip_r), ctx->rx_audio_sessions[num_audio].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->rx_audio_sessions[num_audio].base.inf[1] = ctx->interfaces[inf_r];
@@ -2454,7 +2492,7 @@ struct st_app_json_fmt_group {
         "video.type",
         {
           {"frame", "frame"},
-          {"rtp", "rtp"},
+          // {"rtp", "rtp"},
           // {"slice", "slice"},
         }
       },
@@ -2515,7 +2553,7 @@ struct st_app_json_fmt_group {
           {"PCM 16", "PCM16"},
           // {"PCM 8", "PCM8"},
           {"PCM 24", "PCM24"},
-          {"AM 824", "AM824"}
+          // {"AM 824", "AM824"}
         }
       },
       {
