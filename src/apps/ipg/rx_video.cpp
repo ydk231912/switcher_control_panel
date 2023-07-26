@@ -13,6 +13,11 @@
 
 using namespace seeder::core;
 
+void st_app_rx_video_session_reset_stat(struct st_app_rx_video_session* s) {
+    s->frame_receive_stat = 0;
+    s->frame_drop_stat = 0;
+}
+
 static int app_rx_video_enqueue_frame(struct st_app_rx_video_session* s, void* frame, size_t size)
 {
     uint16_t producer_idx = s->framebuff_producer_idx;
@@ -179,6 +184,7 @@ static int app_rx_video_frame_ready(void* priv, void* frame, struct st20_rx_fram
     }
 
     s->stat_frame_received++;
+    s->frame_receive_stat++;
     if(s->measure_latency)
     {
         uint64_t latency_ns;
@@ -212,6 +218,7 @@ static int app_rx_video_frame_ready(void* priv, void* frame, struct st20_rx_fram
     ret = app_rx_video_enqueue_frame(s, frame, meta->frame_total_size);
     if(ret < 0)
     {
+        s->frame_drop_stat++;
         /* free the queue */
         st20_rx_put_framebuff(s->handle, frame);
         st_pthread_mutex_unlock(&s->st20_wake_mutex);
@@ -577,13 +584,6 @@ static void st_app_rx_video_session_stat(st_app_rx_video_session &s) {
 int st_app_rx_video_sessions_stat(struct st_app_context* ctx) {
     for (auto &s : ctx->rx_video_sessions) {
         st_app_rx_video_session_stat(*s);
-    }
-    return 0;
-}
-
-int st_app_rx_output_stat(struct st_app_context* ctx) {
-    for (auto &[id, s] : ctx->rx_output) {
-        s->dump_stat();
     }
     return 0;
 }

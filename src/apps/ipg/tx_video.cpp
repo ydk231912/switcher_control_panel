@@ -14,6 +14,13 @@
 
 using namespace seeder::core;
 
+void st_app_tx_video_session_reset_stat(struct st_app_tx_video_session* s) {
+    s->next_frame_stat = 0;
+    s->next_frame_not_ready_stat = 0;
+    s->frame_done_stat = 0;
+    s->build_frame_stat = 0;
+}
+
 static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx, struct st20_tx_frame_meta* meta) 
 {
     struct st_app_tx_video_session* s = (st_app_tx_video_session*)priv;
@@ -22,8 +29,8 @@ static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx, struct 
     struct st_tx_frame* framebuff = &s->framebuffs[consumer_idx];
 
     st_pthread_mutex_lock(&s->st20_wake_mutex);
-    if(ST_TX_FRAME_READY == framebuff->stat) 
-    {
+    s->next_frame_stat++;
+    if(ST_TX_FRAME_READY == framebuff->stat) {
         logger->trace("{}({}), next frame idx {}", __func__, s->idx, consumer_idx);
         ret = 0;
         framebuff->stat = ST_TX_FRAME_IN_TRANSMITTING;
@@ -33,8 +40,8 @@ static int app_tx_video_next_frame(void* priv, uint16_t* next_frame_idx, struct 
         consumer_idx++;
         if(consumer_idx >= s->framebuff_cnt) consumer_idx = 0;
         s->framebuff_consumer_idx = consumer_idx;
-    }else 
-    {
+    } else  {
+        s->next_frame_not_ready_stat++;
         /* not ready */
         ret = -EIO;
         logger->trace("{}({}), idx {} err stat {}", __func__, s->idx, consumer_idx, framebuff->stat);
@@ -67,6 +74,7 @@ static int app_tx_video_frame_done(void* priv, uint16_t frame_idx, struct st20_t
     st_pthread_mutex_unlock(&s->st20_wake_mutex);
 
     s->st20_frame_done_cnt++;
+    s->frame_done_stat++;
     if(!s->stat_frame_frist_tx_time)
         s->stat_frame_frist_tx_time = st_app_get_monotonic_time();
 
@@ -104,6 +112,7 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
             return;
         }
     }
+    s->build_frame_stat++;
     return;
 }
 
@@ -201,6 +210,7 @@ static void* app_tx_video_frame_thread(void* arg)
     app_tx_video_thread_bind(s);
 
     logger->debug("{}({}), start", __func__, idx);
+    logger->debug("tx video {} framebuffer_size={} width={} height={}", idx, s->st20_frame_size, s->width, s->height);
     while(!s->st20_app_thread_stop) 
     {
         st_pthread_mutex_lock(&s->st20_wake_mutex);
@@ -234,7 +244,7 @@ static void* app_tx_video_frame_thread(void* arg)
         if (producer_idx >= s->framebuff_cnt) producer_idx = 0;
         s->framebuff_producer_idx = producer_idx;
         if (s->interlaced) {
-        s->second_field = !s->second_field;
+            s->second_field = !s->second_field;
         }
         st_pthread_mutex_unlock(&s->st20_wake_mutex);
 

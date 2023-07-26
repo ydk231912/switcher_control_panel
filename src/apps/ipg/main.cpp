@@ -33,6 +33,7 @@
 #include "rx_video.h"
 #include "rx_audio.h"
 #include "http_server.h"
+#include "app_stat.h"
 
 extern "C"
 {
@@ -58,9 +59,8 @@ static void app_stat(void *priv)
 {
     struct st_app_context *ctx = (st_app_context *)priv;
     std::lock_guard<std::mutex> lock_guard(ctx->mutex);
-    
-    st_app_rx_video_sessions_stat(ctx);
-    st_app_rx_output_stat(ctx);
+    st_app_update_stat(ctx);
+    // st_app_rx_video_sessions_stat(ctx);
     // st_app_rx_st22p_sessions_stat(ctx);
     // st_app_rx_st20p_sessions_stat(ctx);
 }
@@ -129,6 +129,7 @@ static void user_param_init(struct st_app_context *ctx, struct mtl_init_params *
     p->priv = ctx;
     p->ptp_get_time_fn = app_ptp_from_tai_time;
     p->stat_dump_cb_fn = app_stat;
+    p->dump_period_s = 10;
     p->log_level = MTL_LOG_LEVEL_INFO;//ST_LOG_LEVEL_INFO;
     //p->log_level = ST_LOG_LEVEL_INFO;//ST_LOG_LEVEL_INFO;
     // app_set_log_level(p->log_level);
@@ -245,6 +246,7 @@ static void init_decklink(st_app_context *ctx) {
             device.index, device.display_name, device.persistent_id, device.device_label
         );
     }
+    manager.set_id_map(ctx->decklink_id_map);
 }
 
 // initialize app context

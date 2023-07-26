@@ -15,6 +15,7 @@
 #include <deque>
 #include <condition_variable>
 #include <thread>
+#include <atomic>
 
 extern "C"
 {
@@ -31,6 +32,10 @@ extern "C"
 using namespace seeder::core;
 namespace seeder::decklink
 {
+    struct decklink_output_stat {
+      int frame_cnt = 0;  
+    };
+
     class decklink_output : public core::output
     {
       public:
@@ -73,7 +78,7 @@ namespace seeder::decklink
          */
         void display_audio_frame();
 
-        void dump_stat();
+        decklink_output_stat get_stat();
 
       protected:
         /**
@@ -93,7 +98,7 @@ namespace seeder::decklink
         IDeckLink* decklink_;
         IDeckLinkOutput* output_;
         std::atomic<bool> abort_ = { false };
-        int display_frame_count = 0;
+        std::atomic<int> display_frame_count = 0;
         int frame_convert_count = 0;
         uint64_t display_video_frame_us_sum = 0;
         uint64_t display_audio_frame_us_sum = 0;

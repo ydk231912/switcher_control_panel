@@ -1,10 +1,8 @@
 add_library(
     decklink
 
-    src/consumer/decklink_consumer.cpp
     src/input/decklink_input.cpp
     src/output/decklink_output.cpp
-    src/producer/decklink_producer.cpp
     src/util.cpp
     src/manager.cpp
 )

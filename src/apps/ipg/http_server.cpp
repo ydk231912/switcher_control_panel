@@ -3,6 +3,7 @@
 #include "core/util/logger.h"
 #include <boost/filesystem/operations.hpp>
 #include <boost/system/error_code.hpp>
+#include <exception>
 #include <functional>
 #include "httplib.h"
 #include <ios>
@@ -60,6 +61,18 @@ namespace {
         } else {
             write_string_to_file_directly(file_path, content);
         }
+    }
+
+    std::string read_file_to_string(const std::string &file_path) {
+        std::string content;
+        std::ifstream file_stream(file_path, std::ios_base::binary);
+        // file_stream.exceptions(std::ios::badbit | std::ios::failbit);
+        file_stream.seekg(0, std::ios_base::end);
+        auto size = file_stream.tellg();
+        file_stream.seekg(0);
+        content.resize(static_cast<size_t>(size));
+        file_stream.read(&content[0], static_cast<std::streamsize>(size));
+        return content;
     }
 }
 
@@ -200,11 +213,28 @@ private:
         json_ok(res);
     }
 
+    void get_stat(const Request& req, Response& res) {
+        Json::Value stat;
+        {
+            auto lock = acquire_ctx_lock();
+            stat = app_ctx->stat;
+        }
+        json_ok(res, stat);
+    }
+
     void save_config_file() {
-        Json::FastWriter writer;
-        std::string output = writer.write(app_ctx->json_ctx->json_root);
-        write_string_to_file(app_ctx->config_file_path, output);
-        logger->info("save config file {}", app_ctx->config_file_path);
+        try {
+            Json::Reader reader;
+            Json::Value config_json;
+            reader.parse(read_file_to_string(app_ctx->config_file_path), config_json);
+            app_ctx->json_ctx->json_root["interfaces"] = config_json["interfaces"];
+            Json::FastWriter writer;
+            std::string output = writer.write(app_ctx->json_ctx->json_root);
+            write_string_to_file(app_ctx->config_file_path, output);
+            logger->info("save config file {}", app_ctx->config_file_path);
+        } catch (std::exception &e) {
+            logger->error("save_config_file(): {}", e.what());
+        }
     }
 
     bool check_require_tx_source_id(Json::Value &root) {
@@ -359,6 +389,10 @@ void st_http_server::start() {
 
     server.Post("/api/remove_rx_json", [&p] (const Request& req, Response& res) {
         p.remove_rx_session(req, res);
+    });
+
+    server.Get("/api/stat", [&p] (const Request& req, Response& res) {
+        p.get_stat(req, res);
     });
 
     p.server_thread = std::thread([&] {

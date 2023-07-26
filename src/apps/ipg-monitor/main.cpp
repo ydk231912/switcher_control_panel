@@ -245,7 +245,7 @@ private:
     }
 
     void process_io() {
-        auto work_guard = asio::make_work_guard(io_context); // run forever, util io_context.stop() is called
+        auto work_guard = asio::make_work_guard(io_context); // run forever, until io_context.stop() is called
         io_context.run();
     }
 
@@ -266,11 +266,11 @@ private:
             json_err(res, "interfaces is required");
             return;
         }
+        if (interfaces.size() != config_json["interfaces"].size()) {
+            json_err(res, "interfaces.size mismatch");
+            return;
+        }
         for (auto &inf : interfaces) {
-            if (inf["name"].empty()) {
-                json_err(res, "name is required");
-                return;
-            }
             if (inf["ip"].empty()) {
                 json_err(res, "ip is required");
                 return;
@@ -283,7 +283,10 @@ private:
             }
         }
         auto lock = acquire_lock();
-        config_json["interfaces"] = interfaces;
+        for (int i = 0; i < interfaces.size(); ++i) {
+            auto &inf = interfaces[i];
+            config_json["interfaces"][i]["ip"] = inf["ip"];
+        }
         save_config();
     }
 
@@ -309,6 +312,7 @@ private:
     void start_ipg(const Request &req, Response &res) {
         auto lock = acquire_lock();
         if (!(process_status == ProcessStatus::STARTED || process_status == ProcessStatus::RUNNING)) {
+            logger->info("start ipg request by user");
             start_ipg_process();
         }
         json_ok(res);
@@ -317,6 +321,7 @@ private:
     void stop_ipg(const Request &req, Response &res) {
         auto lock = acquire_lock();
         if (process_status == ProcessStatus::STARTED || process_status == ProcessStatus::RUNNING) {
+            logger->info("stop ipg request by user");
             stop_ipg_process();
         }
         json_ok(res);
@@ -324,6 +329,7 @@ private:
 
     void restart_ipg(const Request &req, Response &res) {
         auto lock = acquire_lock();
+        logger->info("restart ipg request by user");
         stop_ipg_process();
         start_ipg_process();
     }

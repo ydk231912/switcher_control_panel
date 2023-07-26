@@ -31,8 +31,6 @@ bool output::is_stopped() const noexcept {
 
 output::~output() {}
 
-void output::dump_stat() {}
-
 const std::string & output::get_output_id() const {
     return output_id;
 }

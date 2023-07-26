@@ -447,15 +447,17 @@ namespace seeder::decklink
         }
     }
 
-    void decklink_output::dump_stat() {
+    decklink_output_stat decklink_output::get_stat() {
+        decklink_output_stat r {};
+        r.frame_cnt = display_frame_count;
         logger->info("decklink_output device_index={} display_frame_count={} frame_convert_count={} display_video_frame_us_sum={} memcpy_us_sum={} display_audio_frame_us_sum={}", 
             decklink_index_, display_frame_count, frame_convert_count, display_video_frame_us_sum, memcpy_us_sum, display_audio_frame_us_sum);
-
         display_frame_count = 0;
         display_video_frame_us_sum = 0;
         frame_convert_count = 0;
         memcpy_us_sum = 0;
         display_audio_frame_us_sum = 0;
+        return r;
     }
 
     void decklink_output::consume_st_video_frame(void *frame, uint32_t width, uint32_t height) {

@@ -15,6 +15,7 @@
 #include <memory>
 #include <deque>
 #include <condition_variable>
+#include <atomic>
 
 #include "../interop/DeckLinkAPI.h"
 
@@ -25,6 +26,10 @@
 using namespace seeder::core;
 namespace seeder::decklink
 {
+    struct decklink_input_stat {
+      int frame_cnt = 0;
+    };
+
     class decklink_input : public input, public IDeckLinkInputCallback
     {
       public:
@@ -92,6 +97,8 @@ namespace seeder::decklink
         void set_audio_frame_slice(std::shared_ptr<buffer> asframe);
         std::shared_ptr<buffer> get_audio_frame_slice();
 
+        decklink_input_stat get_stat();
+
       private:
         int decklink_index_;
         core::video_format_desc format_desc_;
@@ -118,6 +125,7 @@ namespace seeder::decklink
         const size_t vframe_capacity_ = 5;
         std::shared_ptr<frame> last_vframe_;
         std::condition_variable vframe_cv_;
+        std::atomic<int> receive_frame_stat = 0;
 
         // audio buffer
         std::mutex aframe_mutex_;

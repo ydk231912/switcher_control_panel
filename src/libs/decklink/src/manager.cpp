@@ -1,8 +1,15 @@
 #include "decklink/manager.h"
+#include "core/util/logger.h"
 
-#include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <stdexcept>
+#include <unordered_map>
+#include <boost/smart_ptr/intrusive_ptr.hpp>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include <spdlog/fmt/ranges.h>
 
 namespace seeder {
 
@@ -71,6 +78,7 @@ private:
     std::vector<boost::intrusive_ptr<IDeckLinkConfiguration>> decklink_configuration_list;
     std::vector<boost::intrusive_ptr<IDeckLinkProfileAttributes>> decklink_attributes_list;
     std::vector<device_status> device_status_list;
+    std::unordered_map<std::size_t, std::size_t> id_map;
 };
 
 
@@ -88,10 +96,25 @@ const std::vector<device_status> & device_manager::get_device_status() {
 }
 
 IDeckLink * device_manager::get_decklink(int index) {
+    if (auto it = p_impl->id_map.find(index); it != p_impl->id_map.end()) {
+        index = it->second;
+    }
     if (index >= 0 && index < p_impl->decklink_list.size()) {
         return p_impl->decklink_list[index].get();
     }
     return nullptr;
+}
+
+void device_manager::set_id_map(const std::string &_id_map) {
+    if (_id_map.empty()) {
+        return;
+    }
+    std::vector<std::string> ids;
+    boost::split(ids, _id_map, boost::is_any_of(","));
+    for (std::size_t i = 0; i < ids.size(); ++i) {
+        p_impl->id_map[i] = boost::lexical_cast<std::size_t>(ids[i]) - 1;
+    }
+    seeder::core::logger->info("decklink id_map={}", p_impl->id_map);
 }
 
 

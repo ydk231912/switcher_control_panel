@@ -91,9 +91,6 @@ namespace seeder::core
          */
         virtual void display_audio_frame() = 0;
 
-        virtual void dump_stat();
-
-
         explicit output(const std::string &output_id);
 
         virtual ~output();

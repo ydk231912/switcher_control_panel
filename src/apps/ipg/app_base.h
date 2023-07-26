@@ -4,6 +4,7 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include <json/value.h>
 #include <mutex>
 #include <unordered_map>
 #ifdef APP_HAS_SDL2_TTF
@@ -28,6 +29,7 @@
 #include <memory>
 
 #include <string>
+#include <atomic>
 
 #include "app_platform.h"
 #include "fmt.h"
@@ -172,6 +174,11 @@ struct st_app_tx_video_session {
   // video source
   std::shared_ptr<seeder::core::input> tx_source;
   std::shared_ptr<st_app_tx_source> source_info;
+
+  std::atomic<int> next_frame_stat = 0;
+  std::atomic<int> next_frame_not_ready_stat = 0;
+  std::atomic<int> frame_done_stat = 0;
+  std::atomic<int> build_frame_stat = 0;
 };
 
 struct st_app_tx_audio_session {
@@ -207,6 +214,11 @@ struct st_app_tx_audio_session {
     // audio source
   std::shared_ptr<seeder::core::input> tx_source;
   std::shared_ptr<st_app_tx_source> source_info;
+
+  std::atomic<int> next_frame_stat = 0;
+  std::atomic<int> next_frame_not_ready_stat = 0;
+  std::atomic<int> frame_done_stat = 0;
+  std::atomic<int> build_frame_stat = 0;
 };
 
 struct st_app_tx_anc_session {
@@ -269,7 +281,7 @@ struct st_app_rx_video_session {
   int width;
   int height;
 
-  /* stat */
+  /* stat for Console Log */
   int stat_frame_received;
   uint64_t stat_last_time;
   int stat_frame_total_received;
@@ -292,6 +304,9 @@ struct st_app_rx_video_session {
   // video output handle
   std::shared_ptr<seeder::core::output> rx_output;
   st_app_rx_output output_info;
+
+  std::atomic<int> frame_receive_stat = 0; // for HTTP API
+  std::atomic<int> frame_drop_stat = 0;
 };
 
 struct st_app_rx_audio_session {
@@ -321,7 +336,7 @@ struct st_app_rx_audio_session {
   uint16_t framebuff_consumer_idx;
   struct st_rx_frame* framebuffs;
 
-  /* stat */
+  /* stat for Console Log */
   int stat_frame_total_received;
   uint64_t stat_frame_frist_rx_time;
   double expect_fps;
@@ -330,6 +345,9 @@ struct st_app_rx_audio_session {
   std::shared_ptr<seeder::core::output> rx_output;
   st_app_rx_output output_info;
   int sample_num; // audio sample number per frame
+
+  std::atomic<int> frame_receive_stat = 0; // for HTTP API
+  std::atomic<int> frame_drop_stat = 0;
 };
 
 struct st_app_rx_anc_session {
@@ -557,6 +575,7 @@ struct st_app_context {
   int rx_video_rtp_ring_size; /* the ring size for rx video rtp type */
   bool display;               /* flag to display all rx video with SDL */
   bool has_sdl;               /* has SDL device or not*/
+  std::string decklink_id_map;
 
   std::vector<std::shared_ptr<struct st_app_rx_audio_session>> rx_audio_sessions;
   int rx_audio_rtp_ring_size; /* the ring size for rx audio rtp type */
@@ -588,6 +607,8 @@ struct st_app_context {
   int next_tx_audio_session_idx = 0;
   int next_rx_video_session_idx = 0;
   int next_rx_audio_session_idx = 0;
+
+  Json::Value stat;
 
   ~st_app_context();
 };

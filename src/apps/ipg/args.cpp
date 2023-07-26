@@ -94,6 +94,7 @@ enum st_args_cmd {
   ST_ARG_HTTP_SERVER_PORT,
   ST_ARG_TX_SESSIONS_CNT_MAX,
   ST_ARG_RX_SESSIONS_CNT_MAX,
+  ST_ARG_DECKLINK_ID_MAP,
   ST_ARG_MAX,
 };
 
@@ -180,7 +181,7 @@ static struct option st_app_args_options[] = {
     {"http_port", required_argument, 0, ST_ARG_HTTP_SERVER_PORT},
     {"tx_sessions_cnt_max", required_argument, 0, ST_ARG_TX_SESSIONS_CNT_MAX},
     {"rx_sessions_cnt_max", required_argument, 0, ST_ARG_RX_SESSIONS_CNT_MAX},
-
+    {"decklink_id_map", required_argument, 0, ST_ARG_DECKLINK_ID_MAP},
     {0, 0, 0, 0}};
 
 static int app_args_parse_lcores(struct mtl_init_params* p, char* list) {
@@ -536,6 +537,9 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
           }
         }
         
+        break;
+      case ST_ARG_DECKLINK_ID_MAP:
+        ctx->decklink_id_map = optarg;
         break;
       case '?':
         break;

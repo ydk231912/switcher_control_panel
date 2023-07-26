@@ -126,7 +126,7 @@ namespace seeder::decklink
         result = input_->EnableAudioInput(bmdAudioSampleRate48kHz, sample_type_, format_desc_.audio_channels);
         if(result != S_OK)
         {
-            logger->error("Failed to enable DeckLink audio input.");
+            logger->error("Failed to enable DeckLink audio input. {}", result);
             throw std::runtime_error("Failed to enable DeckLink audio input.");
         }
 
@@ -222,6 +222,13 @@ namespace seeder::decklink
             vframe->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
             vframe->key_frame        = 1;
 
+            // thread_local static int log_count = 0;
+            // if (log_count++ > 200) {
+            //     log_count = 0;
+            // } else if (log_count == 1) {
+            //     logger->info("decklink_input {} vframe width={} height={} interlaced_frame={} top_field_first={}", decklink_index_, vframe->width, vframe->height, vframe->interlaced_frame, vframe->top_field_first);
+            // }
+
             void* video_bytes = nullptr;
             if(video->GetBytes(&video_bytes) == S_OK && video_bytes)
             {
@@ -307,7 +314,7 @@ namespace seeder::decklink
                 }
             }
         }
-
+        receive_frame_stat++;
         return S_OK;
     }
 
@@ -470,6 +477,14 @@ namespace seeder::decklink
         asframe = asframe_buffer_[0];
         asframe_buffer_.pop_front();
         return asframe;
+    }
+
+    decklink_input_stat decklink_input::get_stat() {
+        decklink_input_stat r {};
+        r.frame_cnt = receive_frame_stat;
+
+        receive_frame_stat = 0;
+        return r;
     }
 
 }

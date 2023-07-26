@@ -6,13 +6,19 @@
 #include "core/frame/frame.h"
 #include "tx_audio.h"
 
-#include <fcntl.h>
 #include <math.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 using namespace seeder::core;
+
+void st_app_tx_audio_session_reset_stat(struct st_app_tx_audio_session* s) {
+    s->next_frame_stat = 0;
+    s->next_frame_not_ready_stat = 0;
+    s->frame_done_stat = 0;
+    s->build_frame_stat = 0;
+}
 
 static int app_tx_audio_next_frame(void* priv, uint16_t* next_frame_idx,
                                    struct st30_tx_frame_meta* meta) 
@@ -23,6 +29,7 @@ static int app_tx_audio_next_frame(void* priv, uint16_t* next_frame_idx,
     struct st_tx_frame* framebuff = &s->framebuffs[consumer_idx];
 
     st_pthread_mutex_lock(&s->st30_wake_mutex);
+    s->next_frame_stat++;
     if(ST_TX_FRAME_READY == framebuff->stat) 
     {
         logger->trace("{}({}), next frame idx {}", __func__, s->idx, consumer_idx);
@@ -36,6 +43,7 @@ static int app_tx_audio_next_frame(void* priv, uint16_t* next_frame_idx,
     }
     else 
     {
+        s->next_frame_not_ready_stat++;
         /* not ready */
         ret = -EIO;
         logger->trace("{}({}), idx {} err stat {}", __func__, s->idx, consumer_idx, framebuff->stat);
@@ -68,7 +76,7 @@ static int app_tx_audio_frame_done(void* priv, uint16_t frame_idx,
     }
     st_pthread_cond_signal(&s->st30_wake_cond);
     st_pthread_mutex_unlock(&s->st30_wake_mutex);
-
+    s->frame_done_stat++;
     s->st30_frame_done_cnt++;
     logger->trace("{}({}), framebuffer index {}", __func__, s->idx, frame_idx);
 
@@ -103,7 +111,7 @@ static void app_tx_audio_build_frame(struct st_app_tx_audio_session* s, void* fr
 
     mtl_memcpy(dst, src, s->st30_frame_size);
       
-   
+   s->build_frame_stat++;
 }
 
 int st_app_tx_audio_session_uinit(struct st_app_tx_audio_session* s)

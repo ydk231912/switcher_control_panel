@@ -13,4 +13,6 @@ int st_app_rx_audio_sessions_result(struct st_app_context* ctx);
 
 int st_app_rx_audio_sessions_add(struct st_app_context* ctx, st_json_context_t *new_json_ctx);
 
+void st_app_rx_audio_session_reset_stat(struct st_app_rx_audio_session* s);
+
 #endif

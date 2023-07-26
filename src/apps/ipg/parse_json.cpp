@@ -176,8 +176,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080I_59FPS,
-        .core_fmt = seeder::core::video_fmt::invalid,
-        // .core_fmt = seeder::core::video_fmt::x1080i5994,
+        // .core_fmt = seeder::core::video_fmt::invalid,
+        .core_fmt = seeder::core::video_fmt::x1080i5994,
         .name = "i1080i59",
         .width = 1920,
         .height = 1080,
@@ -185,8 +185,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080I_50FPS,
-        .core_fmt = seeder::core::video_fmt::invalid,
-        // .core_fmt = seeder::core::video_fmt::x1080i5000,
+        // .core_fmt = seeder::core::video_fmt::invalid,
+        .core_fmt = seeder::core::video_fmt::x1080i5000,
         .name = "i1080i50",
         .width = 1920,
         .height = 1080,
@@ -2533,15 +2533,15 @@ struct st_app_json_fmt_group {
         "audio.type",
         {
           {"frame", "frame"},
-          {"rtp", "rtp"}
+          // {"rtp", "rtp"}
         }
       },
       {
         "audio.audio_format",
         {
-          {"PCM 16", "PCM16"},
+          {"16", "PCM16"},
           // {"PCM 8", "PCM8"},
-          {"PCM 24", "PCM24"},
+          {"24", "PCM24"},
           // {"AM 824", "AM824"}
         }
       },

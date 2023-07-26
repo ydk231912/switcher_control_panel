@@ -10,6 +10,11 @@
 using namespace seeder::core;
 
 
+void st_app_rx_audio_session_reset_stat(struct st_app_rx_audio_session* s) {
+    s->frame_receive_stat = 0;
+    s->frame_drop_stat = 0;
+}
+
 static int app_rx_audio_rtp_ready(void* priv) {
   struct st_app_rx_audio_session* s = (st_app_rx_audio_session*)priv;
 
@@ -132,6 +137,7 @@ static int app_rx_audio_frame_ready(void* priv, void* frame, struct st30_rx_fram
     if(!s->handle) return -EIO;
 
     s->stat_frame_total_received++;
+    s->frame_receive_stat++;
     if(!s->stat_frame_frist_rx_time)
         s->stat_frame_frist_rx_time = st_app_get_monotonic_time();
 
@@ -139,6 +145,7 @@ static int app_rx_audio_frame_ready(void* priv, void* frame, struct st30_rx_fram
     ret = app_rx_audio_enqueue_frame(s, frame, s->st30_frame_size);
     if(ret < 0)
     {
+        s->frame_drop_stat++;
         /* free the queue */
         st30_rx_put_framebuff(s->handle, frame);
         st_pthread_mutex_unlock(&s->st30_wake_mutex);

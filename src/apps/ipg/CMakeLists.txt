@@ -2,6 +2,7 @@ add_executable(
     ipg
 
     app_base.cpp
+    app_stat.cpp
     app_session.cpp
     app_error_code.cpp
     args.cpp
