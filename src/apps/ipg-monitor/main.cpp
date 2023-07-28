@@ -286,13 +286,18 @@ private:
                     return;
                 }
                 if (ip_map.find(ip) != ip_map.end()) {
-                    json_err(res, "Ip Address Conflict");
+                    json_err(res, "IP Address Conflict");
                     return;
                 } else {
                     ip_map.insert(ip);
                 }
             }
         }
+        if (ip_map.empty()) {
+            json_err(res, "IP Address is required");
+            return;
+        }
+        
         auto lock = acquire_lock();
         for (int i = 0; i < interfaces.size(); ++i) {
             auto &inf = interfaces[i];

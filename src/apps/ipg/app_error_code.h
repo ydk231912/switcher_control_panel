@@ -19,6 +19,7 @@ enum class st_app_errc {
   MULTICAST_IP_ADDRESS_REQUIRED, 
   ID_INVALID, // id不存在
   INVALID_PAYLOAD_TYPE, // payload type 参数不正确
+  PAYLOAD_TYPE_REQUIRED,
   DECKLINK_DEVICE_ID_REQUIRED,
 };
 

@@ -450,12 +450,15 @@ static st_app_errc parse_base_payload_type(json_object* obj, st_json_session_bas
   json_object* payload_type_object = st_json_object_object_get(obj, "payload_type");
   if (payload_type_object) {
     base->payload_type = json_object_get_int(payload_type_object);
+    if (base->payload_type == 0) {
+      return st_app_errc::PAYLOAD_TYPE_REQUIRED;
+    }
     if (!st_json_is_valid_payload_type(base->payload_type)) {
       logger->error("{}, invalid payload type {}", __func__, base->payload_type);
       return st_app_errc::INVALID_PAYLOAD_TYPE;
     }
   } else {
-    return st_app_errc::INVALID_PAYLOAD_TYPE;
+    return st_app_errc::PAYLOAD_TYPE_REQUIRED;
   }
 
   return st_app_errc::SUCCESS;
