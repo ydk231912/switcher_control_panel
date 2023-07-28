@@ -348,7 +348,7 @@ void st_http_server::start() {
     }
 
     server.set_logger([&p](const Request& req, const Response& res) {
-        p.logger->debug("http {} status code {}", req.path, res.status);
+        p.logger->trace("http {} status code {}", req.path, res.status);
     });
 
     server.Get("/api/json", [&p] (const Request& req, Response& res) {

@@ -119,7 +119,7 @@ namespace seeder::decklink
             //     logger->error("unknow");
             // }
 
-            logger->error("Failed to enable DeckLink video input. {:#x}", result);
+            logger->error("Failed to enable DeckLink video input. result={:#x} decklink_index={}", result, decklink_index_);
             throw std::runtime_error("Failed to enable DeckLink video input.");
         }
         // TODO parameters from config file
@@ -222,12 +222,6 @@ namespace seeder::decklink
             vframe->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
             vframe->key_frame        = 1;
 
-            // thread_local static int log_count = 0;
-            // if (log_count++ > 200) {
-            //     log_count = 0;
-            // } else if (log_count == 1) {
-            //     logger->info("decklink_input {} vframe width={} height={} interlaced_frame={} top_field_first={}", decklink_index_, vframe->width, vframe->height, vframe->interlaced_frame, vframe->top_field_first);
-            // }
 
             void* video_bytes = nullptr;
             if(video->GetBytes(&video_bytes) == S_OK && video_bytes)

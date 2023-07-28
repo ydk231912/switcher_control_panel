@@ -12,9 +12,21 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "app_error_code.h"
-#include <boost/range/algorithm/remove_if.hpp>
+// #include <boost/range/algorithm/remove_if.hpp>
 
 using seeder::core::logger;
+// using boost::remove_if;
+
+template<class C, class F>
+static void remove_if(C &c, const F &f) {
+    for (auto it = c.begin(); it != c.end(); ) {
+        if (f(*it)) {
+            it = c.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
 
 static std::vector<st_json_session_base *> collection_tx_session_base(st_json_context *c) {
     std::vector<st_json_session_base *> v;
@@ -75,7 +87,8 @@ static bool check_addr_used(const std::vector<st_json_session_base *> &sessions,
                 auto key = ip + ":" + std::to_string(s->udp_port);
                 auto it = used_addr.find(key);
                 if (it != used_addr.end() && it->second != s->id) {
-                    logger->warn("check_addr_used failed {}", it->first);
+                    logger->warn("check_addr_used failed {} id1={} id2={} sessions.size={} new_sessions.size={}", 
+                        it->first, it->second, s->id, sessions.size(), new_sessions.size());
                     return true;
                 }
                 used_addr[key] = s->id;
@@ -84,6 +97,21 @@ static bool check_addr_used(const std::vector<st_json_session_base *> &sessions,
     }
     
     return false;
+}
+
+static void check_empty_id(const std::string &prefix, const std::vector<st_json_session_base *> &sessions) {
+    for (std::size_t i = 0; i < sessions.size(); ++i) {
+        if (sessions[i]->id.empty()) {
+            logger->warn("check_empty_id(): prefix={} sessions.size={} index={} empty id", prefix, sessions.size(), i);
+        }
+    }
+}
+
+static void check_empty_id(const std::string &prefix, st_app_context *ctx) {
+    std::vector<st_json_session_base *> tx_session_base = collection_tx_session_base(ctx->json_ctx.get());
+    check_empty_id(prefix + " tx_session_base", tx_session_base);
+    std::vector<st_json_session_base *> rx_session_base = collection_rx_session_base(ctx->json_ctx.get());
+    check_empty_id(prefix + " rx_session_base", rx_session_base);
 }
 
 
@@ -98,6 +126,7 @@ static std::error_code st_app_check_device_status(st_app_context *ctx, st_json_c
     for (auto &new_tx_source : new_json_ctx->tx_sources) {
         auto it = used_device_id.find(new_tx_source.device_id);
         if (it != used_device_id.end() && it->second != new_tx_source.id) {
+            logger->warn("Device ID USED device_id={} id1={} id2={}", it->first, it->second, new_tx_source.id);
             return st_app_errc::DECKLINK_DEVICE_USED;
         }
         used_device_id[new_tx_source.device_id] = new_tx_source.id;
@@ -105,18 +134,23 @@ static std::error_code st_app_check_device_status(st_app_context *ctx, st_json_c
     for (auto &new_rx_output : new_json_ctx->rx_output) {
         auto it = used_device_id.find(new_rx_output.device_id);
         if (it != used_device_id.end() && it->second != new_rx_output.id) {
+            logger->warn("Device ID USED device_id={} id1={} id2={}", it->first, it->second, new_rx_output.id);
             return st_app_errc::DECKLINK_DEVICE_USED;
         }
         used_device_id[new_rx_output.device_id] = new_rx_output.id;
     }
 
     std::vector<st_json_session_base *> tx_session_base = collection_tx_session_base(ctx->json_ctx.get());
+    check_empty_id("tx_session_base", tx_session_base);
     std::vector<st_json_session_base *> tx_session_new_base = collection_tx_session_base(new_json_ctx);
+    check_empty_id("tx_session_new_base", tx_session_new_base);
     if (check_addr_used(tx_session_base, tx_session_new_base)) {
         return st_app_errc::ADDRESS_CONFLICT;
     }
     std::vector<st_json_session_base *> rx_session_base = collection_rx_session_base(ctx->json_ctx.get());
+    check_empty_id("rx_session_base", rx_session_base);
     std::vector<st_json_session_base *> rx_session_new_base = collection_rx_session_base(new_json_ctx);
+    check_empty_id("rx_session_new_base", rx_session_new_base);
     if (check_addr_used(rx_session_base, rx_session_new_base)) {
         return st_app_errc::ADDRESS_CONFLICT;
     }
@@ -196,13 +230,13 @@ static void st_app_remove_tx_session_update_json_ctx(st_app_context *ctx, const 
     ctx->tx_sources.erase(tx_source_id);
     ctx->source_info.erase(tx_source_id);
 
-    boost::remove_if(ctx->json_ctx->tx_video_sessions, [&tx_source_id] (auto &s) {
+    remove_if(ctx->json_ctx->tx_video_sessions, [&tx_source_id] (auto &s) {
         return s.base.id == tx_source_id;
     });
-    boost::remove_if(ctx->json_ctx->tx_audio_sessions, [&tx_source_id] (auto &s) {
+    remove_if(ctx->json_ctx->tx_audio_sessions, [&tx_source_id] (auto &s) {
         return s.base.id == tx_source_id;
     });
-    boost::remove_if(ctx->json_ctx->tx_sources, [&tx_source_id] (auto &s) {
+    remove_if(ctx->json_ctx->tx_sources, [&tx_source_id] (auto &s) {
         return s.id == tx_source_id;
     });
 
@@ -257,6 +291,8 @@ std::error_code st_app_add_tx_sessions(st_app_context *ctx, st_json_context *new
         return ec;
     }
     st_app_add_tx_sessions_udpate_json_ctx(ctx, new_json_ctx);
+
+    check_empty_id("st_app_add_tx_sessions", ctx);
     
     return {};
 }
@@ -266,6 +302,7 @@ std::error_code st_app_remove_tx_session(st_app_context *ctx, const std::string 
 
     st_app_remove_tx_session_update_json_ctx(ctx, tx_source_id);
     
+    check_empty_id("st_app_remove_tx_session", ctx);
     return {};
 }
 
@@ -290,6 +327,7 @@ std::error_code st_app_update_tx_sessions(st_app_context *ctx, st_json_context *
         }
     }
     st_app_add_tx_sessions_udpate_json_ctx(ctx, new_json_ctx);
+    check_empty_id("st_app_update_tx_sessions", ctx);
     return {};
 }
 
@@ -379,17 +417,18 @@ std::error_code st_app_add_rx_sessions(st_app_context *ctx, st_json_context *new
 
     st_app_add_rx_sessions_update_json_ctx(ctx, new_json_ctx);
     
+    check_empty_id("st_app_add_rx_sessions", ctx);
     return {};
 }
 
 static void st_app_remove_rx_session_update_json_ctx(st_app_context *ctx, const std::string &rx_output_id) {
-    boost::remove_if(ctx->json_ctx->rx_video_sessions, [&rx_output_id] (auto &s) {
+    remove_if(ctx->json_ctx->rx_video_sessions, [&rx_output_id] (auto &s) {
         return s.base.id == rx_output_id;
     });
-    boost::remove_if(ctx->json_ctx->rx_audio_sessions, [&rx_output_id] (auto &s) {
+    remove_if(ctx->json_ctx->rx_audio_sessions, [&rx_output_id] (auto &s) {
         return s.base.id == rx_output_id;
     });
-    boost::remove_if(ctx->json_ctx->rx_output, [&rx_output_id] (auto &s) {
+    remove_if(ctx->json_ctx->rx_output, [&rx_output_id] (auto &s) {
         return s.id == rx_output_id;
     });
 
@@ -408,6 +447,7 @@ std::error_code st_app_remove_rx_session(st_app_context *ctx, const std::string 
     st_app_remove_rx_session_device(ctx, rx_output_id);
     st_app_remove_rx_session_update_json_ctx(ctx, rx_output_id);
     
+    check_empty_id("st_app_remove_rx_session", ctx);
     return {};
 }
 
@@ -434,5 +474,6 @@ std::error_code st_app_update_rx_sessions(st_app_context *ctx, st_json_context *
     }
 
     st_app_add_rx_sessions_update_json_ctx(ctx, new_json_ctx);
+    check_empty_id("st_app_update_rx_sessions", ctx);
     return {};
 }

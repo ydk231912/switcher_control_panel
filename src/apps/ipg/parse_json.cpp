@@ -8,6 +8,8 @@
 #include "core/util/logger.h"
 #include "core/util/uuid.h"
 #include "core/util/fs.h"
+#include <boost/range/algorithm/remove_if.hpp>
+#include <cstring>
 #include <initializer_list>
 #include <json/reader.h>
 #include <json/value.h>
@@ -72,7 +74,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_59FPS,
-        .core_fmt = seeder::core::video_fmt::x720p5994,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x720p5994,
         .name = "i720p59",
         .width = 1280,
         .height = 720,
@@ -80,7 +83,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_50FPS,
-        .core_fmt = seeder::core::video_fmt::x720p5000,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x720p5000,
         .name = "i720p50",
         .width = 1280,
         .height = 720,
@@ -88,7 +92,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_29FPS,
-        .core_fmt = seeder::core::video_fmt::x720p2997,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x720p2997,
         .name = "i720p29",
         .width = 1280,
         .height = 720,
@@ -96,7 +101,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_25FPS,
-        .core_fmt = seeder::core::video_fmt::x720p2500,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x720p2500,
         .name = "i720p25",
         .width = 1280,
         .height = 720,
@@ -104,7 +110,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_60FPS,
-        .core_fmt = seeder::core::video_fmt::x720p6000,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x720p6000,
         .name = "i720p60",
         .width = 1280,
         .height = 720,
@@ -112,7 +119,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_720P_30FPS,
-        .core_fmt = seeder::core::video_fmt::x720p3000,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x720p3000,
         .name = "i720p30",
         .width = 1280,
         .height = 720,
@@ -128,7 +136,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_59FPS,
-        .core_fmt = seeder::core::video_fmt::x1080p5994,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x1080p5994,
         .name = "i1080p59",
         .width = 1920,
         .height = 1080,
@@ -144,7 +153,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_29FPS,
-        .core_fmt = seeder::core::video_fmt::x1080p2997,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x1080p2997,
         .name = "i1080p29",
         .width = 1920,
         .height = 1080,
@@ -152,7 +162,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_25FPS,
-        .core_fmt = seeder::core::video_fmt::x1080p2500,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x1080p2500,
         .name = "i1080p25",
         .width = 1920,
         .height = 1080,
@@ -160,7 +171,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_60FPS,
-        .core_fmt = seeder::core::video_fmt::x1080p6000,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x1080p6000,
         .name = "i1080p60",
         .width = 1920,
         .height = 1080,
@@ -168,7 +180,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_30FPS,
-        .core_fmt = seeder::core::video_fmt::x1080p3000,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x1080p3000,
         .name = "i1080p30",
         .width = 1920,
         .height = 1080,
@@ -176,8 +189,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080I_59FPS,
-        // .core_fmt = seeder::core::video_fmt::invalid,
-        .core_fmt = seeder::core::video_fmt::x1080i5994,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x1080i5994,
         .name = "i1080i59",
         .width = 1920,
         .height = 1080,
@@ -185,8 +198,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080I_50FPS,
-        // .core_fmt = seeder::core::video_fmt::invalid,
-        .core_fmt = seeder::core::video_fmt::x1080i5000,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x1080i5000,
         .name = "i1080i50",
         .width = 1920,
         .height = 1080,
@@ -202,7 +215,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_59FPS,
-        .core_fmt = seeder::core::video_fmt::x2160p5994,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x2160p5994,
         .name = "i2160p59",
         .width = 3840,
         .height = 2160,
@@ -218,7 +232,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_29FPS,
-        .core_fmt = seeder::core::video_fmt::x2160p2997,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x2160p2997,
         .name = "i2160p29",
         .width = 3840,
         .height = 2160,
@@ -226,7 +241,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_25FPS,
-        .core_fmt = seeder::core::video_fmt::x2160p2500,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x2160p2500,
         .name = "i2160p25",
         .width = 3840,
         .height = 2160,
@@ -234,7 +250,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_60FPS,
-        .core_fmt = seeder::core::video_fmt::x2160p6000,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x2160p6000,
         .name = "i2160p60",
         .width = 3840,
         .height = 2160,
@@ -242,7 +259,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_2160P_30FPS,
-        .core_fmt = seeder::core::video_fmt::x2160p3000,
+        .core_fmt = seeder::core::video_fmt::invalid,
+        // .core_fmt = seeder::core::video_fmt::x2160p3000,
         .name = "i2160p30",
         .width = 3840,
         .height = 2160,
@@ -366,8 +384,26 @@ static inline bool st_json_is_valid_payload_type(int payload_type) {
 
 static st_app_errc parse_ip_addr_str(const char *ip_addr_str, void *buf) {
   if (inet_pton(AF_INET, ip_addr_str, buf) != 1) {
+    if (strlen(ip_addr_str) == 0) {
+      return st_app_errc::IP_ADDRESS_AND_PORT_REQUIRED;
+    }
     logger->warn("failed to parse ip address {}", ip_addr_str);
-    return st_app_errc::JSON_PARSE_FAIL;
+    return st_app_errc::INVALID_ADDRESS;
+  }
+  return st_app_errc::SUCCESS;
+}
+
+static st_app_errc parse_multicast_ip_addr_str(const char *ip_addr_str, void *buf) {
+  if (inet_pton(AF_INET, ip_addr_str, buf) != 1) {
+    if (strlen(ip_addr_str) == 0) {
+      return st_app_errc::IP_ADDRESS_AND_PORT_REQUIRED;
+    }
+    logger->warn("failed to parse ip address {}", ip_addr_str);
+    return st_app_errc::INVALID_ADDRESS;
+  }
+  auto addr_buf = reinterpret_cast<uint8_t *>(buf);
+  if (addr_buf[0] && !(addr_buf[0] >= 224 && addr_buf[0] <= 239)) {
+    return st_app_errc::MULTICAST_IP_ADDRESS_REQUIRED;
   }
   return st_app_errc::SUCCESS;
 }
@@ -387,8 +423,10 @@ static st_app_errc st_json_parse_interfaces(json_object* interface_obj,
   const char* ip = json_object_get_string(st_json_object_object_get(interface_obj, "ip"));
   if (ip) {
     interface->ip_addr_str = ip;
-    st_app_errc ret = parse_ip_addr_str(ip, interface->ip_addr);
-    ERRC_EXPECT_SUCCESS(ret);
+    if (!interface->ip_addr_str.empty()) {
+      st_app_errc ret = parse_ip_addr_str(ip, interface->ip_addr);
+      ERRC_EXPECT_SUCCESS(ret);
+    }
   }
 
   return st_app_errc::SUCCESS;
@@ -398,7 +436,10 @@ static st_app_errc parse_base_udp_port(json_object* obj, st_json_session_base_t*
   int start_port = json_object_get_int(st_json_object_object_get(obj, "start_port"));
   if (start_port <= 0 || start_port > 65535) {
     logger->error("{}, invalid start port {}", __func__, start_port);
-    return st_app_errc::JSON_NOT_VALID;
+    if (start_port == 0) {
+      return st_app_errc::IP_ADDRESS_AND_PORT_REQUIRED;
+    }
+    return st_app_errc::INVALID_ADDRESS;
   }
   base->udp_port = start_port + idx;
 
@@ -411,10 +452,10 @@ static st_app_errc parse_base_payload_type(json_object* obj, st_json_session_bas
     base->payload_type = json_object_get_int(payload_type_object);
     if (!st_json_is_valid_payload_type(base->payload_type)) {
       logger->error("{}, invalid payload type {}", __func__, base->payload_type);
-      return st_app_errc::JSON_NOT_VALID;
+      return st_app_errc::INVALID_PAYLOAD_TYPE;
     }
   } else {
-    return st_app_errc::JSON_NULL;
+    return st_app_errc::INVALID_PAYLOAD_TYPE;
   }
 
   return st_app_errc::SUCCESS;
@@ -564,10 +605,7 @@ static st_app_errc st_json_parse_tx_video(int idx, json_object* video_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(video_obj, &video->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_VIDEO);
-    video->base.payload_type = ST_APP_PAYLOAD_TYPE_VIDEO;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(video_obj, &video->base);
 
@@ -616,10 +654,7 @@ static st_app_errc st_json_parse_rx_video(int idx, json_object* video_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(video_obj, &video->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_VIDEO);
-    video->base.payload_type = ST_APP_PAYLOAD_TYPE_VIDEO;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(video_obj, &video->base);
 
@@ -805,10 +840,7 @@ static st_app_errc st_json_parse_tx_audio(int idx, json_object* audio_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(audio_obj, &audio->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_AUDIO);
-    audio->base.payload_type = ST_APP_PAYLOAD_TYPE_AUDIO;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(audio_obj, &audio->base);
 
@@ -853,10 +885,7 @@ static st_app_errc st_json_parse_rx_audio(int idx, json_object* audio_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(audio_obj, &audio->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_AUDIO);
-    audio->base.payload_type = ST_APP_PAYLOAD_TYPE_AUDIO;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(audio_obj, &audio->base);
 
@@ -903,10 +932,7 @@ static st_app_errc st_json_parse_tx_anc(int idx, json_object* anc_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(anc_obj, &anc->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_ANCILLARY);
-    anc->base.payload_type = ST_APP_PAYLOAD_TYPE_ANCILLARY;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(anc_obj, &anc->base);
 
@@ -970,10 +996,7 @@ static st_app_errc st_json_parse_rx_anc(int idx, json_object* anc_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(anc_obj, &anc->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_ANCILLARY);
-    anc->base.payload_type = ST_APP_PAYLOAD_TYPE_ANCILLARY;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(anc_obj, &anc->base);
 
@@ -1127,10 +1150,7 @@ static st_app_errc st_json_parse_tx_st22p(int idx, json_object* st22p_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(st22p_obj, &st22p->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_ST22);
-    st22p->base.payload_type = ST_APP_PAYLOAD_TYPE_ST22;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(st22p_obj, &st22p->base);
 
@@ -1191,10 +1211,7 @@ static st_app_errc st_json_parse_rx_st22p(int idx, json_object* st22p_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(st22p_obj, &st22p->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_ST22);
-    st22p->base.payload_type = ST_APP_PAYLOAD_TYPE_ST22;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(st22p_obj, &st22p->base);
 
@@ -1378,10 +1395,7 @@ static st_app_errc st_json_parse_tx_st20p(int idx, json_object* st20p_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(st20p_obj, &st20p->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_ST22);
-    st20p->base.payload_type = ST_APP_PAYLOAD_TYPE_ST22;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(st20p_obj, &st20p->base);
 
@@ -1430,10 +1444,7 @@ static st_app_errc st_json_parse_rx_st20p(int idx, json_object* st20p_obj,
 
   /* parse payload type */
   ret = parse_base_payload_type(st20p_obj, &st20p->base);
-  if (ERRC_FAILED(ret)) {
-    logger->error("{}, use default pt {}", __func__, ST_APP_PAYLOAD_TYPE_ST22);
-    st20p->base.payload_type = ST_APP_PAYLOAD_TYPE_ST22;
-  }
+  ERRC_EXPECT_SUCCESS(ret);
 
   parse_base_enable(st20p_obj, &st20p->base);
 
@@ -1567,6 +1578,17 @@ st_app_errc st_app_parse_json_interfaces(st_json_context_t* ctx, json_object *ro
                                    &ctx->interfaces[i]);
     if (ERRC_FAILED(ret)) return ret;
   }
+  // 见鬼了，boost::remove_if执行后没有移除inf.ip_addr_str.empty()的元素。。。
+  // boost::remove_if(ctx->interfaces, [] (const st_json_interface &inf) {
+  //   return inf.ip_addr_str.empty();
+  // });
+  for (auto it = ctx->interfaces.begin(); it != ctx->interfaces.end(); ) {
+    if (it->ip_addr_str.empty()) {
+      it = ctx->interfaces.erase(it);
+    } else {
+      ++it;
+    }
+  }
   return ret;
 }
 
@@ -1633,6 +1655,9 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       auto &tx_source = ctx->tx_sources[i];
       tx_source.type = safe_get_string(source, "type");
       tx_source.device_id = json_object_get_int(st_json_object_object_get(source, "device_id"));
+      if (!tx_source.device_id) {
+        return st_app_errc::DECKLINK_DEVICE_ID_REQUIRED;
+      }
       tx_source.file_url = safe_get_string(source, "file_url");
       tx_source.video_format = safe_get_string(source, "video_format");
       
@@ -1748,12 +1773,12 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
           }
 
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(video_dip_p), ctx->tx_video_sessions[num_video].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(video_dip_p), ctx->tx_video_sessions[num_video].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->tx_video_sessions[num_video].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(video_dip_r), ctx->tx_video_sessions[num_video].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(video_dip_r), ctx->tx_video_sessions[num_video].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->tx_video_sessions[num_video].base.inf[1] = ctx->interfaces[inf_r];
@@ -1808,12 +1833,12 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
             audio_dip_r = dip_r;
           }
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(audio_dip_p), ctx->tx_audio_sessions[num_audio].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(audio_dip_p), ctx->tx_audio_sessions[num_audio].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->tx_audio_sessions[num_audio].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(audio_dip_r), ctx->tx_audio_sessions[num_audio].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(audio_dip_r), ctx->tx_audio_sessions[num_audio].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->tx_audio_sessions[num_audio].base.inf[1] = ctx->interfaces[inf_r];
@@ -1843,12 +1868,12 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
             return st_app_errc::JSON_NOT_VALID;
           }
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(dip_p), ctx->tx_anc_sessions[num_anc].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(dip_p), ctx->tx_anc_sessions[num_anc].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->tx_anc_sessions[num_anc].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(dip_r), ctx->tx_anc_sessions[num_anc].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(dip_r), ctx->tx_anc_sessions[num_anc].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->tx_anc_sessions[num_anc].base.inf[1] = ctx->interfaces[inf_r];
@@ -1873,12 +1898,12 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
             return st_app_errc::JSON_NOT_VALID;
           }
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(dip_p), ctx->tx_st22p_sessions[num_st22p].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(dip_p), ctx->tx_st22p_sessions[num_st22p].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->tx_st22p_sessions[num_st22p].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(dip_r), ctx->tx_st22p_sessions[num_st22p].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(dip_r), ctx->tx_st22p_sessions[num_st22p].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->tx_st22p_sessions[num_st22p].base.inf[1] = ctx->interfaces[inf_r];
@@ -1904,12 +1929,12 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
             return st_app_errc::JSON_NOT_VALID;
           }
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(dip_p), ctx->tx_st20p_sessions[num_st20p].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(dip_p), ctx->tx_st20p_sessions[num_st20p].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->tx_st20p_sessions[num_st20p].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(dip_r), ctx->tx_st20p_sessions[num_st20p].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(dip_r), ctx->tx_st20p_sessions[num_st20p].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->tx_st20p_sessions[num_st20p].base.inf[1] = ctx->interfaces[inf_r];
@@ -1978,6 +2003,9 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
       auto &rx_output = ctx->rx_output[i];
       rx_output.type = safe_get_string(output, "type");
       rx_output.device_id = json_object_get_int(st_json_object_object_get(output, "device_id"));
+      if (!rx_output.device_id) {
+        return st_app_errc::DECKLINK_DEVICE_ID_REQUIRED;
+      }
       std::string fu = safe_get_string(output, "file_url");
       if(!(fu.empty())) rx_output.file_url = fu;
       rx_output.video_format = safe_get_string(output, "video_format");
@@ -2096,12 +2124,12 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
           }
           
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(video_sip_p), ctx->rx_video_sessions[num_video].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(video_sip_p), ctx->rx_video_sessions[num_video].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->rx_video_sessions[num_video].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(video_sip_r), ctx->rx_video_sessions[num_video].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(video_sip_r), ctx->rx_video_sessions[num_video].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->rx_video_sessions[num_video].base.inf[1] = ctx->interfaces[inf_r];
@@ -2157,12 +2185,12 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
           }
 
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(audio_sip_p), ctx->rx_audio_sessions[num_audio].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(audio_sip_p), ctx->rx_audio_sessions[num_audio].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->rx_audio_sessions[num_audio].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(audio_sip_r), ctx->rx_audio_sessions[num_audio].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(audio_sip_r), ctx->rx_audio_sessions[num_audio].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->rx_audio_sessions[num_audio].base.inf[1] = ctx->interfaces[inf_r];
@@ -2192,12 +2220,12 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
             return st_app_errc::JSON_NOT_VALID;
           }
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(ip_p), ctx->rx_anc_sessions[num_anc].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(ip_p), ctx->rx_anc_sessions[num_anc].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->rx_anc_sessions[num_anc].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(ip_p), ctx->rx_anc_sessions[num_anc].base.ip[0]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(ip_p), ctx->rx_anc_sessions[num_anc].base.ip[0]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->rx_anc_sessions[num_anc].base.inf[1] = ctx->interfaces[inf_r];
@@ -2222,12 +2250,12 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
             return st_app_errc::JSON_NOT_VALID;
           }
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(ip_p), ctx->rx_st22p_sessions[num_st22p].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(ip_p), ctx->rx_st22p_sessions[num_st22p].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->rx_st22p_sessions[num_st22p].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(ip_r), ctx->rx_st22p_sessions[num_st22p].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(ip_r), ctx->rx_st22p_sessions[num_st22p].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->rx_st22p_sessions[num_st22p].base.inf[1] = ctx->interfaces[inf_r];
@@ -2253,12 +2281,12 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
             return st_app_errc::JSON_NOT_VALID;
           }
           for (int k = 0; k < replicas; ++k) {
-            ret = parse_ip_addr_str(json_object_get_string(ip_p), ctx->rx_st20p_sessions[num_st20p].base.ip[0]);
+            ret = parse_multicast_ip_addr_str(json_object_get_string(ip_p), ctx->rx_st20p_sessions[num_st20p].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
 
             ctx->rx_st20p_sessions[num_st20p].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_ip_addr_str(json_object_get_string(ip_r), ctx->rx_st20p_sessions[num_st20p].base.ip[1]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(ip_r), ctx->rx_st20p_sessions[num_st20p].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->rx_st20p_sessions[num_st20p].base.inf[1] = ctx->interfaces[inf_r];
@@ -2511,7 +2539,7 @@ struct st_app_json_fmt_group {
         "video.pg_format",
         {
           {"YUV 422 10bit", "YUV_422_10bit"},
-          {"YUV 422 8bit", "YUV_422_8bit"},
+          // {"YUV 422 8bit", "YUV_422_8bit"},
           // {"YUV 422 12bit", "YUV_422_12bit"},
           // {"YUV 422 16bit", "YUV_422_16bit"},
           // {"YUV 420 8bit", "YUV_420_8bit"},
@@ -2549,9 +2577,9 @@ struct st_app_json_fmt_group {
         "audio.audio_channel",
         {
           {"ST", "ST"},
-          {"M", "M"},
+          // {"M", "M"},
           // {"51", "51"},
-          {"71", "71"}
+          // {"71", "71"}
         }
       },
       {
@@ -2566,21 +2594,21 @@ struct st_app_json_fmt_group {
         "audio.audio_ptime",
         {
           {"1", "1"},
-          {"0.12", "0.12"},
+          // {"0.12", "0.12"},
           {"0.25", "0.25"},
-          {"0.33", "0.33"},
-          {"4", "4"},
-          {"0.08", "0.08"},
-          {"1.09", "1.09"},
-          {"0.14", "0.14"},
-          {"0.09", "0.09"}
+          // {"0.33", "0.33"},
+          // {"4", "4"},
+          // {"0.08", "0.08"},
+          // {"1.09", "1.09"},
+          // {"0.14", "0.14"},
+          // {"0.09", "0.09"}
         }
       },
       {
         "ancillary.type",
         {
           {"frame", "frame"},
-          {"rtp", "rtp"}
+          // {"rtp", "rtp"}
         }
       },
       {
@@ -2624,8 +2652,8 @@ Json::Value st_app_get_fmts(st_json_context_t* ctx) {
   auto &rx_output_video_format = root["rx_sessions.output.video_format"];
   for (auto &f : st_app_get_video_fmts()) {
     auto &core_fmt = seeder::core::video_format_desc::get(f.core_fmt);
-    tx_source_video_format.append(make_fmt_item(core_fmt.name, core_fmt.name));
-    rx_output_video_format.append(make_fmt_item(core_fmt.name, core_fmt.name));
+    tx_source_video_format.append(make_fmt_item(core_fmt.display_name, core_fmt.name));
+    rx_output_video_format.append(make_fmt_item(core_fmt.display_name, core_fmt.name));
   }
 
   const std::vector<std::string> session_types {

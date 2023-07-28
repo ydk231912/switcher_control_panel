@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <unordered_set>
 #include <vector>
 
 #include <spdlog/common.h>
@@ -250,13 +251,17 @@ private:
     }
 
     void save_config() {
-        Json::Value current_config_json;
-        json_load_string(current_config_json, read_file_to_string(ipg_config_file_path));
-        for (int i = 0; i < config_json["interfaces"].size(); ++i) {
-            current_config_json["interfaces"][i] = config_json["interfaces"][i];
+        try {
+            Json::Value current_config_json;
+            json_load_string(current_config_json, read_file_to_string(ipg_config_file_path));
+            for (int i = 0; i < config_json["interfaces"].size(); ++i) {
+                current_config_json["interfaces"][i] = config_json["interfaces"][i];
+            }
+            write_string_to_file(ipg_config_file_path, json_to_string(current_config_json));
+            logger->info("save config {}", ipg_config_file_path);
+        } catch (std::exception &e) {
+            logger->error("save_config(): {}", e.what());
         }
-        write_string_to_file(ipg_config_file_path, json_to_string(current_config_json));
-        logger->info("save config {}", ipg_config_file_path);
     }
 
     void update_ipg_config(const Request &req, Response &res) {
@@ -270,16 +275,22 @@ private:
             json_err(res, "interfaces.size mismatch");
             return;
         }
+        std::unordered_set<std::string> ip_map;
         for (auto &inf : interfaces) {
-            if (inf["ip"].empty()) {
-                json_err(res, "ip is required");
-                return;
-            }
-            boost::system::error_code ec;
-            asio::ip::make_address_v4(inf["ip"].asCString(), ec);
-            if (ec) {
-                json_err(res, ec.message());
-                return;
+            if (inf["ip"].isString() && !inf["ip"].asString().empty()) {
+                boost::system::error_code ec;
+                auto ip = inf["ip"].asString();
+                asio::ip::make_address_v4(ip, ec);
+                if (ec) {
+                    json_err(res, ec.message());
+                    return;
+                }
+                if (ip_map.find(ip) != ip_map.end()) {
+                    json_err(res, "Ip Address Conflict");
+                    return;
+                } else {
+                    ip_map.insert(ip);
+                }
             }
         }
         auto lock = acquire_lock();
@@ -288,6 +299,7 @@ private:
             config_json["interfaces"][i]["ip"] = inf["ip"];
         }
         save_config();
+        json_ok(res);
     }
 
     void get_ipg_status(const Request &req, Response &res) {
@@ -332,6 +344,7 @@ private:
         logger->info("restart ipg request by user");
         stop_ipg_process();
         start_ipg_process();
+        json_ok(res);
     }
 
     static void json_ok(Response& res) {

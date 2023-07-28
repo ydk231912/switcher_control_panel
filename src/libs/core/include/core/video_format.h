@@ -70,6 +70,7 @@ namespace seeder::core
         int                  duration;
         std::size_t          size; // frame size in bytes
         std::string          name; // name of output format
+        std::string          display_name;
 
         int                  audio_channels = 2;
         int                  audio_sample_rate;
@@ -87,7 +88,8 @@ namespace seeder::core
                         int              square_height,
                         int              time_scale,
                         int              duration,
-                        std::string      name,
+                        const std::string      &name,
+                        const std::string      &display_name,
                         std::vector<int> audio_cadence);
         
         video_format_desc();

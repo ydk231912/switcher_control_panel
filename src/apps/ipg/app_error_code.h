@@ -14,7 +14,12 @@ enum class st_app_errc {
   AUDIO_SESSION_REQUIRED, // 缺少audio session的配置,
   DECKLINK_DEVICE_USED, // decklink device 已被使用
   ADDRESS_CONFLICT, // 地址冲突，ip地址和端口号已被占用
+  INVALID_ADDRESS, // ip address 或者 port 不正确
+  IP_ADDRESS_AND_PORT_REQUIRED,
+  MULTICAST_IP_ADDRESS_REQUIRED, 
   ID_INVALID, // id不存在
+  INVALID_PAYLOAD_TYPE, // payload type 参数不正确
+  DECKLINK_DEVICE_ID_REQUIRED,
 };
 
 namespace std

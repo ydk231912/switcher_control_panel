@@ -1,0 +1,26 @@
+[Unit]
+Description=SEEDER IPG Monitor
+After=active-dpdk.service
+Requires=active-dpdk.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/ipg-monitor \
+    --ipg_exe @CMAKE_INSTALL_FULL_BINDIR@/ipg \
+    --monitor_http_port 8082 \
+    --monitor_log_level info \
+    --log_level info \
+    --config_file @CMAKE_INSTALL_FULL_SYSCONFDIR@/ipg_config.json \
+    --ptp \
+    --http_port 8081 \
+    --tx_sessions_cnt_max 16 \
+    --rx_sessions_cnt_max 16
+
+Restart=always
+RestartSec=10
+User=hzseeder
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target
