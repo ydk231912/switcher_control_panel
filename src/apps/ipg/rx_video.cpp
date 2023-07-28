@@ -483,10 +483,12 @@ int st_app_rx_video_sessions_init(struct st_app_context* ctx)
         }
         auto s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
         ret = st_app_rx_video_session_init(ctx, &json_video, s.get());
-        if (ret) return ret;
+        if (ret) {
+            continue;
+        }
         ctx->rx_video_sessions.push_back(s);
     }
-    return ret;
+    return 0;
 }
 
 int st_app_rx_video_sessions_add(struct st_app_context* ctx, st_json_context_t *new_json_ctx) {
@@ -497,10 +499,12 @@ int st_app_rx_video_sessions_add(struct st_app_context* ctx, st_json_context_t *
         }
         auto s = std::shared_ptr<st_app_rx_video_session>(new st_app_rx_video_session {});
         ret = st_app_rx_video_session_init(ctx, &json_video, s.get());
-        if (ret) return ret;
+        if (ret) {
+            continue;
+        }
         ctx->rx_video_sessions.push_back(s);
     }
-    return ret;
+    return 0;
 }
 
 int st_app_rx_output_init(struct st_app_context* ctx, st_json_context *json_ctx)

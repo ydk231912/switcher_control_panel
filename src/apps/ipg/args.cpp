@@ -249,9 +249,12 @@ static int app_args_json(struct st_app_context* ctx, struct mtl_init_params* p,
     ctx->json_ctx.reset();
     return ret;
   }
-  for (int i = 0; i < ctx->json_ctx->interfaces.size(); ++i) {
-    snprintf(p->port[i], sizeof(p->port[i]), "%s", ctx->json_ctx->interfaces[i].name);
-    memcpy(p->sip_addr[i], ctx->json_ctx->interfaces[i].ip_addr, sizeof(p->sip_addr[i]));
+  for (auto &inf : ctx->json_ctx->interfaces) {
+    if (inf.ip_addr_str.empty()) {
+      continue;
+    }
+    snprintf(p->port[p->num_ports], sizeof(p->port[p->num_ports]), "%s", inf.name);
+    memcpy(p->sip_addr[p->num_ports], inf.ip_addr, MTL_IP_ADDR_LEN);
     p->num_ports++;
   }
   if (ctx->json_ctx->sch_quota) {

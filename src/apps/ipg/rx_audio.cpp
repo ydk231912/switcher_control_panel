@@ -320,7 +320,9 @@ int st_app_rx_audio_sessions_init(struct st_app_context* ctx)
         }
         auto s = std::shared_ptr<st_app_rx_audio_session>(new st_app_rx_audio_session {});
         ret = st_app_rx_audio_session_init(ctx, &json_audio, s.get());
-        if (ret) return ret;
+        if (ret) {
+            continue;
+        }
         ctx->rx_audio_sessions.push_back(s);
     }
 
@@ -335,10 +337,12 @@ int st_app_rx_audio_sessions_add(struct st_app_context* ctx, st_json_context_t *
         }
         auto s = std::shared_ptr<st_app_rx_audio_session>(new st_app_rx_audio_session {});
         ret = st_app_rx_audio_session_init(ctx, &json_audio, s.get());
-        if (ret) return ret;
+        if (ret) {
+            continue;
+        }
         ctx->rx_audio_sessions.push_back(s);
     }
-    return ret;
+    return 0;
 }
 
 

@@ -401,7 +401,9 @@ int st_app_tx_video_sessions_init(struct st_app_context* ctx)
         }
         auto s = std::shared_ptr<st_app_tx_video_session>(new st_app_tx_video_session {});
         ret = st_app_tx_video_session_init(ctx, &json_video, s.get());
-        if (ret) return ret;
+        if (ret) {
+            continue;
+        }
         ctx->tx_video_sessions.push_back(s);
     }
     return 0;
@@ -415,10 +417,12 @@ int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_jso
         }
         auto s = std::shared_ptr<st_app_tx_video_session>(new st_app_tx_video_session {});
         ret = st_app_tx_video_session_init(ctx, &json_video, s.get());
-        if (ret) return ret;
+        if (ret) {
+            continue;
+        }
         ctx->tx_video_sessions.push_back(s);
     }
-    return ret;
+    return 0;
 }
 
 int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {

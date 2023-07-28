@@ -8,7 +8,6 @@
 #include "core/util/logger.h"
 #include "core/util/uuid.h"
 #include "core/util/fs.h"
-#include <boost/range/algorithm/remove_if.hpp>
 #include <cstring>
 #include <initializer_list>
 #include <json/reader.h>
@@ -1580,17 +1579,6 @@ st_app_errc st_app_parse_json_interfaces(st_json_context_t* ctx, json_object *ro
     ret = st_json_parse_interfaces(json_object_array_get_idx(interfaces_array, i),
                                    &ctx->interfaces[i]);
     if (ERRC_FAILED(ret)) return ret;
-  }
-  // 见鬼了，boost::remove_if执行后没有移除inf.ip_addr_str.empty()的元素。。。
-  // boost::remove_if(ctx->interfaces, [] (const st_json_interface &inf) {
-  //   return inf.ip_addr_str.empty();
-  // });
-  for (auto it = ctx->interfaces.begin(); it != ctx->interfaces.end(); ) {
-    if (it->ip_addr_str.empty()) {
-      it = ctx->interfaces.erase(it);
-    } else {
-      ++it;
-    }
   }
   return ret;
 }
