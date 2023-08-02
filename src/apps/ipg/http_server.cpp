@@ -1,8 +1,11 @@
 #include "http_server.h"
+#include "app_base.h"
 #include "app_error_code.h"
 #include "core/util/logger.h"
 #include <boost/filesystem/operations.hpp>
 #include <boost/system/error_code.hpp>
+#include <chrono>
+#include <condition_variable>
 #include <exception>
 #include <functional>
 #include "httplib.h"
@@ -22,6 +25,7 @@
 #include <core/util/fs.h>
 #include "parse_json.h"
 #include "app_session.h"
+#include "app_stat.h"
 
 using httplib::Request;
 using httplib::Response;
@@ -29,51 +33,119 @@ using httplib::Response;
 #define SAFE_LOG(level, ...) if (seeder::core::logger) (seeder::core::logger)->level(__VA_ARGS__)
 
 namespace {
-    namespace fs = boost::filesystem;
 
-    void write_string_to_file_directly(const std::string &file_path, const std::string &content) {
-        std::fstream stream(file_path, std::ios_base::out);
-        stream << content;
-        stream.flush();
-    }
+namespace fs = boost::filesystem;
 
-    void write_string_to_file(const std::string &file_path, const std::string &content) {
-        if (fs::exists(file_path)) {
-            boost::system::error_code ec;
-            std::string new_file_path = file_path + ".new";
-            write_string_to_file_directly(new_file_path, content);
-            std::string old_file_path = file_path + ".old";
-            fs::rename(file_path, old_file_path, ec);
-            if (ec) {
-                SAFE_LOG(warn, "failed to mv {} {}", file_path, old_file_path, ec.message());
-                return;
-            }
-            fs::rename(new_file_path, file_path, ec);
-            if (ec) {
-                SAFE_LOG(warn, "failed to mv {} {} : {}", new_file_path, file_path, ec.message());
-                return;
-            }
-            fs::remove(old_file_path, ec);
-            if (ec) {
-                SAFE_LOG(warn, "failed to rm {} : {}", old_file_path, ec.message());
-                return;
-            }
-        } else {
-            write_string_to_file_directly(file_path, content);
+void write_string_to_file_directly(const std::string &file_path, const std::string &content) {
+    std::fstream stream(file_path, std::ios_base::out);
+    stream << content;
+    stream.flush();
+}
+
+void write_string_to_file(const std::string &file_path, const std::string &content) {
+    if (fs::exists(file_path)) {
+        boost::system::error_code ec;
+        std::string new_file_path = file_path + ".new";
+        write_string_to_file_directly(new_file_path, content);
+        std::string old_file_path = file_path + ".old";
+        fs::rename(file_path, old_file_path, ec);
+        if (ec) {
+            SAFE_LOG(warn, "failed to mv {} {}", file_path, old_file_path, ec.message());
+            return;
         }
+        fs::rename(new_file_path, file_path, ec);
+        if (ec) {
+            SAFE_LOG(warn, "failed to mv {} {} : {}", new_file_path, file_path, ec.message());
+            return;
+        }
+        fs::remove(old_file_path, ec);
+        if (ec) {
+            SAFE_LOG(warn, "failed to rm {} : {}", old_file_path, ec.message());
+            return;
+        }
+    } else {
+        write_string_to_file_directly(file_path, content);
+    }
+}
+
+std::string read_file_to_string(const std::string &file_path) {
+    std::string content;
+    std::ifstream file_stream(file_path, std::ios_base::binary);
+    // file_stream.exceptions(std::ios::badbit | std::ios::failbit);
+    file_stream.seekg(0, std::ios_base::end);
+    auto size = file_stream.tellg();
+    file_stream.seekg(0);
+    content.resize(static_cast<size_t>(size));
+    file_stream.read(&content[0], static_cast<std::streamsize>(size));
+    return content;
+}
+
+class app_status_monitor {
+public:
+    st_app_context *app_ctx = nullptr;
+    Json::Value status_value;
+    std::shared_ptr<spdlog::logger> logger;
+    bool is_stopped = false;
+    std::mutex monitor_mutex;
+    std::condition_variable stop_cv;
+    std::thread monitor_thread;
+    std::chrono::system_clock::duration wait_duration = std::chrono::seconds(1);
+
+    std::unique_lock<std::mutex> acquire_ctx_lock() {
+        return std::unique_lock<std::mutex>(app_ctx->mutex);
     }
 
-    std::string read_file_to_string(const std::string &file_path) {
-        std::string content;
-        std::ifstream file_stream(file_path, std::ios_base::binary);
-        // file_stream.exceptions(std::ios::badbit | std::ios::failbit);
-        file_stream.seekg(0, std::ios_base::end);
-        auto size = file_stream.tellg();
-        file_stream.seekg(0);
-        content.resize(static_cast<size_t>(size));
-        file_stream.read(&content[0], static_cast<std::streamsize>(size));
-        return content;
+    void start() {
+        if (is_stopped) {
+            return;
+        }
+        logger = seeder::core::logger;
+        monitor_thread = std::thread([this] {
+            logger->debug("app_status_monitor thread start");
+            while (!is_stopped) {
+                std::unique_lock<std::mutex> lock(monitor_mutex);
+                {
+                    auto app_lock = acquire_ctx_lock();
+                    update_status();
+                }
+                stop_cv.wait_for(lock, wait_duration);
+            }
+            logger->debug("app_status_monitor thread finish");
+        });
     }
+
+    void update_status() {
+        status_value = st_app_get_status(app_ctx);
+    }
+
+    Json::Value get_status() {
+        Json::Value ret;
+        {
+            std::unique_lock<std::mutex> lock(monitor_mutex);
+            ret = status_value;
+        }
+        return ret;
+    }
+
+    void stop() {
+        if (is_stopped) {
+            return;
+        }
+
+        {
+            std::unique_lock<std::mutex> lock(monitor_mutex);
+            is_stopped = true;
+        }
+
+        stop_cv.notify_all();
+        monitor_thread.join();
+    }
+
+    ~app_status_monitor() {
+        stop();
+    }
+};
+
 }
 
 namespace seeder {
@@ -81,10 +153,12 @@ namespace seeder {
 class st_http_server::impl : boost::noncopyable {
 friend class st_http_server;
 private:
-    st_app_context *app_ctx;
+    st_app_context *app_ctx = nullptr;
     httplib::Server server;
     std::thread server_thread;
+    app_status_monitor status_monitor;
     std::shared_ptr<spdlog::logger> logger;
+    std::chrono::system_clock::time_point startup_time;
 
     void get_config(const Request& req, Response& res) {
         Json::Value root;
@@ -96,7 +170,10 @@ private:
     }
 
     void get_health(const Request& req, Response& res) {
-        json_ok(res);
+        Json::Value root;
+        root["startup_time"] = std::chrono::duration_cast<std::chrono::seconds>(startup_time.time_since_epoch()).count();
+        root["startup_duration"] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - startup_time).count();
+        json_ok(res, root);
     }
 
     void save_config(const Request& req, Response& res) {
@@ -222,6 +299,11 @@ private:
         json_ok(res, stat);
     }
 
+    void get_status(const Request &req, Response &res) {
+        Json::Value status = status_monitor.get_status();
+        json_ok(res, status);
+    }
+
     void save_config_file() {
         try {
             Json::Reader reader;
@@ -331,6 +413,7 @@ private:
 st_http_server::st_http_server(st_app_context *app_ctx): p_impl(new impl) {
     p_impl->app_ctx = app_ctx;
     p_impl->logger = seeder::core::logger;
+    p_impl->status_monitor.app_ctx = app_ctx;
 }
 
 st_http_server::~st_http_server() {}
@@ -395,6 +478,12 @@ void st_http_server::start() {
         p.get_stat(req, res);
     });
 
+    server.Get("/api/status", [&p] (const Request& req, Response& res) {
+        p.get_status(req, res);
+    });
+
+    p.startup_time = std::chrono::system_clock::now();
+
     p.server_thread = std::thread([&] {
         const std::string host = "0.0.0.0";
         int port = p.app_ctx->http_port;
@@ -402,10 +491,13 @@ void st_http_server::start() {
         server.listen(host, port);
         p.logger->info("http server stopped");
     });
+
+    p.status_monitor.start();
 }
 
 void st_http_server::stop() {
     p_impl->server.stop();
+    p_impl->status_monitor.stop();
 }
 
 } // namespace seeder

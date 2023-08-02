@@ -51,10 +51,10 @@ static void app_rx_video_consume_frame(struct st_app_rx_video_session* s, void* 
     if(output)
     {
         // convert to v210
-        uint64_t cur_time_ns = st_app_get_monotonic_time();
+        // uint64_t cur_time_ns = st_app_get_monotonic_time();
         output->consume_st_video_frame(frame, s->width, s->height);
-        uint64_t finish_time_ns = st_app_get_monotonic_time();
-        s->stat_encode_us_sum += (finish_time_ns - cur_time_ns);
+        // uint64_t finish_time_ns = st_app_get_monotonic_time();
+        // s->stat_encode_us_sum += (finish_time_ns - cur_time_ns);
         // logger->info("encode_us={}", (finish_time_ns - cur_time_ns));
         output->display_video_frame();
      
@@ -204,6 +204,7 @@ static int app_rx_video_frame_ready(void* priv, void* frame, struct st20_rx_fram
         s->stat_latency_us_sum += latency_ns / 1000;
     }
     s->stat_frame_total_received++;
+    s->frame_receive_status_cnt++;
     if(!s->stat_frame_frist_rx_time)
         s->stat_frame_frist_rx_time = st_app_get_monotonic_time();
 

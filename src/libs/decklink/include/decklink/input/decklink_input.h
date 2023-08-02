@@ -28,6 +28,7 @@ namespace seeder::decklink
 {
     struct decklink_input_stat {
       int frame_cnt = 0;
+      int invalid_frame_cnt = 0;
     };
 
     class decklink_input : public input, public IDeckLinkInputCallback
@@ -98,6 +99,8 @@ namespace seeder::decklink
         std::shared_ptr<buffer> get_audio_frame_slice();
 
         decklink_input_stat get_stat();
+        
+        std::atomic<bool> has_signal = false;
 
       private:
         int decklink_index_;
@@ -126,6 +129,7 @@ namespace seeder::decklink
         std::shared_ptr<frame> last_vframe_;
         std::condition_variable vframe_cv_;
         std::atomic<int> receive_frame_stat = 0;
+        std::atomic<int> invalid_frame_stat = 0;
 
         // audio buffer
         std::mutex aframe_mutex_;

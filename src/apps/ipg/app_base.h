@@ -307,6 +307,7 @@ struct st_app_rx_video_session {
 
   std::atomic<int> frame_receive_stat = 0; // for HTTP API
   std::atomic<int> frame_drop_stat = 0;
+  std::atomic<int> frame_receive_status_cnt = 0;
 };
 
 struct st_app_rx_audio_session {

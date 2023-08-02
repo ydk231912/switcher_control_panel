@@ -13,9 +13,3 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 # set(CMAKE_BUILD_TYPE Debug)
 
 add_subdirectory(src)
-
-
-
-
-
-

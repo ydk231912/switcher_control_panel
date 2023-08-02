@@ -214,6 +214,7 @@ namespace seeder::decklink
 
         if(video)
         {
+            bool is_frame_valid = (video->GetFlags() & bmdFrameHasNoInputSource) == 0;
             auto vframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
             vframe->format = AV_PIX_FMT_UYVY422;
             vframe->width = video->GetWidth();
@@ -240,7 +241,13 @@ namespace seeder::decklink
             }
             this->set_video_frame(vframe);
             //frm->video = vframe;
-            
+            receive_frame_stat++;
+            if (!is_frame_valid) {
+                invalid_frame_stat++;
+                has_signal = false;
+            } else {
+                has_signal = true;
+            }
         }
 
         if(audio)
@@ -308,7 +315,6 @@ namespace seeder::decklink
                 }
             }
         }
-        receive_frame_stat++;
         return S_OK;
     }
 
@@ -476,9 +482,10 @@ namespace seeder::decklink
     decklink_input_stat decklink_input::get_stat() {
         decklink_input_stat r {};
         r.frame_cnt = receive_frame_stat;
+        r.invalid_frame_cnt = invalid_frame_stat;
 
         receive_frame_stat = 0;
+        invalid_frame_stat = 0;
         return r;
     }
-
 }
