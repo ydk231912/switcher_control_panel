@@ -55,8 +55,9 @@ target_link_libraries(decklink_deps INTERFACE ${DECKLINK_LIBRARIES})
 
 # Media-Transport-Library
 find_package(MTL REQUIRED)
+find_package(DPDK REQUIRED)
 add_library(mtl_deps INTERFACE)
-target_link_libraries(mtl_deps INTERFACE MTL)
+target_link_libraries(mtl_deps INTERFACE MTL DPDK)
 
 # json-c
 find_package(JsonC REQUIRED)

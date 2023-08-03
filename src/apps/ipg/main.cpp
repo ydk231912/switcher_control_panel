@@ -41,6 +41,7 @@ extern "C"
 }
 
 #include "player.h"
+#include <rte_lcore.h>
 
 // #include "core/video_format.h"
 // #include "config.h"
@@ -369,6 +370,7 @@ int main(int argc, char **argv)
         return -EIO;
     }
 
+    logger->info("lcore count={}", rte_lcore_count());
 
     if(!ctx->runtime_session)
     {

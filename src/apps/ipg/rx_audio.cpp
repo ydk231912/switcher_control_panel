@@ -62,25 +62,12 @@ static void app_rx_audio_consume_frame(struct st_app_rx_audio_session* s, void* 
     }
 }
 
-[[maybe_unused]]
-static void app_rx_audio_thread_bind(struct st_app_rx_audio_session* s) 
-{
-    if(s->lcore != -1) 
-    {
-        if (mtl_bind_to_lcore(s->st, pthread_self(), s->lcore)) {
-            logger->warn("app_rx_audio_thread_bind failed");
-        }
-    }
-}
-
 static void* app_rx_audio_frame_thread(void* arg)
 {
     struct st_app_rx_audio_session* s = (st_app_rx_audio_session*)arg;
     int idx = s->idx;
     int consumer_idx;
     struct st_rx_frame* framebuff;
-
-    // app_rx_audio_thread_bind(s);
 
     logger->info("{}({}), start", __func__, idx);
     while(!s->st30_app_thread_stop)
@@ -241,12 +228,6 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     s->rx_output = ctx->rx_output[audio->base.id];
     s->rx_output_id = audio->base.id;
     s->output_info = ctx->output_info[audio->base.id];
-    if(!ctx->app_thread) 
-    {
-        unsigned int lcore;
-        ret = st_app_video_get_lcore(ctx, (s->idx + 8) % ST_APP_MAX_LCORES, false, &lcore);
-        if (ret >= 0) s->lcore = lcore;
-    }
     
     ret = app_rx_audio_init_frame_thread(s);
     if(ret < 0)
