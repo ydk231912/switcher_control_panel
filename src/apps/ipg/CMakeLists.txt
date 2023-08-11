@@ -10,7 +10,7 @@ add_executable(
     http_server.cpp
     main.cpp
     parse_json.cpp
-    player.cpp
+    # player.cpp
     rx_audio.cpp
     rx_video.cpp
     tx_audio.cpp
@@ -27,11 +27,11 @@ target_link_libraries(
     PRIVATE
     core
     decklink
-    sdl
-    ffmpeg
+    # sdl
+    # ffmpeg
     
     ffmpeg_deps
-    sdl2_deps
+    # sdl2_deps
     boost_deps
     decklink_deps
     mtl_deps

@@ -22,7 +22,7 @@
 #include "decklink/input/decklink_input.h"
 #include "decklink/manager.h"
 #include "decklink/output/decklink_output.h"
-#include "ffmpeg/input/ffmpeg_input.h"
+// #include "ffmpeg/input/ffmpeg_input.h"
 
 
 #include "args.h"
@@ -40,7 +40,7 @@ extern "C"
     #include "test.h"
 }
 
-#include "player.h"
+// #include "player.h"
 #include <rte_lcore.h>
 
 // #include "core/video_format.h"

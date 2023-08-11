@@ -8,7 +8,7 @@
 #include "core/frame/frame.h"
 #include "core/util/timer.h"
 #include "core/util/timer.h"
-#include "ffmpeg/input/ffmpeg_input.h"
+// #include "ffmpeg/input/ffmpeg_input.h"
 #include "decklink/input/decklink_input.h"
 
 
@@ -437,11 +437,12 @@ int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {
                 auto decklink = std::make_shared<seeder::decklink::decklink_input>(s.id, s.device_id, format_desc);
                 ctx->tx_sources.emplace(decklink->get_source_id(), decklink);
                 ctx->source_info.emplace(decklink->get_source_id(), s);
-            } else if(s.type == "file") {
-                auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s.id, s.file_url, format_desc);
-                ctx->tx_sources.emplace(ffmpeg->get_source_id(), ffmpeg);
-                ctx->source_info.emplace(ffmpeg->get_source_id(), s);
             }
+            //  else if(s.type == "file") {
+            //     auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s.id, s.file_url, format_desc);
+            //     ctx->tx_sources.emplace(ffmpeg->get_source_id(), ffmpeg);
+            //     ctx->source_info.emplace(ffmpeg->get_source_id(), s);
+            // }
         } catch (std::exception &e) {
             logger->info("tx_video_source_init failed {} device_id={} video_format={}", e.what(), s.device_id, s.video_format);
             return -1;

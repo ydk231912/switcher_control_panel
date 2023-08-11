@@ -65,6 +65,10 @@ enum st_args_cmd {
   ST_ARG_NIC_RX_PROMISCUOUS,
   ST_ARG_RX_VIDEO_DISPLAY,
   ST_ARG_LIB_PTP,
+  ST_ARG_PTP_PI,
+  ST_ARG_PTP_KP,
+  ST_ARG_PTP_KI,
+  ST_ARG_PTP_TSC,
   ST_ARG_RX_MONO_POOL,
   ST_ARG_TX_MONO_POOL,
   ST_ARG_MONO_POOL,
@@ -153,6 +157,10 @@ static struct option st_app_args_options[] = {
     {"promiscuous", no_argument, 0, ST_ARG_NIC_RX_PROMISCUOUS},
     {"log_level", required_argument, 0, ST_ARG_LOG_LEVEL},
     {"ptp", no_argument, 0, ST_ARG_LIB_PTP},
+    {"pi", no_argument, 0, ST_ARG_PTP_PI},
+    {"kp", required_argument, 0, ST_ARG_PTP_KP},
+    {"ki", required_argument, 0, ST_ARG_PTP_KI},
+    {"ptp_tsc", no_argument, 0, ST_ARG_PTP_TSC},
     {"rx_mono_pool", no_argument, 0, ST_ARG_RX_MONO_POOL},
     {"tx_mono_pool", no_argument, 0, ST_ARG_TX_MONO_POOL},
     {"mono_pool", no_argument, 0, ST_ARG_MONO_POOL},
@@ -450,6 +458,18 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_LIB_PTP:
         p->flags |= MTL_FLAG_PTP_ENABLE;
         p->ptp_get_time_fn = NULL; /* clear the user ptp func */
+        break;
+      case ST_ARG_PTP_PI:
+        p->flags |= MTL_FLAG_PTP_PI;
+        break;
+      case ST_ARG_PTP_KP:
+        p->kp = strtod(optarg, NULL);
+        break;
+      case ST_ARG_PTP_KI:
+        p->ki = strtod(optarg, NULL);
+        break;
+      case ST_ARG_PTP_TSC:
+        p->flags |= MTL_FLAG_PTP_SOURCE_TSC;
         break;
       case ST_ARG_LOG_LEVEL:
         if (!strcmp(optarg, "debug"))
