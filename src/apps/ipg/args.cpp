@@ -468,9 +468,9 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_PTP_KI:
         p->ki = strtod(optarg, NULL);
         break;
-      case ST_ARG_PTP_TSC:
-        p->flags |= MTL_FLAG_PTP_SOURCE_TSC;
-        break;
+      // case ST_ARG_PTP_TSC:
+      //   p->flags |= MTL_FLAG_PTP_SOURCE_TSC;
+      //   break;
       case ST_ARG_LOG_LEVEL:
         if (!strcmp(optarg, "debug"))
           p->log_level = MTL_LOG_LEVEL_DEBUG;
