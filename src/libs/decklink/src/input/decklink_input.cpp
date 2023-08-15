@@ -300,9 +300,10 @@ namespace seeder::decklink
                             aframe->begin()[j + 1] = b[j];
                         }
                     } else if (format_desc_.audio_samples == 24) {
-                        int sample_count = size / 3;
+                        const int sample_count = size / 3;
+                        const int src_slice_stride = (sample_type_ / 8) * sample_count;
                         for (int j = 0; j < sample_count; ++j) {
-                            char *b = reinterpret_cast<char*>(audio_bytes) + i * size + j * 4;
+                            char *b = reinterpret_cast<char*>(audio_bytes) + i * src_slice_stride + j * 4;
                             aframe->begin()[j * 3] = b[3];
                             aframe->begin()[j * 3 + 1] = b[2];
                             aframe->begin()[j * 3 + 2] = b[1];
