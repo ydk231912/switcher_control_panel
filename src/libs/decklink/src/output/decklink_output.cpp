@@ -162,7 +162,7 @@ namespace seeder::decklink
         }
 
         // create audio frame buffer
-        aframe_buffer = (uint8_t*)malloc(format_desc_.st30_frame_size);
+        aframe_buffer = (uint8_t*)malloc(sample_type_ * format_desc_.audio_channels * format_desc_.sample_num);
 
         // // ffmpeg sws context, AV_PIX_FMT_UYVY422 to AV_PIX_FMT_RGBA
         // sws_ctx_ = sws_getContext(format_desc.width, format_desc.height, AV_PIX_FMT_UYVY422,
