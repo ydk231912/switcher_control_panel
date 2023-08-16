@@ -31,8 +31,11 @@ namespace seeder::decklink
       int invalid_frame_cnt = 0;
     };
 
+    struct decklink_audio_producer;
+
     class decklink_input : public input, public IDeckLinkInputCallback
     {
+        friend struct decklink_audio_producer;
       public:
         /**
          * @brief Construct a new decklink input object.
@@ -96,6 +99,7 @@ namespace seeder::decklink
         std::shared_ptr<AVFrame> get_audio_frame();
 
         void set_audio_frame_slice(std::shared_ptr<buffer> asframe);
+        void set_audio_frame_slice(const std::vector<std::shared_ptr<buffer>> &frames);
         std::shared_ptr<buffer> get_audio_frame_slice();
 
         decklink_input_stat get_stat();
@@ -134,9 +138,11 @@ namespace seeder::decklink
         // audio buffer
         std::mutex aframe_mutex_;
         std::deque<std::shared_ptr<AVFrame>> aframe_buffer_;
-        const size_t aframe_capacity_ = 2;
+        // const size_t aframe_capacity_ = 2;
+        const size_t aframe_capacity_ = 40;
         std::shared_ptr<frame> last_aframe_;
         std::condition_variable aframe_cv_;
+        std::unique_ptr<decklink_audio_producer> audio_producer;
 
         // audio slice buffer
         std::mutex asframe_mutex_;

@@ -9,6 +9,9 @@
  * 
  */
 
+#include <boost/smart_ptr/intrusive_ptr.hpp>
+#include <condition_variable>
+#include <thread>
 extern "C"
 {
     #include <libavformat/avformat.h>
@@ -23,6 +26,108 @@ using namespace seeder::decklink::util;
 using namespace seeder::core;
 namespace seeder::decklink
 {
+    struct decklink_audio_producer {
+        decklink_input *input;
+        std::thread thread;
+        std::mutex mutex;
+        std::atomic<bool> stopped = false;
+        std::condition_variable cv;
+        std::deque<boost::intrusive_ptr<IDeckLinkAudioInputPacket>> audio_packet_queue;
+        std::vector<std::shared_ptr<buffer>> audio_slice_buffer;
+        const int max_queue_size = 80;
+
+        explicit decklink_audio_producer(decklink_input *_input):
+            input(_input) {
+        }
+
+        void start() {
+            if (stopped) {
+                return;
+            }
+            thread = std::thread([this] {
+                while (!stopped) {
+                    boost::intrusive_ptr<IDeckLinkAudioInputPacket> packet;
+                    {
+                        std::unique_lock<std::mutex> lock(mutex);
+                        if (audio_packet_queue.empty()) {
+                            cv.wait(lock);
+                            continue;
+                        }
+                        packet = std::move(audio_packet_queue.front());
+                        audio_packet_queue.pop_front();
+                    }
+                    process_audio_packet(packet.get());
+                }
+            });
+        }
+
+        void push_packet(IDeckLinkAudioInputPacket *audio) {
+            std::unique_lock<std::mutex> lock(mutex);
+            if (audio_packet_queue.size() >= max_queue_size) {
+                audio_packet_queue.pop_front();
+            }
+            audio_packet_queue.emplace_back(audio);
+            cv.notify_all();
+        }
+
+        void process_audio_packet(IDeckLinkAudioInputPacket *audio) {
+            //one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
+            int nb = input->format_desc_.st30_fps / input->format_desc_.fps; // slice number
+            auto size = input->format_desc_.st30_frame_size;
+            void* audio_bytes = nullptr;
+            // auto sample_frame_count = audio->GetSampleFrameCount(); sample_frame_count = 960
+            // const bool push_batch = false;
+            const bool push_batch = true;
+            
+            if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes) {
+                for(int i = 0; i < nb; i++)
+                {
+                    auto aframe = std::make_shared<buffer>(input->format_desc_.st30_frame_size);
+                    if (input->sample_type_ == bmdAudioSampleType16bitInteger) {
+                        // memcpy(aframe->begin(), (char*) audio_bytes + i * size , size);
+                        // for (int j = 0; j < size; j += 2) {
+                        //     std::swap(aframe->begin()[j], aframe->begin()[j + 1]);
+                        // }
+                        for (int j = 0; j < size; j += 2) {
+                            char *b = reinterpret_cast<char*>(audio_bytes) + i * size;
+                            aframe->begin()[j] = b[j + 1];
+                            aframe->begin()[j + 1] = b[j];
+                        }
+                    } else if (input->format_desc_.audio_samples == 24) {
+                        const int sample_count = size / 3;
+                        const int src_slice_stride = (input->sample_type_ / 8) * sample_count;
+                        for (int j = 0; j < sample_count; ++j) {
+                            char *b = reinterpret_cast<char*>(audio_bytes) + i * src_slice_stride + j * 4;
+                            aframe->begin()[j * 3] = b[3];
+                            aframe->begin()[j * 3 + 1] = b[2];
+                            aframe->begin()[j * 3 + 2] = b[1];
+                        }
+                    } else {
+                        memcpy(aframe->begin(), (char*) audio_bytes + i * size , size);
+                    }
+                    if (push_batch) {
+                        audio_slice_buffer.push_back(aframe);
+                    } else {
+                        input->set_audio_frame_slice(aframe);
+                    }
+                }
+                if (push_batch) {
+                    input->set_audio_frame_slice(audio_slice_buffer);
+                    audio_slice_buffer.clear();
+                }
+            }
+        }
+
+        void stop() {
+            if (stopped) {
+                return;
+            }
+            stopped = true;
+            cv.notify_all();
+            thread.join();
+        }
+    };
+
     /**
      * @brief Construct a new decklink input object.
      * initialize deckllink device and start input stream
@@ -73,6 +178,8 @@ namespace seeder::decklink
             logger->error("Failed to set DeckLink input callback.");
             throw std::runtime_error("Failed to set DeckLink input callback.");
         }
+
+        audio_producer = std::make_unique<decklink_audio_producer>(this);
     }
 
     decklink_input::~decklink_input()
@@ -93,6 +200,7 @@ namespace seeder::decklink
     void decklink_input::start()
     {
         input::start();
+        audio_producer->start();
         // enable input and start streams
         HRESULT result = input_->EnableVideoInput(bmd_mode_, pixel_format_, video_flags_);
         if(result != S_OK)
@@ -162,6 +270,8 @@ namespace seeder::decklink
                 logger->error("decklink_input::stop DisableVideoInput error: {}", result);
             }
         }
+        audio_producer->stop();
+        audio_producer.reset();
         logger->info("decklink_input stop device_index={}", decklink_index_);
     }
 
@@ -212,71 +322,8 @@ namespace seeder::decklink
         // BMDTimeValue in_audio_pts = 0LL;
         auto frm = std::make_shared<core::frame>(); 
 
-        if(audio)
-        {
-            // a frame is 20ms:p50 or 40ms:p25
-            // auto aframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
-            // aframe->format = AV_SAMPLE_FMT_S16;
-            // if(format_desc_.audio_samples == 32)
-            //     aframe->format = AV_SAMPLE_FMT_S32;
-            // aframe->channels = format_desc_.audio_channels;
-            // aframe->sample_rate = format_desc_.audio_sample_rate;
-
-            //  void* audio_bytes = nullptr;
-            // if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
-            // {
-            //     audio->AddRef();
-            //     aframe = std::shared_ptr<AVFrame>(aframe.get(), [aframe, audio](AVFrame* ptr) { audio->Release(); });
-            //     aframe->data[0] = reinterpret_cast<uint8_t*>(audio_bytes);
-            //     aframe->nb_samples  = audio->GetSampleFrameCount();
-            //     aframe->linesize[0] = aframe->nb_samples * aframe->channels *
-            //                            av_get_bytes_per_sample(static_cast<AVSampleFormat>(aframe->format));
-
-            //     BMDTimeValue duration;
-            //     if (audio->GetPacketTime(&in_audio_pts, AV_TIME_BASE))
-            //     {
-            //         aframe->pts = in_audio_pts; //need bugging to ditermine the in_audio_pts meets the requirement
-            //     }
-            // }
-            // this->set_audio_frame(aframe);
-
-            //one 20ms/40ms audio frame slices into multiple 125us/1ms/4ms frames
-            int nb = format_desc_.st30_fps / format_desc_.fps; // slice number
-            auto size = format_desc_.st30_frame_size;
-            void* audio_bytes = nullptr;
-            // auto sample_frame_count = audio->GetSampleFrameCount(); sample_frame_count = 960
-            
-            if(audio->GetBytes(&audio_bytes) == S_OK && audio_bytes)
-            {
-                for(int i = 0; i < nb; i++)
-                {
-                    auto aframe = std::make_shared<buffer>(format_desc_.st30_frame_size);
-                    if (sample_type_ == bmdAudioSampleType16bitInteger) {
-                        // memcpy(aframe->begin(), (char*) audio_bytes + i * size , size);
-                        // for (int j = 0; j < size; j += 2) {
-                        //     std::swap(aframe->begin()[j], aframe->begin()[j + 1]);
-                        // }
-                        for (int j = 0; j < size; j += 2) {
-                            char *b = reinterpret_cast<char*>(audio_bytes) + i * size;
-                            aframe->begin()[j] = b[j + 1];
-                            aframe->begin()[j + 1] = b[j];
-                        }
-                    } else if (format_desc_.audio_samples == 24) {
-                        const int sample_count = size / 3;
-                        const int src_slice_stride = (sample_type_ / 8) * sample_count;
-                        for (int j = 0; j < sample_count; ++j) {
-                            char *b = reinterpret_cast<char*>(audio_bytes) + i * src_slice_stride + j * 4;
-                            aframe->begin()[j * 3] = b[3];
-                            aframe->begin()[j * 3 + 1] = b[2];
-                            aframe->begin()[j * 3 + 2] = b[1];
-                        }
-                    } else {
-                        memcpy(aframe->begin(), (char*) audio_bytes + i * size , size);
-                    }
-                    
-                    this->set_audio_frame_slice(aframe);
-                }
-            }
+        if(audio && audio_producer) {
+            audio_producer->push_packet(audio);
         }
 
         if(video)
@@ -367,6 +414,17 @@ namespace seeder::decklink
         }
         aframe_buffer_.push_back(aframe);
         aframe_cv_.notify_all();
+    }
+
+    void decklink_input::set_audio_frame_slice(const std::vector<std::shared_ptr<buffer>> &frames) {
+        std::lock_guard<std::mutex> lock(asframe_mutex_);
+        for (auto &aframe : frames) {
+            if (asframe_buffer_.size() >= aframe_capacity_) {
+                asframe_buffer_.pop_front(); // discard the oldest frame
+            }
+            asframe_buffer_.push_back(aframe);
+        }
+        asframe_cv_.notify_all();
     }
 
     // /**
