@@ -212,44 +212,6 @@ namespace seeder::decklink
         // BMDTimeValue in_audio_pts = 0LL;
         auto frm = std::make_shared<core::frame>(); 
 
-        if(video)
-        {
-            bool is_frame_valid = (video->GetFlags() & bmdFrameHasNoInputSource) == 0;
-            auto vframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
-            vframe->format = AV_PIX_FMT_UYVY422;
-            vframe->width = video->GetWidth();
-            vframe->height = video->GetHeight();
-            vframe->interlaced_frame = display_mode_->GetFieldDominance() != bmdProgressiveFrame;
-            vframe->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
-            vframe->key_frame        = 1;
-
-
-            void* video_bytes = nullptr;
-            if(video->GetBytes(&video_bytes) == S_OK && video_bytes)
-            {
-                video->AddRef();
-                vframe = std::shared_ptr<AVFrame>(vframe.get(), [vframe, video](AVFrame* ptr) { video->Release(); });
-
-                vframe->data[0] = reinterpret_cast<uint8_t*>(video_bytes);
-                vframe->linesize[0] = video->GetRowBytes();
-
-                BMDTimeValue duration;
-                if (video->GetStreamTime(&in_video_pts, &duration, AV_TIME_BASE)) 
-                {
-                    vframe->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
-                }
-            }
-            this->set_video_frame(vframe);
-            //frm->video = vframe;
-            receive_frame_stat++;
-            if (!is_frame_valid) {
-                invalid_frame_stat++;
-                has_signal = false;
-            } else {
-                has_signal = true;
-            }
-        }
-
         if(audio)
         {
             // a frame is 20ms:p50 or 40ms:p25
@@ -314,6 +276,43 @@ namespace seeder::decklink
                     
                     this->set_audio_frame_slice(aframe);
                 }
+            }
+        }
+
+        if(video)
+        {
+            bool is_frame_valid = (video->GetFlags() & bmdFrameHasNoInputSource) == 0;
+            auto vframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { av_frame_free(&ptr); });
+            vframe->format = AV_PIX_FMT_UYVY422;
+            vframe->width = video->GetWidth();
+            vframe->height = video->GetHeight();
+            vframe->interlaced_frame = display_mode_->GetFieldDominance() != bmdProgressiveFrame;
+            vframe->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
+            vframe->key_frame        = 1;
+
+            void* video_bytes = nullptr;
+            if(video->GetBytes(&video_bytes) == S_OK && video_bytes)
+            {
+                video->AddRef();
+                vframe = std::shared_ptr<AVFrame>(vframe.get(), [vframe, video](AVFrame* ptr) { video->Release(); });
+
+                vframe->data[0] = reinterpret_cast<uint8_t*>(video_bytes);
+                vframe->linesize[0] = video->GetRowBytes();
+
+                BMDTimeValue duration;
+                if (video->GetStreamTime(&in_video_pts, &duration, AV_TIME_BASE)) 
+                {
+                    vframe->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
+                }
+            }
+            this->set_video_frame(vframe);
+            //frm->video = vframe;
+            receive_frame_stat++;
+            if (!is_frame_valid) {
+                invalid_frame_stat++;
+                has_signal = false;
+            } else {
+                has_signal = true;
             }
         }
         return S_OK;
