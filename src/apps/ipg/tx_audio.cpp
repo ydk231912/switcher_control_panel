@@ -227,7 +227,7 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     st30_tx_handle handle;
     memset(&ops, 0, sizeof(ops));
 
-    s->framebuff_cnt = 8;
+    s->framebuff_cnt = 20;
     s->st30_seq_id = 1;
 
     s->framebuffs =
