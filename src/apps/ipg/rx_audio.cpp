@@ -149,11 +149,15 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 {
     int idx = s->idx, ret;
     struct st30_rx_ops ops;
-    char name[32];
+    char name[64];
     st30_rx_handle handle;
     memset(&ops, 0, sizeof(ops));
 
-    snprintf(name, 32, "app_rx_audio%d", idx);
+    s->rx_output = ctx->rx_output[audio->base.id];
+    s->rx_output_id = audio->base.id;
+    s->output_info = ctx->output_info[audio->base.id];
+
+    snprintf(name, 64, "RX Audio IP %s to SDI %d", audio->base.ip_str[0].c_str(), s->output_info.device_id);
     ops.name = name;
     ops.priv = s;
     ops.num_port = audio ? audio->base.num_inf : ctx->para.num_ports;
@@ -225,9 +229,6 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
         return -EIO;
     }
     s->handle = handle;
-    s->rx_output = ctx->rx_output[audio->base.id];
-    s->rx_output_id = audio->base.id;
-    s->output_info = ctx->output_info[audio->base.id];
     
     ret = app_rx_audio_init_frame_thread(s);
     if(ret < 0)

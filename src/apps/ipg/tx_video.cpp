@@ -1,4 +1,5 @@
 
+#include <cstdint>
 #include <exception>
 #include <memory>
 
@@ -81,7 +82,7 @@ static int app_tx_video_frame_done(void* priv, uint16_t frame_idx, struct st20_t
     return ret;
 }
 
-static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* frame, size_t frame_size) 
+static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* frame, size_t frame_size, struct st_tx_frame* framebuff) 
 {
     int ret = 0;
     auto f = s->tx_source->get_video_frame();
@@ -91,8 +92,22 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
     // // convert pixel format
     if(s->source_info->type == "decklink")
     {
-        // convert v210 to yuv10be
-        ret = st20_v210_to_rfc4175_422be10(f->data[0], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
+        if (s->interlaced) {
+            bool top_field_first = f->top_field_first;
+            std::size_t first_line = top_field_first ? 0 : 1;
+            bool second_field = f->opaque;
+            framebuff->second_field = second_field;
+            if (second_field) {
+                first_line = 1 - first_line;
+            }
+            for (int i = 0; i < s->height; i++) {
+                memcpy(s->half_height_buffer.get() + i * f->linesize[0], f->data[0] + (i * 2 + first_line) * f->linesize[0], f->linesize[0]);
+            }
+            ret = st20_v210_to_rfc4175_422be10(s->half_height_buffer.get(), (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
+        } else {
+            // convert v210 to yuv10be
+            ret = st20_v210_to_rfc4175_422be10(f->data[0], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
+        }
         if(ret < 0)
         {
             logger->error("{}, convet v210 to yuv422be10 fail", __func__);
@@ -232,12 +247,12 @@ static void* app_tx_video_frame_thread(void* arg)
         if (!s->slice) 
         {
             /* interlaced use different layout? */
-            app_tx_video_build_frame(s, frame_addr, s->st20_frame_size);
+            app_tx_video_build_frame(s, frame_addr, s->st20_frame_size, framebuff);
         }
 
         st_pthread_mutex_lock(&s->st20_wake_mutex);
         framebuff->size = s->st20_frame_size;
-        framebuff->second_field = s->second_field;
+        // framebuff->second_field = s->second_field;
         framebuff->stat = ST_TX_FRAME_READY;
         /* point to next */
         producer_idx++;
@@ -263,13 +278,18 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
 {
     int idx = s->idx, ret;
     struct st20_tx_ops ops;
-    char name[32];
+    char name[64];
     st20_tx_handle handle;
     memset(&ops, 0, sizeof(ops));
 
     s->ctx = ctx;
 
-    snprintf(name, 32, "app_tx_video_%d", idx);
+    // tx video source
+    s->tx_source = ctx->tx_sources[video->base.id];
+    s->tx_source_id = video->base.id;
+    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[video->base.id]);
+
+    snprintf(name, 64, "TX Video SDI %d to IP %s", s->source_info->device_id, video->base.ip_str[0].c_str());
     ops.name = name;
     ops.priv = s;
     ops.num_port = video ? video->base.num_inf : ctx->para.num_ports;
@@ -315,8 +335,10 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     if (ret < 0) return ret;
 
     s->width = ops.width;
-    s->height = ops.height;
+    s->full_height = s->height = ops.height;
     s->interlaced = ops.interlaced ? true : false;
+    if (s->interlaced) s->height >>= 1;
+    s->linesize = s->width * s->st20_pg.size / s->st20_pg.coverage;
     memcpy(s->st20_source_url, video ? video->info.video_url : ctx->tx_video_url,
             ST_APP_URL_MAX_LEN);
     s->st20_pcap_input = false;
@@ -360,10 +382,9 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     bool rtp = false;
     if (ops.type == ST20_TYPE_RTP_LEVEL) rtp = true;
 
-    // tx video source
-    s->tx_source = ctx->tx_sources[video->base.id];
-    s->tx_source_id = video->base.id;
-    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[video->base.id]);
+    if (s->interlaced) {
+        s->half_height_buffer.reset(new uint8_t[s->linesize * s->height]);
+    }
 
     if(!ctx->app_thread) 
     {

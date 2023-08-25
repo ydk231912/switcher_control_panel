@@ -197,8 +197,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080I_50FPS,
-        .core_fmt = seeder::core::video_fmt::invalid,
-        // .core_fmt = seeder::core::video_fmt::x1080i5000,
+        // .core_fmt = seeder::core::video_fmt::invalid,
+        .core_fmt = seeder::core::video_fmt::x1080i5000,
         .name = "i1080i50",
         .width = 1920,
         .height = 1080,
@@ -1766,11 +1766,13 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
           for (int k = 0; k < replicas; ++k) {
             ret = parse_multicast_ip_addr_str(json_object_get_string(video_dip_p), ctx->tx_video_sessions[num_video].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
+            ctx->tx_video_sessions[num_video].base.ip_str[0] = json_object_get_string(video_dip_p);
 
             ctx->tx_video_sessions[num_video].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
               ret = parse_multicast_ip_addr_str(json_object_get_string(video_dip_r), ctx->tx_video_sessions[num_video].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
+              ctx->tx_video_sessions[num_video].base.ip_str[1] = json_object_get_string(video_dip_r);
 
               ctx->tx_video_sessions[num_video].base.inf[1] = ctx->interfaces[inf_r];
             }
@@ -1826,11 +1828,13 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
           for (int k = 0; k < replicas; ++k) {
             ret = parse_multicast_ip_addr_str(json_object_get_string(audio_dip_p), ctx->tx_audio_sessions[num_audio].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
+            ctx->tx_audio_sessions[num_audio].base.ip_str[0] = json_object_get_string(audio_dip_p);
 
             ctx->tx_audio_sessions[num_audio].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
               ret = parse_multicast_ip_addr_str(json_object_get_string(audio_dip_r), ctx->tx_audio_sessions[num_audio].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
+              ctx->tx_audio_sessions[num_audio].base.ip_str[1] = json_object_get_string(audio_dip_r);
 
               ctx->tx_audio_sessions[num_audio].base.inf[1] = ctx->interfaces[inf_r];
             }
@@ -2117,11 +2121,13 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
           for (int k = 0; k < replicas; ++k) {
             ret = parse_multicast_ip_addr_str(json_object_get_string(video_sip_p), ctx->rx_video_sessions[num_video].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
+            ctx->rx_video_sessions[num_video].base.ip_str[0] = json_object_get_string(video_sip_p);
 
             ctx->rx_video_sessions[num_video].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
               ret = parse_multicast_ip_addr_str(json_object_get_string(video_sip_r), ctx->rx_video_sessions[num_video].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
+              ctx->rx_video_sessions[num_video].base.ip_str[1] = json_object_get_string(video_sip_r);
 
               ctx->rx_video_sessions[num_video].base.inf[1] = ctx->interfaces[inf_r];
             }
@@ -2178,11 +2184,13 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
           for (int k = 0; k < replicas; ++k) {
             ret = parse_multicast_ip_addr_str(json_object_get_string(audio_sip_p), ctx->rx_audio_sessions[num_audio].base.ip[0]);
             ERRC_EXPECT_SUCCESS(ret);
+            ctx->rx_audio_sessions[num_audio].base.ip_str[0] = json_object_get_string(audio_sip_p);
 
             ctx->rx_audio_sessions[num_audio].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
               ret = parse_multicast_ip_addr_str(json_object_get_string(audio_sip_r), ctx->rx_audio_sessions[num_audio].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
+              ctx->rx_audio_sessions[num_audio].base.ip_str[1] = json_object_get_string(audio_sip_r);
 
               ctx->rx_audio_sessions[num_audio].base.inf[1] = ctx->interfaces[inf_r];
             }
@@ -2216,7 +2224,7 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
 
             ctx->rx_anc_sessions[num_anc].base.inf[0] = ctx->interfaces[inf_p];
             if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(ip_p), ctx->rx_anc_sessions[num_anc].base.ip[0]);
+              ret = parse_multicast_ip_addr_str(json_object_get_string(ip_r), ctx->rx_anc_sessions[num_anc].base.ip[1]);
               ERRC_EXPECT_SUCCESS(ret);
 
               ctx->rx_anc_sessions[num_anc].base.inf[1] = ctx->interfaces[inf_r];

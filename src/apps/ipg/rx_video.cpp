@@ -7,6 +7,7 @@
 #include "fmt.h"
 #include "decklink/output/decklink_output.h"
 #include "tx_video.h"
+#include <cstdint>
 #include <memory>
 #include <mutex>
 
@@ -18,7 +19,7 @@ void st_app_rx_video_session_reset_stat(struct st_app_rx_video_session* s) {
     s->frame_drop_stat = 0;
 }
 
-static int app_rx_video_enqueue_frame(struct st_app_rx_video_session* s, void* frame, size_t size)
+static int app_rx_video_enqueue_frame(struct st_app_rx_video_session* s, void* frame, struct st20_rx_frame_meta* meta)
 {
     uint16_t producer_idx = s->framebuff_producer_idx;
     struct st_rx_frame* framebuff = &s->framebuffs[producer_idx];
@@ -30,7 +31,8 @@ static int app_rx_video_enqueue_frame(struct st_app_rx_video_session* s, void* f
 
     // printf("%s(%d), frame idx %d\n", __func__, s->idx, producer_idx);
     framebuff->frame = frame;
-    framebuff->size = size;
+    framebuff->size = meta->frame_total_size;
+    framebuff->second_field = meta->second_field;
     /* point to next */
     producer_idx++;
     if(producer_idx >= s->framebuff_cnt) producer_idx = 0;
@@ -45,19 +47,23 @@ static int app_rx_video_enqueue_frame(struct st_app_rx_video_session* s, void* f
  * @param frame 
  * @param frame_size 
  */
-static void app_rx_video_consume_frame(struct st_app_rx_video_session* s, void* frame, size_t frame_size)
+static void app_rx_video_consume_frame(struct st_app_rx_video_session* s, void* frame, size_t frame_size, struct st_rx_frame* rx_frame)
 {
     auto output = s->rx_output;
     if(output)
     {
-        // convert to v210
-        // uint64_t cur_time_ns = st_app_get_monotonic_time();
-        output->consume_st_video_frame(frame, s->width, s->height);
-        // uint64_t finish_time_ns = st_app_get_monotonic_time();
-        // s->stat_encode_us_sum += (finish_time_ns - cur_time_ns);
-        // logger->info("encode_us={}", (finish_time_ns - cur_time_ns));
-        output->display_video_frame();
-     
+        if (s->interlaced) {
+            uint8_t *frame_src_data = (uint8_t *) frame;
+            int field_offset = rx_frame->second_field ? 0 : 1;
+            for (int i = 0; i < s->height; ++i) {
+                memcpy(s->full_height_buffer.get() + (i * 2 + field_offset) * s->linesize, frame_src_data + i * s->linesize, s->linesize);
+            }
+            output->consume_st_video_frame(s->full_height_buffer.get(), s->width, s->full_height);
+            output->display_video_frame();
+        } else {
+            output->consume_st_video_frame(frame, s->width, s->height);
+            output->display_video_frame();
+        }
     }
 
     // //display the video, for debug
@@ -136,7 +142,7 @@ static void* app_rx_video_frame_thread(void* arg)
 
         app_rx_video_check_lcore(s, false);
         
-        app_rx_video_consume_frame(s, framebuff->frame, framebuff->size);
+        app_rx_video_consume_frame(s, framebuff->frame, framebuff->size, framebuff);
         st20_rx_put_framebuff(s->handle, framebuff->frame);
 
         /* point to next */
@@ -216,7 +222,7 @@ static int app_rx_video_frame_ready(void* priv, void* frame, struct st20_rx_fram
     // }
 
     st_pthread_mutex_lock(&s->st20_wake_mutex);
-    ret = app_rx_video_enqueue_frame(s, frame, meta->frame_total_size);
+    ret = app_rx_video_enqueue_frame(s, frame, meta);
     if(ret < 0)
     {
         s->frame_drop_stat++;
@@ -296,7 +302,11 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     st20_rx_handle handle;
     memset(&ops, 0, sizeof(ops));
 
-    snprintf(name, 32, "app_rx_video_%d", idx);
+    s->rx_output = ctx->rx_output[video->base.id];
+    s->rx_output_id = video->base.id;
+    s->output_info = ctx->output_info[video->base.id];
+
+    snprintf(name, 32, "RX Video IP %s to SDI %d", video->base.ip_str[0].c_str(), s->output_info.device_id);
     ops.name = name;
     ops.priv = s;
     ops.num_port = video ? video->base.num_inf : ctx->para.num_ports;
@@ -340,7 +350,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     }
     ops.fmt = video ? video->info.pg_format : ST20_FMT_YUV_422_10BIT;
     ops.payload_type = video ? video->base.payload_type : ST_APP_PAYLOAD_TYPE_VIDEO;
-    ops.interlaced = video ? st_app_get_interlaced(video->info.video_format) : false;
+    s->interlaced = ops.interlaced = video ? st_app_get_interlaced(video->info.video_format) : false;
     ops.notify_frame_ready = app_rx_video_frame_ready;
     ops.slice_lines = ops.height / 32;
 //    ops.notify_slice_ready = app_rx_video_slice_ready;
@@ -388,7 +398,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     }
 
     s->width = ops.width;
-    s->height = ops.height;
+    s->full_height = s->height = ops.height;
     if(ops.interlaced) s->height >>= 1;
     s->expect_fps = st_frame_rate(ops.fps);
     s->pcapng_max_pkts = ctx->pcapng_max_pkts;
@@ -429,10 +439,11 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     s->handle_sch_idx = st20_rx_get_sch_idx(handle);
     s->st20_frame_size = st20_rx_get_framebuffer_size(handle);
     // rx output handle
-    s->rx_output = ctx->rx_output[video->base.id];
-    s->rx_output_id = video->base.id;
-    //s->rx_output = ctx->tx_sources[video->tx_source_id];
-    s->output_info = ctx->output_info[video->base.id];
+    
+    s->linesize = s->width * s->st20_pg.size / s->st20_pg.coverage;
+    if (s->interlaced) {
+        s->full_height_buffer.reset(new uint8_t[s->linesize * ops.height]);
+    }
 
     if(!ctx->app_thread) 
     {
@@ -527,10 +538,6 @@ int st_app_rx_output_init(struct st_app_context* ctx, st_json_context *json_ctx)
                 //  ctx->rx_video_sessions[i].output_info = s;
                 // ctx->rx_audio_sessions[i].rx_output = decklink;
                 // ctx->rx_audio_sessions[i].output_info = s;
-            } else if (s->type == "decklink_async") {
-                auto decklink = std::make_shared<seeder::decklink::decklink_async_output>(s->id, s->device_id, desc, s->pixel_format);
-                ctx->rx_output.emplace(s->id, decklink);
-                ctx->output_info.emplace(s->id, *s);
             }
             // else if(s->type == "file")
             // {

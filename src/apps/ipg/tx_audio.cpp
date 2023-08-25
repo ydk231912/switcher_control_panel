@@ -223,7 +223,7 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 {
     int idx = s->idx, ret;
     struct st30_tx_ops ops;
-    char name[32];
+    char name[64];
     st30_tx_handle handle;
     memset(&ops, 0, sizeof(ops));
 
@@ -242,11 +242,16 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
         s->framebuffs[j].lines_ready = 0;
     }
 
+    //tx audio source
+    s->tx_source = ctx->tx_sources[audio->base.id];
+    s->tx_source_id = audio->base.id;
+    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[audio->base.id]);
+
     s->st30_source_fd = -1;
     st_pthread_mutex_init(&s->st30_wake_mutex, NULL);
     st_pthread_cond_init(&s->st30_wake_cond, NULL);
 
-    snprintf(name, 32, "app_tx_audio_%d", idx);
+    snprintf(name, 64, "TX Audio SDI %d to IP %s", s->source_info->device_id, audio->base.ip_str[0].c_str());
     ops.name = name;
     ops.priv = s;
     ops.num_port = audio ? audio->base.num_inf : ctx->para.num_ports;
@@ -302,10 +307,6 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     ops.payload_type = audio ? audio->base.payload_type : ST_APP_PAYLOAD_TYPE_AUDIO;
 
     s->st30_pcap_input = false;
-    //tx audio source
-    s->tx_source = ctx->tx_sources[audio->base.id];
-    s->tx_source_id = audio->base.id;
-    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[audio->base.id]);
 
     // s->st30_pcap_input = false;
     ops.type = audio ? audio->info.type : ST30_TYPE_FRAME_LEVEL;

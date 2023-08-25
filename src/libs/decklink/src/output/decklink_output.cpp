@@ -491,13 +491,13 @@ namespace seeder::decklink
         }
     }
 
-
+    /*
     class PlayoutDelegate : public IDeckLinkVideoOutputCallback
     {
     public:
         explicit PlayoutDelegate(decklink_async_output::impl *_p_impl): p_impl(_p_impl) {}
 
-        HRESULT	STDMETHODCALLTYPE QueryInterface (REFIID /*iid*/, LPVOID* /*ppv*/) {
+        HRESULT	STDMETHODCALLTYPE QueryInterface (REFIID , LPVOID* ) {
             return E_NOTIMPL;
         }
         ULONG STDMETHODCALLTYPE AddRef () {
@@ -837,4 +837,5 @@ namespace seeder::decklink
     std::shared_ptr<core::frame> decklink_async_output::get_frame() { return {}; }
     std::shared_ptr<AVFrame> decklink_async_output::get_video_frame() { return {}; }
     std::shared_ptr<AVFrame> decklink_async_output::get_audio_frame() { return {}; }
+    */
 }

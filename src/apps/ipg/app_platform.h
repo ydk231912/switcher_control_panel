@@ -63,6 +63,7 @@ struct st_tx_frame {
 struct st_rx_frame {
   void* frame;
   size_t size;
+  bool second_field;
 };
 
 static inline int st_pthread_mutex_init(pthread_mutex_t* mutex,

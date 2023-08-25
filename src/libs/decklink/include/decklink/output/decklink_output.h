@@ -131,6 +131,8 @@ namespace seeder::decklink
         const size_t vframe_capacity_ = 5;
         std::shared_ptr<frame> last_vframe_;
         std::condition_variable vframe_cv_;
+        bool interlace_frame_ready = false;
+        std::unique_ptr<uint8_t[]> half_height_buffer;
 
         // audio buffer
         std::mutex aframe_mutex_;
@@ -141,6 +143,7 @@ namespace seeder::decklink
 
     };
 
+    /*
     class decklink_async_output : public core::output
     {
     public:
@@ -173,4 +176,5 @@ namespace seeder::decklink
       friend class PlayoutDelegate;
       std::unique_ptr<impl> p_impl;
     };
+    */
 }

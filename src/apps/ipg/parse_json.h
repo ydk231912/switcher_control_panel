@@ -101,6 +101,7 @@ typedef struct st_json_interface {
 typedef struct st_json_session_base {
   std::string id;
   uint8_t ip[MTL_PORT_MAX][MTL_IP_ADDR_LEN];
+  std::string ip_str[MTL_PORT_MAX];
   st_json_interface_t inf[MTL_PORT_MAX];
   int num_inf;
   uint16_t udp_port;

@@ -141,6 +141,8 @@ struct st_app_tx_video_session {
 
   int width;
   int height;
+  int full_height; // for interlaced video
+  int linesize;
   bool interlaced;
   bool second_field;
   bool single_line;
@@ -179,6 +181,7 @@ struct st_app_tx_video_session {
   std::atomic<int> next_frame_not_ready_stat = 0;
   std::atomic<int> frame_done_stat = 0;
   std::atomic<int> build_frame_stat = 0;
+  std::unique_ptr<uint8_t[]> half_height_buffer;
 };
 
 struct st_app_tx_audio_session {
@@ -280,6 +283,9 @@ struct st_app_rx_video_session {
   struct user_pgroup user_pg;
   int width;
   int height;
+  int full_height; // for interlaced video
+  int linesize;
+  bool interlaced;
 
   /* stat for Console Log */
   int stat_frame_received;
@@ -304,6 +310,7 @@ struct st_app_rx_video_session {
   // video output handle
   std::shared_ptr<seeder::core::output> rx_output;
   st_app_rx_output output_info;
+  std::unique_ptr<uint8_t[]> full_height_buffer;
 
   std::atomic<int> frame_receive_stat = 0; // for HTTP API
   std::atomic<int> frame_drop_stat = 0;

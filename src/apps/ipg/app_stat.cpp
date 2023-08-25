@@ -95,6 +95,7 @@ void st_app_update_stat(struct st_app_context *ctx) {
             tx_stat["invalid_frame_cnt"] = decklink_stat.invalid_frame_cnt;
 
             for (auto &tx_s : s.tx_video_sessions) {
+                tx_stat["device_id"] = tx_s->source_info->device_id;
                 tx_stat["video_next_frame_stat"] = tx_s->next_frame_stat.load();
                 tx_stat["video_next_frame_not_ready_stat"] = tx_s->next_frame_not_ready_stat.load();
                 int frame_done_cnt = tx_s->frame_done_stat.load();;
@@ -126,6 +127,7 @@ void st_app_update_stat(struct st_app_context *ctx) {
 
 
             for (auto &rx_s : s.rx_video_sessions) {
+                rx_stat["device_id"] = rx_s->output_info.device_id;
                 rx_stat["video_frame_receive_stat"] = rx_s->frame_receive_stat.load();
                 rx_stat["video_frame_drop_stat"] = rx_s->frame_drop_stat.load();
 
