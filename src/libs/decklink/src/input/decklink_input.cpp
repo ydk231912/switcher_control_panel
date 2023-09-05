@@ -11,10 +11,13 @@
 
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <condition_variable>
+
 #include <thread>
 extern "C"
 {
-    #include <libavformat/avformat.h>
+#include <libavformat/avformat.h>
+#include <libavutil/frame.h>
+#include <libavutil/buffer.h>
 }
 
 #include "decklink/input/decklink_input.h"

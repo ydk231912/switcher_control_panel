@@ -306,7 +306,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     s->rx_output_id = video->base.id;
     s->output_info = ctx->output_info[video->base.id];
 
-    snprintf(name, 32, "RX Video IP %s to SDI %d", video->base.ip_str[0].c_str(), s->output_info.device_id);
+    snprintf(name, 32, "RX Video SDI %d", s->output_info.device_id);
     ops.name = name;
     ops.priv = s;
     ops.num_port = video ? video->base.num_inf : ctx->para.num_ports;

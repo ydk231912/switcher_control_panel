@@ -223,7 +223,7 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 {
     int idx = s->idx, ret;
     struct st30_tx_ops ops;
-    char name[64];
+    char name[32];
     st30_tx_handle handle;
     memset(&ops, 0, sizeof(ops));
 
@@ -251,7 +251,7 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     st_pthread_mutex_init(&s->st30_wake_mutex, NULL);
     st_pthread_cond_init(&s->st30_wake_cond, NULL);
 
-    snprintf(name, 64, "TX Audio SDI %d to IP %s", s->source_info->device_id, audio->base.ip_str[0].c_str());
+    snprintf(name, 32, "TX Audio SDI %d", s->source_info->device_id);
     ops.name = name;
     ops.priv = s;
     ops.num_port = audio ? audio->base.num_inf : ctx->para.num_ports;

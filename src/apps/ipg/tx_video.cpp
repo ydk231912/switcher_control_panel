@@ -93,6 +93,9 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
     if(s->source_info->type == "decklink")
     {
         if (s->interlaced) {
+            if (!s->half_height_buffer) {
+                s->half_height_buffer.reset(new uint8_t[f->linesize[0] * s->height]);
+            }
             bool top_field_first = f->top_field_first;
             std::size_t first_line = top_field_first ? 0 : 1;
             bool second_field = f->opaque;
@@ -278,7 +281,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
 {
     int idx = s->idx, ret;
     struct st20_tx_ops ops;
-    char name[64];
+    char name[32];
     st20_tx_handle handle;
     memset(&ops, 0, sizeof(ops));
 
@@ -289,7 +292,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     s->tx_source_id = video->base.id;
     s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[video->base.id]);
 
-    snprintf(name, 64, "TX Video SDI %d to IP %s", s->source_info->device_id, video->base.ip_str[0].c_str());
+    snprintf(name, 32, "TX Video SDI %d", s->source_info->device_id);
     ops.name = name;
     ops.priv = s;
     ops.num_port = video ? video->base.num_inf : ctx->para.num_ports;
@@ -381,10 +384,6 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     unsigned int lcore;
     bool rtp = false;
     if (ops.type == ST20_TYPE_RTP_LEVEL) rtp = true;
-
-    if (s->interlaced) {
-        s->half_height_buffer.reset(new uint8_t[s->linesize * s->height]);
-    }
 
     if(!ctx->app_thread) 
     {

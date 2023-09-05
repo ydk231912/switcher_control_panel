@@ -23,7 +23,11 @@
 #include "core/video_format.h"
 #include "core/util/buffer.h"
 
-using namespace seeder::core;
+
+extern "C" {
+  #include "libavutil/buffer.h"
+}
+
 namespace seeder::decklink
 {
     struct decklink_input_stat {
@@ -33,7 +37,7 @@ namespace seeder::decklink
 
     struct decklink_audio_producer;
 
-    class decklink_input : public input, public IDeckLinkInputCallback
+    class decklink_input : public seeder::core::input, public IDeckLinkInputCallback
     {
         friend struct decklink_audio_producer;
       public:
@@ -41,7 +45,7 @@ namespace seeder::decklink
          * @brief Construct a new decklink input object.
          * initialize deckllink device and start input stream
          */
-        explicit decklink_input(const std::string &source_id, int device_id, video_format_desc& format_desc);
+        explicit decklink_input(const std::string &source_id, int device_id, seeder::core::video_format_desc& format_desc);
         ~decklink_input();
 
 
@@ -85,7 +89,7 @@ namespace seeder::decklink
          * @brief push a frame into this input stream
          * 
          */
-        void set_frame(std::shared_ptr<frame> frm);
+        void set_frame(std::shared_ptr<seeder::core::frame> frm);
         void set_video_frame(std::shared_ptr<AVFrame> vframe);
         void set_audio_frame(std::shared_ptr<AVFrame> aframe);
 
@@ -94,13 +98,13 @@ namespace seeder::decklink
          * @brief Get a frame from this input stream
          * 
          */
-        std::shared_ptr<frame> get_frame();
+        std::shared_ptr<seeder::core::frame> get_frame();
         std::shared_ptr<AVFrame> get_video_frame();
         std::shared_ptr<AVFrame> get_audio_frame();
 
-        void set_audio_frame_slice(std::shared_ptr<buffer> asframe);
-        void set_audio_frame_slice(const std::vector<std::shared_ptr<buffer>> &frames);
-        std::shared_ptr<buffer> get_audio_frame_slice();
+        void set_audio_frame_slice(std::shared_ptr<seeder::core::buffer> asframe);
+        void set_audio_frame_slice(const std::vector<std::shared_ptr<seeder::core::buffer>> &frames);
+        std::shared_ptr<seeder::core::buffer> get_audio_frame_slice();
 
         decklink_input_stat get_stat();
         
@@ -121,16 +125,16 @@ namespace seeder::decklink
 
         //buffer
         std::mutex frame_mutex_;
-        std::deque<std::shared_ptr<frame>> frame_buffer_;
+        std::deque<std::shared_ptr<seeder::core::frame>> frame_buffer_;
         const size_t frame_capacity_ = 3;
-        std::shared_ptr<frame> last_frame_;
+        std::shared_ptr<seeder::core::frame> last_frame_;
         std::condition_variable frame_cv_;
 
         // video buffer
         std::mutex vframe_mutex_;
         std::deque<std::shared_ptr<AVFrame>> vframe_buffer_;
-        const size_t vframe_capacity_ = 5;
-        std::shared_ptr<frame> last_vframe_;
+        const size_t vframe_capacity_ = 6;
+        std::shared_ptr<seeder::core::frame> last_vframe_;
         std::condition_variable vframe_cv_;
         std::atomic<int> receive_frame_stat = 0;
         std::atomic<int> invalid_frame_stat = 0;
@@ -140,15 +144,15 @@ namespace seeder::decklink
         std::deque<std::shared_ptr<AVFrame>> aframe_buffer_;
         // const size_t aframe_capacity_ = 2;
         const size_t aframe_capacity_ = 40;
-        std::shared_ptr<frame> last_aframe_;
+        std::shared_ptr<seeder::core::frame> last_aframe_;
         std::condition_variable aframe_cv_;
         std::unique_ptr<decklink_audio_producer> audio_producer;
 
         // audio slice buffer
         std::mutex asframe_mutex_;
-        std::deque<std::shared_ptr<buffer>> asframe_buffer_;
+        std::deque<std::shared_ptr<seeder::core::buffer>> asframe_buffer_;
         const size_t asframe_capacity_ = 1600; // 1 audio frame(p25:40ms) slice to 125us a frame, slices = 40ms / 0.125ms
-        std::shared_ptr<buffer> last_asframe_;
+        std::shared_ptr<seeder::core::buffer> last_asframe_;
         std::condition_variable asframe_cv_;
 
 

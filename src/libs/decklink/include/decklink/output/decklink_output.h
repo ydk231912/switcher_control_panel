@@ -29,7 +29,6 @@ extern "C"
 #include "core/video_format.h"
 #include "core/stream/output.h"
 
-using namespace seeder::core;
 namespace seeder::decklink
 {
     struct decklink_output_stat {
@@ -129,7 +128,7 @@ namespace seeder::decklink
         std::mutex vframe_mutex_;
         std::deque<std::shared_ptr<AVFrame>> vframe_buffer_;
         const size_t vframe_capacity_ = 5;
-        std::shared_ptr<frame> last_vframe_;
+        std::shared_ptr<seeder::core::frame> last_vframe_;
         std::condition_variable vframe_cv_;
         bool interlace_frame_ready = false;
         std::unique_ptr<uint8_t[]> half_height_buffer;
@@ -138,7 +137,7 @@ namespace seeder::decklink
         std::mutex aframe_mutex_;
         std::deque<std::shared_ptr<AVFrame>> aframe_buffer_;
         const size_t aframe_capacity_ = 5;
-        std::shared_ptr<frame> last_aframe_;
+        std::shared_ptr<seeder::core::frame> last_aframe_;
         std::condition_variable aframe_cv_;
 
     };
