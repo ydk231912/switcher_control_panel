@@ -138,6 +138,7 @@ namespace seeder::decklink
         std::condition_variable vframe_cv_;
         std::atomic<int> receive_frame_stat = 0;
         std::atomic<int> invalid_frame_stat = 0;
+        std::shared_ptr<AVBufferPool> av_buffer_pool;
 
         // audio buffer
         std::mutex aframe_mutex_;

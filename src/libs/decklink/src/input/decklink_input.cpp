@@ -183,6 +183,12 @@ namespace seeder::decklink
         }
 
         audio_producer = std::make_unique<decklink_audio_producer>(this);
+
+        int frame_linesize = ((display_mode_->GetWidth() + 47) / 48) * 128;
+        int frame_buf_height = format_desc_.height / format_desc_.field_count;
+        av_buffer_pool.reset(av_buffer_pool_init(frame_linesize * frame_buf_height, NULL), [] (AVBufferPool *pool) {
+            av_buffer_pool_uninit(&pool);
+        });
     }
 
     decklink_input::~decklink_input()
@@ -335,8 +341,43 @@ namespace seeder::decklink
             void* video_bytes = nullptr;
             if(video->GetBytes(&video_bytes) == S_OK && video_bytes)
             {
-                // decklink 接收i信号时，接收到的帧率会变为一半，1080i50实际收到的帧率只有25
-                for (int i = 0; i < format_desc_.field_count; ++i) {
+                if (format_desc_.field_count > 1) {
+                    // decklink 接收i信号时，接收到的帧率会变为一半，1080i50实际收到的帧率只有25
+                    for (int i = 0; i < format_desc_.field_count; ++i) {
+                        auto vframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { 
+                            av_frame_free(&ptr);
+                        });
+                        vframe->format = AV_PIX_FMT_UYVY422;
+                        vframe->width = video->GetWidth();
+                        vframe->height = video->GetHeight() / format_desc_.field_count;
+                        vframe->interlaced_frame = display_mode_->GetFieldDominance() != bmdProgressiveFrame;
+                        vframe->top_field_first  = display_mode_->GetFieldDominance() == bmdUpperFieldFirst ? 1 : 0;
+                        vframe->key_frame        = 1;
+                        // av_frame_get_buffer(vframe.get(), 0);
+                        vframe->buf[0] = av_buffer_pool_get(av_buffer_pool.get());
+                        vframe->data[0] = vframe->buf[0]->data;
+                        vframe->linesize[0] = video->GetRowBytes();
+
+                        BMDTimeValue duration;
+                        if (video->GetStreamTime(&in_video_pts, &duration, AV_TIME_BASE)) 
+                        {
+                            vframe->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
+                        }
+                        vframe->opaque = reinterpret_cast<void*>(i);
+
+                        uint8_t *src_frame_data = reinterpret_cast<uint8_t*>(video_bytes);
+                        bool top_field_first = vframe->top_field_first;
+                        std::size_t first_line = top_field_first ? 0 : 1;
+                        bool second_field = i;
+                        if (second_field) {
+                            first_line = 1 - first_line;
+                        }
+                        for (int i = 0; i < vframe->height; i++) {
+                            memcpy(vframe->data[0] + i * vframe->linesize[0], src_frame_data + (i * 2 + first_line) * vframe->linesize[0], vframe->linesize[0]);
+                        }
+                        this->set_video_frame(vframe);
+                    }
+                } else {
                     video->AddRef();
                     auto vframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [video](AVFrame* ptr) { 
                         av_frame_free(&ptr);
@@ -357,7 +398,6 @@ namespace seeder::decklink
                     {
                         vframe->pts = in_video_pts; //need bugging to ditermine the in_video_pts meets the requirement
                     }
-                    vframe->opaque = reinterpret_cast<void*>(i);
                     this->set_video_frame(vframe);
                 }
             }

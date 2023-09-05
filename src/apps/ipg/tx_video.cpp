@@ -93,24 +93,9 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
     if(s->source_info->type == "decklink")
     {
         if (s->interlaced) {
-            if (!s->half_height_buffer) {
-                s->half_height_buffer.reset(new uint8_t[f->linesize[0] * s->height]);
-            }
-            bool top_field_first = f->top_field_first;
-            std::size_t first_line = top_field_first ? 0 : 1;
-            bool second_field = f->opaque;
-            framebuff->second_field = second_field;
-            if (second_field) {
-                first_line = 1 - first_line;
-            }
-            for (int i = 0; i < s->height; i++) {
-                memcpy(s->half_height_buffer.get() + i * f->linesize[0], f->data[0] + (i * 2 + first_line) * f->linesize[0], f->linesize[0]);
-            }
-            ret = st20_v210_to_rfc4175_422be10(s->half_height_buffer.get(), (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
-        } else {
-            // convert v210 to yuv10be
-            ret = st20_v210_to_rfc4175_422be10(f->data[0], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
+            framebuff->second_field = f->opaque;
         }
+        ret = st20_v210_to_rfc4175_422be10(f->data[0], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
         if(ret < 0)
         {
             logger->error("{}, convet v210 to yuv422be10 fail", __func__);
