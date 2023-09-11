@@ -16,6 +16,7 @@ public:
     std::string display_name; // IDeckLink::GetDisplayName
     int64_t persistent_id; // BMDDeckLinkPersistentID 
     std::string device_label; // bmdDeckLinkConfigDeviceInformationLabel 
+    bool support_format_dection = false;
 };
 
 

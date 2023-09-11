@@ -170,8 +170,8 @@ static const struct st_video_fmt_desc st_video_fmt_descs[] = {
     },
     {
         .fmt = VIDEO_FORMAT_1080P_60FPS,
-        .core_fmt = seeder::core::video_fmt::invalid,
-        // .core_fmt = seeder::core::video_fmt::x1080p6000,
+        // .core_fmt = seeder::core::video_fmt::invalid,
+        .core_fmt = seeder::core::video_fmt::x1080p6000,
         .name = "i1080p60",
         .width = 1920,
         .height = 1080,
@@ -1651,6 +1651,7 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       }
       tx_source.file_url = safe_get_string(source, "file_url");
       tx_source.video_format = safe_get_string(source, "video_format");
+      tx_source.pixel_format = safe_get_string(source, "pixel_format");
       
       tx_source.id = safe_get_string(tx_group, "id");
       if (tx_source.id.empty()) {

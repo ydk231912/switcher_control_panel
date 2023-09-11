@@ -96,8 +96,7 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
             framebuff->second_field = f->opaque;
         }
         ret = st20_v210_to_rfc4175_422be10(f->data[0], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
-        if(ret < 0)
-        {
+        if(ret < 0) {
             logger->error("{}, convet v210 to yuv422be10 fail", __func__);
             return;
         }
@@ -310,7 +309,7 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     ops.width = video ? st_app_get_width(video->info.video_format) : 1920;
     ops.height = video ? st_app_get_height(video->info.video_format) : 1080;
     ops.fps = video ? st_app_get_fps(video->info.video_format) : ST_FPS_P59_94;
-    ops.fmt = video ? video->info.pg_format : ST20_FMT_YUV_422_10BIT;
+    s->pixel_format = ops.fmt = video ? video->info.pg_format : ST20_FMT_YUV_422_10BIT;
     ops.interlaced = video ? st_app_get_interlaced(video->info.video_format) : false;
     ops.get_next_frame = app_tx_video_next_frame;
     ops.notify_frame_done = app_tx_video_frame_done;
@@ -439,7 +438,7 @@ int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {
             if(s.type == "decklink") {
                 
                 st_set_video_foramt(info, &format_desc);
-                auto decklink = std::make_shared<seeder::decklink::decklink_input>(s.id, s.device_id, format_desc);
+                auto decklink = std::make_shared<seeder::decklink::decklink_input>(s.id, s.device_id, format_desc, s.pixel_format);
                 ctx->tx_sources.emplace(decklink->get_source_id(), decklink);
                 ctx->source_info.emplace(decklink->get_source_id(), s);
             }

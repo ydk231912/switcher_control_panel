@@ -135,16 +135,21 @@ namespace seeder::decklink
      * @brief Construct a new decklink input object.
      * initialize deckllink device and start input stream
      */
-    decklink_input::decklink_input(const std::string &source_id, int device_id, video_format_desc& format_desc)
+    decklink_input::decklink_input(const std::string &source_id, int device_id, video_format_desc& format_desc, const std::string &pixel_format)
     :input(source_id),
     decklink_index_(device_id - 1)
     ,format_desc_(format_desc)
-    ,video_flags_(bmdVideoInputFlagDefault)
+    ,video_flags_(bmdVideoInputFlagDefault | bmdVideoInputEnableFormatDetection)
     ,pixel_format_(bmdFormat10BitYUV) //bmdFormat8BitYUV
     {
         sample_type_ = bmdAudioSampleType16bitInteger; //bmdAudioSampleType32bitInteger;
         if(format_desc_.audio_samples > 16)
             sample_type_ = bmdAudioSampleType32bitInteger;
+        if (pixel_format == "bmdFormat8BitYUV") {
+            pixel_format_ = bmdFormat8BitYUV;
+        } /* else if (pixel_format == "bmdFormat10BitRGB") {
+            pixel_format_ = bmdFormat10BitRGB;
+        } */
         
 
         HRESULT result;
@@ -184,11 +189,13 @@ namespace seeder::decklink
 
         audio_producer = std::make_unique<decklink_audio_producer>(this);
 
-        int frame_linesize = ((display_mode_->GetWidth() + 47) / 48) * 128;
-        int frame_buf_height = format_desc_.height / format_desc_.field_count;
-        av_buffer_pool.reset(av_buffer_pool_init(frame_linesize * frame_buf_height, NULL), [] (AVBufferPool *pool) {
-            av_buffer_pool_uninit(&pool);
-        });
+        if (format_desc.field_count > 1) {
+            int frame_linesize = ((display_mode_->GetWidth() + 47) / 48) * 128; // pixel_format_ == bmdFormat10BitYUV
+            int frame_buf_height = format_desc_.height / format_desc_.field_count;
+            av_buffer_pool.reset(av_buffer_pool_init(frame_linesize * frame_buf_height, NULL), [] (AVBufferPool *pool) {
+                av_buffer_pool_uninit(&pool);
+            });
+        }
     }
 
     decklink_input::~decklink_input()
@@ -304,14 +311,35 @@ namespace seeder::decklink
      */
     HRESULT decklink_input::VideoInputFormatChanged(BMDVideoInputFormatChangedEvents events, 
                                                         IDeckLinkDisplayMode* mode, 
-                                                        BMDDetectedVideoInputFormatFlags format_flags)
+                                                        BMDDetectedVideoInputFormatFlags detectedSignalFlags)
     {
-        display_mode_ = mode;
-        input_->StopStreams();
-        input_->EnableVideoInput(mode->GetDisplayMode(), pixel_format_, video_flags_);
-        input_->EnableAudioInput(bmdAudioSampleRate48kHz, sample_type_, format_desc_.audio_channels);
-        input_->FlushStreams();
-        input_->StartStreams();
+        // display_mode_ = mode;
+        // input_->StopStreams();
+        // input_->EnableVideoInput(mode->GetDisplayMode(), pixel_format_, video_flags_);
+        // input_->EnableAudioInput(bmdAudioSampleRate48kHz, sample_type_, format_desc_.audio_channels);
+        // input_->FlushStreams();
+        // input_->StartStreams();
+
+        const char *detect_pixel_format = "";
+        if (detectedSignalFlags & bmdDetectedVideoInputRGB444)
+        {
+            if (detectedSignalFlags & bmdDetectedVideoInput8BitDepth)
+                detect_pixel_format = "bmdFormat8BitARGB";
+            else if (detectedSignalFlags & bmdDetectedVideoInput10BitDepth)
+                detect_pixel_format = "bmdFormat10BitRGB";
+            else if (detectedSignalFlags & bmdDetectedVideoInput12BitDepth)
+                detect_pixel_format = "bmdFormat12BitRGB";
+        }
+        else if (detectedSignalFlags & bmdDetectedVideoInputYCbCr422)
+        {
+            if (detectedSignalFlags & bmdDetectedVideoInput8BitDepth)
+                detect_pixel_format = "bmdFormat8BitYUV";
+            else if (detectedSignalFlags & bmdDetectedVideoInput10BitDepth)
+                detect_pixel_format = "bmdFormat10BitYUV";
+        }
+        const char *mode_name = nullptr;
+        mode->GetName(&mode_name);
+        logger->info("decklink_input VideoInputFormatChanged index={} detect_pixel_format={} mode_name={}", decklink_index_, detect_pixel_format, mode_name);
         
         return S_OK;
     }

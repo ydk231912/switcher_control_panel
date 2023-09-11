@@ -98,6 +98,7 @@ struct st_app_tx_source
   int device_id; // decklink
   std::string file_url;
   std::string video_format;
+  std::string pixel_format;
 };
 
 struct st_app_rx_output
@@ -138,6 +139,7 @@ struct st_app_tx_video_session {
   bool st20_second_field;
   struct st20_pgroup st20_pg;
   uint16_t lines_per_slice;
+  enum st20_fmt pixel_format;
 
   int width;
   int height;

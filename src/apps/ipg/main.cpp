@@ -243,8 +243,8 @@ static void init_decklink(st_app_context *ctx) {
     auto &manager = seeder::decklink::device_manager::instance();
     for (auto &device : manager.get_device_status()) {
         logger->info(
-            "decklink index={} display_name={} persistent_id={} device_label={}",
-            device.index, device.display_name, device.persistent_id, device.device_label
+            "decklink index={} display_name={} persistent_id={} device_label={} support_format_dection={}",
+            device.index, device.display_name, device.persistent_id, device.device_label, device.support_format_dection
         );
     }
     manager.set_id_map(ctx->decklink_id_map);

@@ -60,7 +60,9 @@ public:
                 throw std::runtime_error("QueryInterface IID_IDeckLinkProfileAttributes failed");
             }
             auto &decklink_attributes = decklink_attributes_list.emplace_back(p_decklink_attributes, false);
-
+            bool support_format_dection = false;
+            decklink_attributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection, &support_format_dection);
+            device_status.support_format_dection = support_format_dection;
             if (decklink_attributes->GetInt(BMDDeckLinkPersistentID, &device_status.persistent_id) == S_OK) {
                 const char *deviceLabelStr;
 
