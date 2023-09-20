@@ -10,6 +10,8 @@
  *
  */
 
+#include <json/value.h>
+#include <json/writer.h>
 #include <string>
 #include <future>
 #include <exception>
@@ -34,6 +36,7 @@
 #include "rx_audio.h"
 #include "http_server.h"
 #include "app_stat.h"
+#include <mtl/mtl_seeder_api.h>
 
 extern "C"
 {
@@ -188,6 +191,25 @@ static void st_app_sig_handler(int signo)
     return;
 }
 
+namespace {
+
+
+class JsonObjectDeleter {
+public:
+  void operator()(json_object *o) {
+    json_object_put(o);
+  }
+};
+
+std::unique_ptr<json_object, JsonObjectDeleter> convert_json_object(const Json::Value &v) {
+    Json::FastWriter writer;
+    auto s = writer.write(v);
+    return std::unique_ptr<json_object, JsonObjectDeleter>(json_tokener_parse(s.c_str()));
+}
+
+
+} // namespace
+
 // check args are correct
 int st_app_args_check(struct st_app_context *ctx)
 {
@@ -234,6 +256,15 @@ int st_app_args_check(struct st_app_context *ctx)
     if(ctx->enable_hdr_split)
     {
         ctx->para.nb_rx_hdr_split_queues = ctx->rx_video_sessions.size();
+    }
+
+    auto &ptp_config = ctx->json_ctx->json_root["ptp_config"];
+    if (ptp_config.isObject()) {
+        auto ptp_config_obj = convert_json_object(ptp_config);
+        if (ptp_config_obj && mtl_seeder_set_ptp_params(ptp_config_obj.get())) {
+            logger->error("mtl_seeder_set_ptp_params failed");
+            return -1;
+        }
     }
 
     return 0;

@@ -26,6 +26,8 @@
 #include "parse_json.h"
 #include "app_session.h"
 #include "app_stat.h"
+#include "mtl/mtl_seeder_api.h"
+#include <json.h>
 
 using httplib::Request;
 using httplib::Response;
@@ -144,6 +146,13 @@ public:
     ~app_status_monitor() {
         stop();
     }
+};
+
+class JsonObjectDeleter {
+public:
+  void operator()(json_object *o) {
+    json_object_put(o);
+  }
 };
 
 }
@@ -304,12 +313,21 @@ private:
         json_ok(res, status);
     }
 
+    void get_ptp_dev_info(const Request &req, Response &res) {
+        json_object *tmp_json = nullptr;
+        mtl_seeder_get_ptp_dev_info(app_ctx->st, &tmp_json);
+        std::unique_ptr<json_object, JsonObjectDeleter> ptp_info(tmp_json);
+        json_ok(res, json_object_to_json_string(ptp_info.get()));
+    }
+
     void save_config_file() {
         try {
             Json::Reader reader;
             Json::Value config_json;
             reader.parse(read_file_to_string(app_ctx->config_file_path), config_json);
-            app_ctx->json_ctx->json_root["interfaces"] = config_json["interfaces"];
+            // app_ctx->json_ctx->json_root["interfaces"] = config_json["interfaces"];
+            config_json["tx_sessions"] = app_ctx->json_ctx->json_root["tx_sessions"];
+            config_json["rx_sessions"] = app_ctx->json_ctx->json_root["rx_sessions"];
             Json::FastWriter writer;
             std::string output = writer.write(app_ctx->json_ctx->json_root);
             write_string_to_file(app_ctx->config_file_path, output);
@@ -354,6 +372,11 @@ private:
     static void json_ok(Response& res) {
         res.status = 200;
         res.set_content("{}", "application/json");
+    }
+
+    static void json_ok(Response& res, const char *json_content) {
+        res.status = 200;
+        res.set_content(json_content, "application/json");
     }
     
     static void json_ok(Response& res, const std::string &json_content) {
@@ -480,6 +503,10 @@ void st_http_server::start() {
 
     server.Get("/api/status", [&p] (const Request& req, Response& res) {
         p.get_status(req, res);
+    });
+
+    server.Get("/api/ptp_dev_info", [&p] (const Request& req, Response& res) {
+        p.get_ptp_dev_info(req, res);
     });
 
     p.startup_time = std::chrono::system_clock::now();

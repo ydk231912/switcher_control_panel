@@ -2342,7 +2342,7 @@ std::error_code st_app_parse_json(st_json_context_t* ctx, const char* filename) 
     return st_app_errc::JSON_PARSE_FAIL;
   }
   const char *json_content = json_object_to_json_string(root_object.get());
-  logger->info("st_app_parse_json(): {}", json_content);
+  logger->debug("st_app_parse_json(): {}", json_content);
   st_app_errc ret = st_app_parse_json(ctx, root_object.get());
   set_json_root(ctx, root_object.get());
   return ret;
