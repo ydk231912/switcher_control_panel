@@ -278,7 +278,16 @@ static void init_decklink(st_app_context *ctx) {
             device.index, device.display_name, device.persistent_id, device.device_label, device.support_format_dection
         );
     }
-    manager.set_id_map(ctx->decklink_id_map);
+    const auto &devices = ctx->json_ctx->json_root["decklink"]["devices"];
+    if (devices.isArray()) {
+        std::vector<int> id_map;
+        for (Json::Value::ArrayIndex i = 0; i < devices.size(); ++i) {
+            id_map.push_back(devices[i]["id"].asInt());
+        }
+        manager.set_id_map(id_map);
+    } else {
+        manager.set_id_map(ctx->decklink_id_map);
+    }
 }
 
 // initialize app context

@@ -119,6 +119,13 @@ void device_manager::set_id_map(const std::string &_id_map) {
     seeder::core::logger->info("decklink id_map={}", p_impl->id_map);
 }
 
+void device_manager::set_id_map(const std::vector<int> &_id_map) {
+    for (std::size_t i = 0; i < _id_map.size(); ++i) {
+        p_impl->id_map[i] = _id_map[i] - 1;
+    }
+}
+
+
 
 } // namespace decklink
 

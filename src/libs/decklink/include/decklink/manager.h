@@ -33,6 +33,7 @@ public:
     IDeckLink * get_decklink(int index);
 
     void set_id_map(const std::string &_id_map);
+    void set_id_map(const std::vector<int> &_id_map);
 
     // non copy, non move
     device_manager(const device_manager &) = delete;

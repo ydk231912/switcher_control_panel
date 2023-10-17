@@ -2637,7 +2637,7 @@ void fmts_set_decklink_devices(st_json_context_t* ctx, Json::Value &root) {
     for (Json::Value::ArrayIndex i = 0; i < devices.size(); ++i) {
       auto &device = devices[i];
       auto device_name = device["display_name"].asString();
-      auto device_id = device["id"].asString();
+      auto device_id = std::to_string(i + 1);
       root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, device_id));
       root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, device_id));
     }
