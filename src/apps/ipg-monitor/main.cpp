@@ -14,7 +14,7 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/logger.h>
 #include <spdlog/fmt/ranges.h>
-#include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <boost/system/error_code.hpp>
 
@@ -110,12 +110,19 @@ void json_load_string(Json::Value &value, const std::string &s) {
 class Monitor {
 public:
     Monitor(int argc, char **argv) {
-        logger = spdlog::stdout_logger_mt("monitor");
+        std::vector<spdlog::sink_ptr> sinks;
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        sinks.push_back(console_sink);
+        logger = std::make_shared<spdlog::logger>("monitor", sinks.begin(), sinks.end());
         handle_args(argc, argv);
+
+        nmcli_path = bp::search_path("nmcli");
+        poweroff_path = bp::search_path("poweroff");
     }
 
     void run() {
         try {
+            start_cmd_thread();
             load_config();
             start_http_server();
             start_ipg_process();
@@ -128,6 +135,9 @@ public:
 
     ~Monitor() {
         this->stop();
+
+        logger->debug("wait cmd_thread stop");
+        cmd_thread.join();
 
         logger->debug("wait http server thread stop");
         http_server_thread.join();
@@ -162,6 +172,9 @@ private:
         Json::Value json;
         json_load_string(json, read_file_to_string(ipg_config_file_path));
         config_json["interfaces"] = json["interfaces"];
+        config_json["lan_interfaces"] = json["lan_interfaces"];
+
+        load_lan_interfaces_info();
     }
 
     void start_http_server() {
@@ -198,6 +211,18 @@ private:
 
         http_server.Post("/monitor-api/restart_ipg", [this] (const Request& req, Response& res) {
             restart_ipg(req, res);
+        });
+
+        http_server.Get("/monitor-api/lan_config", [this] (const Request& req, Response& res) {
+            get_lan_interfaces(req, res);
+        });
+
+        http_server.Post("/monitor-api/update_lan_config", [this] (const Request& req, Response& res) {
+            update_lan_interfaces_addr(req, res);
+        });
+
+        http_server.Post("/monitor-api/poweroff", [this] (const Request& req, Response& res) {
+            poweroff(req, res);
         });
 
         http_server_thread = std::thread([&] {
@@ -248,6 +273,15 @@ private:
     void process_io() {
         auto work_guard = asio::make_work_guard(io_context); // run forever, until io_context.stop() is called
         io_context.run();
+    }
+
+    void start_cmd_thread() {
+        cmd_thread = std::thread([this] {
+            logger->info("cmd_thread start");
+            auto work_guard = asio::make_work_guard(cmd_io_context);
+            cmd_io_context.run();
+            logger->info("cmd_thread finish");
+        });
     }
 
     void save_config() {
@@ -326,6 +360,136 @@ private:
         json_ok(res, config);
     }
 
+    void get_lan_interfaces(const Request &req, Response &res) {
+        Json::Value config;
+        {
+            auto lock = acquire_lock();
+            config = config_json["lan_interfaces"];
+        }
+        json_ok(res, config);
+    }
+
+    static bool is_cidr_ip_addr(const std::string &s) {
+        /* xxx.xxx.xxx.xxx/xx
+        ok:
+            192.168.123.209/24
+            192.168.123.238/32
+        err:
+            192.168.123.209
+            192.168.123
+            asdf/23
+        */
+        std::vector<std::string> vec;
+        boost::split(vec, s, boost::is_any_of("/"));
+        if (vec.size() != 2) {
+            return false;
+        }
+        std::string addr = vec[0];
+        try {
+            int suffix = std::stoi(vec[1]);
+            if (suffix < 0 || suffix > 32) {
+                return false;
+            }
+        } catch (std::exception &e) {
+            return false;
+        }
+        boost::system::error_code ec;
+        asio::ip::make_address_v4(addr, ec);
+        if (ec) {
+            return false;
+        }
+        return true;
+    }
+
+    void update_lan_interfaces_addr(const Request &req, Response &res) {
+        auto json_body = parse_json_body(req);
+
+        if (!json_body.isArray()) {
+            json_err(res, "require array");
+            return;
+        }
+
+        for (Json::Value::ArrayIndex i = 0; i < json_body.size(); ++i) {
+            auto &p = json_body[i];
+            if (!p.isObject()) {
+                json_err(res, "require object");
+                return;
+            }
+            auto ip_addr = p["ip_address"].asString();
+            if (!ip_addr.empty() && !is_cidr_ip_addr(ip_addr)) {
+                json_err(res, "invalid ip address: " + ip_addr);
+                return;
+            }
+        }
+
+        auto lock = acquire_lock();
+        Json::Value lan_interfaces = config_json["lan_interfaces"];
+
+        for (Json::Value::ArrayIndex i = 0; i < json_body.size(); ++i) {
+            auto &p = json_body[i];
+            auto connection_id = p["connection_id"].asString();
+            int inf_index = -1;
+            for (Json::Value::ArrayIndex j = 0; j < lan_interfaces.size(); ++j) {
+                if (lan_interfaces[j]["connection_id"] == connection_id) {
+                    inf_index = j;
+                    break;
+                }
+            }
+            if (inf_index < 0) {
+                continue;
+            }
+
+            auto &inf = lan_interfaces[inf_index];
+            
+            auto ip_addr = p["ip_address"].asString();
+
+            std::string method = "manual";
+            if (p["method"].isString()) {
+                method = p["method"].asString();
+            }
+
+            if (method == inf["method"].asString() && ip_addr == inf["ip_address"].asString()) {
+                continue; // no modified
+            }
+
+            std::vector<std::string> args {
+                "connection", "modify", connection_id,
+                "connection.autoconnect", "true",
+                "ipv4.method", method
+            };
+
+            if (method == "manual") {
+                if (ip_addr.empty()) {
+                    continue;
+                }
+                args.push_back("ipv4.addresses");
+                args.push_back(ip_addr);
+            }
+
+            try {
+                exec_cmd(nmcli_path, args);
+            } catch (std::exception &e) {
+                logger->error("update_lan_interfaces_addr exec_cmd exception: {}", e.what());
+                continue;
+            }
+            logger->debug("update_lan_interfaces_addr: nmcli connection modify {} ipv4.addresses {}", connection_id, ip_addr);
+
+            std::vector<std::string> up_args {
+                "connection", "up", connection_id
+            };
+            try {
+                exec_cmd(nmcli_path, up_args);
+            } catch (std::exception &e) {
+                logger->error("update_lan_interfaces_addr exec_cmd exception: {}", e.what());
+                continue;
+            }
+        }
+
+        nmcli_load_connection_info(config_json["lan_interfaces"]);
+
+        json_ok(res);
+    }
+
     void start_ipg(const Request &req, Response &res) {
         auto lock = acquire_lock();
         if (!(process_status == ProcessStatus::STARTED || process_status == ProcessStatus::RUNNING)) {
@@ -350,6 +514,15 @@ private:
         stop_ipg_process();
         start_ipg_process();
         json_ok(res);
+    }
+
+    void poweroff(const Request &req, Response &res) {
+        auto lock = acquire_lock();
+        logger->info("poweroff by user");
+        stop_ipg_process();
+        json_ok(res);
+        bp::child process(poweroff_path, cmd_io_context);
+        process.detach();
     }
 
     static void json_ok(Response& res) {
@@ -421,7 +594,7 @@ private:
                         process_status.compare_exchange_strong(expected, ProcessStatus::RUNNING);
                     }
                 } else {
-                    logger->debug("start_ipg_health_check_thread client.Get(): {} {}", url, httplib::to_string(res.error()));
+                    logger->trace("start_ipg_health_check_thread client.Get(): {} {}", url, httplib::to_string(res.error()));
                 }
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -444,7 +617,103 @@ private:
         }
 
         io_context.stop();
+        cmd_io_context.stop();
         logger->info("stopped");
+    }
+
+    static std::vector<std::string> split_lines(const std::string &s) {
+        std::istringstream iss(s);
+        std::string part;
+        std::vector<std::string> result;
+        while (std::getline(iss, part)) {
+            result.push_back(std::move(part));
+        }
+        return result;
+    }
+
+    static std::string join(const std::vector<std::string> &v, const std::string &sep) {
+        std::ostringstream oss;
+        for (std::size_t i = 0; i < v.size(); ++i) {
+            if (i > 0) {
+                oss << sep;
+            }
+            oss << v[i];
+        }
+        return oss.str();
+    }
+
+    void load_lan_interfaces_info() {
+        Json::Value lan_interfaces;
+        {
+            auto lock = acquire_lock();
+            lan_interfaces = config_json["lan_interfaces"];
+        }
+        nmcli_load_connection_info(lan_interfaces);
+        {
+            auto lock = acquire_lock();
+            config_json["lan_interfaces"] = lan_interfaces;
+        }
+    }
+
+    void nmcli_load_connection_info(Json::Value &interfaces) {
+        if (!interfaces.isArray()) {
+            return;
+        }
+        std::vector<std::string> props {
+            "ipv4.method",
+            "ipv4.addresses"
+        };
+        std::string props_str = join(props, ",");
+        for (Json::Value::ArrayIndex i = 0; i < interfaces.size(); ++i) {
+            auto &inf = interfaces[i];
+            if (!inf.isObject() || !inf["connection_id"].isString()) {
+                continue;
+            }
+            auto connection_id = inf["connection_id"].asString();
+            std::vector<std::string> args {
+                "-g", props_str,
+                "connection", "show", connection_id
+            };
+            std::string std_out;
+            try {
+                std_out = exec_cmd(nmcli_path, args);
+            } catch (std::exception &e) {
+                logger->error("nmcli_get_connection_info exception: {}", e.what());
+                continue;
+            }
+            logger->debug("nmcli_get_connection_info: nmcli -g {} connection show {} std_out={}", props_str, connection_id, std_out);
+            if (std_out.empty()) {
+                continue;
+            }
+            auto lines = split_lines(std_out);
+            if (lines.size() != props.size()) {
+                continue;
+            }
+            Json::Value prop_json;
+            for (std::size_t i = 0; i < props.size(); ++i) {
+                prop_json[props[i]] = lines[i];
+            }
+
+            inf["method"] = prop_json["ipv4.method"];
+            inf["ip_address"] = prop_json["ipv4.addresses"];
+        }
+    }
+
+    std::string exec_cmd(const fs::path &path, const std::vector<std::string> &args) {
+        std::future<std::string> std_out;
+        std::future<std::string> std_err;
+        bp::child process(
+            path, 
+            args, 
+            cmd_io_context, 
+            bp::std_out > std_out,
+            bp::std_err > std_err);
+        process.wait();
+        int exit_code = process.exit_code();
+        if (exit_code) {
+            logger->error("exec_cmd {} exit_code={} std_err={}", path.string(), exit_code, std_err.get());
+        }
+        return std_out.get();
     }
 private:
     enum class ProcessStatus {
@@ -464,6 +733,8 @@ private:
     int ipg_http_port;
     bp::child ipg_process;
     asio::io_context io_context;
+    std::thread cmd_thread;
+    asio::io_context cmd_io_context;
     Json::Value config_json;
     std::mutex mutex;
     std::atomic<ProcessStatus> process_status = ProcessStatus::NOT_RUNNING;
@@ -471,6 +742,8 @@ private:
     httplib::Server http_server;
     std::thread http_server_thread;
     std::thread ipg_health_check_thread;
+    fs::path nmcli_path;
+    fs::path poweroff_path;
 };
 
 

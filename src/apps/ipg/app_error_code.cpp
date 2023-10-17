@@ -22,6 +22,7 @@ static std::string map_code_to_string(st_app_errc c) {
     case st_app_errc::DECKLINK_DEVICE_ID_REQUIRED: return "Device ID Required";
     case st_app_errc::MULTICAST_IP_ADDRESS_REQUIRED: return "Invalid IP Address. Multicast Address is required";
     case st_app_errc::PAYLOAD_TYPE_REQUIRED: return "RTP Payload Type is required";
+    case st_app_errc::UNSUPPORTED_VIDEO_FORMAT: return "unsupported video format";
     default:
       return "未知异常";
     }

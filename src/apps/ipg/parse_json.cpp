@@ -2631,6 +2631,27 @@ struct st_app_json_fmt_group {
   }
 };
 
+void fmts_set_decklink_devices(st_json_context_t* ctx, Json::Value &root) {
+  if (ctx->json_root["decklink"].isObject() && ctx->json_root["decklink"]["devices"].isArray()) {
+    const auto &devices = ctx->json_root["decklink"]["devices"];
+    for (Json::Value::ArrayIndex i = 0; i < devices.size(); ++i) {
+      auto &device = devices[i];
+      auto device_name = device["display_name"].asString();
+      auto device_id = device["id"].asString();
+      root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, device_id));
+      root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, device_id));
+    }
+  } else {
+    auto &decklink_manager = seeder::decklink::device_manager::instance();
+    int decklink_device_count = decklink_manager.get_device_status().size();
+    for (int i = 0; i < decklink_device_count; ++i) {
+      auto device_name = "SDI " + std::to_string(i + 1);
+      root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
+      root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
+    }
+  }
+}
+
 } // namespace
 
 Json::Value st_app_get_fmts(st_json_context_t* ctx) {
@@ -2675,13 +2696,7 @@ Json::Value st_app_get_fmts(st_json_context_t* ctx) {
     }
   }
 
-  auto &decklink_manager = seeder::decklink::device_manager::instance();
-  int decklink_device_count = decklink_manager.get_device_status().size();
-  for (int i = 0; i < decklink_device_count; ++i) {
-    auto device_name = "SDI " + std::to_string(i + 1);
-    root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
-    root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
-  }
+  fmts_set_decklink_devices(ctx, root);
 
   return root;
 }

@@ -8,6 +8,8 @@
 #include <inttypes.h>
 #include <spdlog/common.h>
 
+#include <mtl/mtl_seeder_api.h>
+
 #include "app_base.h"
 #include "core/util/logger.h"
 #include <boost/program_options.hpp>
@@ -99,6 +101,7 @@ enum st_args_cmd {
   ST_ARG_TX_SESSIONS_CNT_MAX,
   ST_ARG_RX_SESSIONS_CNT_MAX,
   ST_ARG_DECKLINK_ID_MAP,
+  ST_ARG_MTL_DETECT_RETRY,
   ST_ARG_MAX,
 };
 
@@ -190,6 +193,7 @@ static struct option st_app_args_options[] = {
     {"tx_sessions_cnt_max", required_argument, 0, ST_ARG_TX_SESSIONS_CNT_MAX},
     {"rx_sessions_cnt_max", required_argument, 0, ST_ARG_RX_SESSIONS_CNT_MAX},
     {"decklink_id_map", required_argument, 0, ST_ARG_DECKLINK_ID_MAP},
+    {"mtl_detect_retry", required_argument, 0, ST_ARG_MTL_DETECT_RETRY},
     {0, 0, 0, 0}};
 
 static int app_args_parse_lcores(struct mtl_init_params* p, char* list) {
@@ -563,6 +567,12 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
         break;
       case ST_ARG_DECKLINK_ID_MAP:
         ctx->decklink_id_map = optarg;
+        break;
+      case ST_ARG_MTL_DETECT_RETRY:
+        {
+          int retry = std::atoi(optarg);
+          mtl_seeder_dev_set_detect_retry(retry);
+        }
         break;
       case '?':
         break;

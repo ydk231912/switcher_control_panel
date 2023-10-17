@@ -21,6 +21,7 @@ enum class st_app_errc {
   INVALID_PAYLOAD_TYPE, // payload type 参数不正确
   PAYLOAD_TYPE_REQUIRED,
   DECKLINK_DEVICE_ID_REQUIRED,
+  UNSUPPORTED_VIDEO_FORMAT
 };
 
 namespace std

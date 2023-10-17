@@ -114,6 +114,49 @@ static void check_empty_id(const std::string &prefix, st_app_context *ctx) {
     check_empty_id(prefix + " rx_session_base", rx_session_base);
 }
 
+static bool is_decklink_device_support_video_format(const Json::Value &device, const std::string &video_format) {
+    if (!device.isObject() || !device["support_video_format"].isArray()) {
+        return true;
+    }
+    auto &supported_video_format = device["support_video_format"];
+    for (Json::Value::ArrayIndex i = 0; i < supported_video_format.size(); ++i) {
+        auto f = supported_video_format[i].asString();
+        if (video_format.find(f) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::error_code check_decklink_video_format(st_app_context *ctx, st_json_context *new_json_ctx) {
+    const auto &devices = ctx->json_ctx->json_root["decklink"]["devices"];
+    if (!devices.isArray()) {
+        return st_app_errc::SUCCESS;
+    }
+    std::unordered_map<int, const Json::Value *> device_map;
+    for (Json::Value::ArrayIndex i = 0; i < devices.size(); ++i) {
+        device_map[devices[i]["id"].asInt()] = &devices[i];
+    }
+    for (auto &[id, tx_source] : ctx->source_info) {
+        auto it = device_map.find(tx_source.device_id);
+        if (it == device_map.end()) {
+            continue;
+        }
+        if (!is_decklink_device_support_video_format(*it->second, tx_source.video_format)) {
+            return st_app_errc::UNSUPPORTED_VIDEO_FORMAT;
+        }
+    }
+    for (auto &[id, rx_output] : ctx->output_info) {
+        auto it = device_map.find(rx_output.device_id);
+        if (it == device_map.end()) {
+            continue;
+        }
+        if (!is_decklink_device_support_video_format(*it->second, rx_output.video_format)) {
+            return st_app_errc::UNSUPPORTED_VIDEO_FORMAT;
+        }
+    }
+    return st_app_errc::SUCCESS;
+}
 
 static std::error_code st_app_check_device_status(st_app_context *ctx, st_json_context *new_json_ctx) {
     std::unordered_map<int, std::string> used_device_id;
@@ -153,6 +196,10 @@ static std::error_code st_app_check_device_status(st_app_context *ctx, st_json_c
     check_empty_id("rx_session_new_base", rx_session_new_base);
     if (check_addr_used(rx_session_base, rx_session_new_base)) {
         return st_app_errc::ADDRESS_CONFLICT;
+    }
+
+    if (auto ec = check_decklink_video_format(ctx, new_json_ctx)) {
+        return ec;
     }
     
     return st_app_errc::SUCCESS;
