@@ -135,9 +135,9 @@ static std::error_code check_decklink_video_format(st_app_context *ctx, st_json_
     }
     std::unordered_map<int, const Json::Value *> device_map;
     for (Json::Value::ArrayIndex i = 0; i < devices.size(); ++i) {
-        device_map[devices[i]["id"].asInt()] = &devices[i];
+        device_map[i + 1] = &devices[i];
     }
-    for (auto &[id, tx_source] : ctx->source_info) {
+    for (auto &tx_source : new_json_ctx->tx_sources) {
         auto it = device_map.find(tx_source.device_id);
         if (it == device_map.end()) {
             continue;
@@ -146,7 +146,7 @@ static std::error_code check_decklink_video_format(st_app_context *ctx, st_json_
             return st_app_errc::UNSUPPORTED_VIDEO_FORMAT;
         }
     }
-    for (auto &[id, rx_output] : ctx->output_info) {
+    for (auto &rx_output : new_json_ctx->rx_output) {
         auto it = device_map.find(rx_output.device_id);
         if (it == device_map.end()) {
             continue;
