@@ -120,6 +120,10 @@ void device_manager::set_id_map(const std::string &_id_map) {
 }
 
 void device_manager::set_id_map(const std::vector<int> &_id_map) {
+    if (_id_map.size() != p_impl->decklink_list.size()) {
+        seeder::core::logger->error("seeder::decklink::device_manager::set_id_map decklink_list size mismatch!");
+        throw std::runtime_error("device_manager::set_id_map");
+    }
     for (std::size_t i = 0; i < _id_map.size(); ++i) {
         p_impl->id_map[i] = _id_map[i] - 1;
     }

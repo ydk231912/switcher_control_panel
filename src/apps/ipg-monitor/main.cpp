@@ -155,7 +155,8 @@ private:
             ("http_port", po::value(&ipg_http_port)->required(), "ipg http port")
             ("ipg_exe", po::value(&ipg_exe_path)->required(), "ipg executable path")
             // ("monitor_config_file", po::value(&monitor_config_file_path)->required(), "monitor config file path")
-            ("config_file", po::value(&ipg_config_file_path)->required(), "ipg config file path");
+            ("config_file", po::value(&ipg_config_file_path)->required(), "ipg config file path")
+            ("enable_auto_restart", po::value(&enable_auto_restart), "enable auto restart ipg");
         po::parsed_options parsed = po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
         ipg_args = po::collect_unrecognized(parsed.options, po::include_positional);
         po::store(parsed, po_vm);
@@ -234,8 +235,11 @@ private:
     }
 
     void start_ipg_process() {
-        if (ipg_process.valid() && ipg_process.running()) {
-            logger->error("start_ipg_process(): ipg is running");
+        if ((ipg_process.valid() && ipg_process.running()) || process_status == ProcessStatus::STARTED) {
+            logger->info("start_ipg_process(): ipg is already running");
+            return;
+        }
+        if (stopped) {
             return;
         }
         auto actual_args = ipg_args;
@@ -270,8 +274,35 @@ private:
         ipg_process.wait();
     }
 
+    void check_and_auto_restart_async() {
+        if (!auto_restart_timer) {
+            return;
+        }
+        auto_restart_timer->expires_after(std::chrono::seconds(5));
+        auto_restart_timer->async_wait([this] (const boost::system::error_code &ec) {
+            if (ec) {
+                logger->debug("auto_restart_timer.async_wait ec={}", ec.message());
+                return;
+            }
+            try {
+                if (!(process_status == ProcessStatus::STARTED || process_status == ProcessStatus::RUNNING)) {
+                    logger->info("check_and_auto_restart_async try start_ipg_process");
+                    auto lock = acquire_lock();
+                    start_ipg_process();
+                }
+            } catch (std::exception &e) {
+                logger->error("check_and_auto_restart_async start_ipg_process error: {}", e.what());
+            }
+            check_and_auto_restart_async();
+        });
+    }
+
     void process_io() {
         auto work_guard = asio::make_work_guard(io_context); // run forever, until io_context.stop() is called
+        if (enable_auto_restart) {
+            auto_restart_timer.reset(new asio::steady_timer(io_context));
+            check_and_auto_restart_async();
+        }
         io_context.run();
     }
 
@@ -739,11 +770,13 @@ private:
     std::mutex mutex;
     std::atomic<ProcessStatus> process_status = ProcessStatus::NOT_RUNNING;
     std::atomic<bool> stopped = false;
+    bool enable_auto_restart = false;
     httplib::Server http_server;
     std::thread http_server_thread;
     std::thread ipg_health_check_thread;
     fs::path nmcli_path;
     fs::path poweroff_path;
+    std::unique_ptr<asio::steady_timer> auto_restart_timer;
 };
 
 
