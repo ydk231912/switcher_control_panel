@@ -439,7 +439,7 @@ private:
             json_err(res, "require array");
             return;
         }
-
+        std::unordered_set<std::string> used_ip_addr;
         for (Json::Value::ArrayIndex i = 0; i < json_body.size(); ++i) {
             auto &p = json_body[i];
             if (!p.isObject()) {
@@ -453,6 +453,19 @@ private:
             }
             if (ip_addr.empty()) {
                 p["ip_address"] = "0.0.0.0/0";
+            } else {
+                auto p = ip_addr.find("/");
+                if (p == std::string::npos) {
+                    json_err(res, "invalid ip address: " + ip_addr);
+                    return;
+                }
+                std::string left_addr = ip_addr.substr(0, p);
+                auto it = used_ip_addr.find(left_addr);
+                if (it != used_ip_addr.end()) {
+                    json_err(res, "IP Address Conflict");
+                    return;
+                }
+                used_ip_addr.insert(left_addr);
             }
         }
 
