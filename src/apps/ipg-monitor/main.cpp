@@ -417,7 +417,7 @@ private:
         }
         std::string addr = vec[0];
         try {
-            int suffix = std::stoi(vec[1]);
+            int suffix = boost::lexical_cast<int>(vec[1]);
             if (suffix < 0 || suffix > 32) {
                 return false;
             }
@@ -450,6 +450,9 @@ private:
             if (!ip_addr.empty() && !is_cidr_ip_addr(ip_addr)) {
                 json_err(res, "invalid ip address: " + ip_addr);
                 return;
+            }
+            if (ip_addr.empty()) {
+                p["ip_address"] = "0.0.0.0/0";
             }
         }
 
