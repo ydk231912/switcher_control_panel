@@ -440,6 +440,7 @@ private:
             return;
         }
         std::unordered_set<std::string> used_ip_addr;
+        std::size_t emtpy_id_count = 0;
         for (Json::Value::ArrayIndex i = 0; i < json_body.size(); ++i) {
             auto &p = json_body[i];
             if (!p.isObject()) {
@@ -452,14 +453,17 @@ private:
                 return;
             }
             if (ip_addr.empty()) {
-                p["ip_address"] = "0.0.0.0/0";
+                p["ip_address"] = ip_addr = "0.0.0.0/0";
+            }
+            auto pos = ip_addr.find("/");
+            if (pos == std::string::npos) {
+                json_err(res, "invalid ip address: " + ip_addr);
+                return;
+            }
+            std::string left_addr = ip_addr.substr(0, pos);
+            if (left_addr == "0.0.0.0") {
+                emtpy_id_count++;
             } else {
-                auto p = ip_addr.find("/");
-                if (p == std::string::npos) {
-                    json_err(res, "invalid ip address: " + ip_addr);
-                    return;
-                }
-                std::string left_addr = ip_addr.substr(0, p);
                 auto it = used_ip_addr.find(left_addr);
                 if (it != used_ip_addr.end()) {
                     json_err(res, "IP Address Conflict");
@@ -467,6 +471,10 @@ private:
                 }
                 used_ip_addr.insert(left_addr);
             }
+        }
+        if (emtpy_id_count == json_body.size()) {
+            json_err(res, "IP Address is required");
+            return;
         }
 
         auto lock = acquire_lock();
