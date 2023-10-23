@@ -146,7 +146,8 @@ void st_app_update_stat(struct st_app_context *ctx) {
         }
     }
 
-    stat["record_time"] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    Json::Int64 record_time_count = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    stat["record_time"] = record_time_count;
     stat["dump_period_s"] = ctx->para.dump_period_s;
 
     ctx->stat = std::move(stat);

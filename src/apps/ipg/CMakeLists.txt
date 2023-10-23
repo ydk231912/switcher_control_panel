@@ -20,8 +20,6 @@ add_executable(
 # aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/json SRC)
 # add_library(calc STATIC ${SRC})
 
-find_package(jsoncpp REQUIRED)
-
 target_link_libraries(
     ipg
     PRIVATE
@@ -37,7 +35,7 @@ target_link_libraries(
     mtl_deps
     jsonc_deps
     spdlog_deps
-    JsonCpp::JsonCpp
+    json_cpp_deps
     httplib
 )
 

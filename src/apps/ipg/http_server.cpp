@@ -173,15 +173,17 @@ private:
         Json::Value root;
         {
             auto lock = acquire_ctx_lock();
-            root.copy(app_ctx->json_ctx->json_root);
+            root = app_ctx->json_ctx->json_root;
         }
         json_ok(res, root);
     }
 
     void get_health(const Request& req, Response& res) {
         Json::Value root;
-        root["startup_time"] = std::chrono::duration_cast<std::chrono::seconds>(startup_time.time_since_epoch()).count();
-        root["startup_duration"] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - startup_time).count();
+        Json::Int64 startup_time_count = std::chrono::duration_cast<std::chrono::seconds>(startup_time.time_since_epoch()).count();
+        root["startup_time"] = startup_time_count;
+        Json::Int64 startup_duration_count = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - startup_time).count();
+        root["startup_duration"] = startup_duration_count;
         json_ok(res, root);
     }
 

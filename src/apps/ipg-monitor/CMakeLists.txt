@@ -3,7 +3,6 @@ find_package(Boost REQUIRED
     filesystem
     program_options
 )
-find_package(jsoncpp REQUIRED)
 
 add_executable(
     ipg-monitor
@@ -19,7 +18,7 @@ target_link_libraries(
     Boost::headers
     Boost::filesystem
     Boost::program_options
-    JsonCpp::JsonCpp
+    json_cpp_deps
     spdlog_deps
 )
 

@@ -69,6 +69,14 @@ find_package(spdlog REQUIRED)
 add_library(spdlog_deps INTERFACE)
 target_link_libraries(spdlog_deps INTERFACE spdlog::spdlog)
 
+find_package(jsoncpp REQUIRED)
+if(jsoncpp_VERSION VERSION_LESS "1.9")
+    message(STATUS "JsonCpp Version: ${jsoncpp_VERSION}")
+    add_library(json_cpp_deps ALIAS jsoncpp_lib)
+else()
+    add_library(json_cpp_deps ALIAS JsonCpp::JsonCpp)
+endif()
+
 add_subdirectory(libs)
 add_subdirectory(apps)
 

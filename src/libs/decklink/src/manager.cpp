@@ -9,8 +9,6 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include <spdlog/fmt/ranges.h>
-
 namespace seeder {
 
 namespace decklink {
@@ -116,7 +114,6 @@ void device_manager::set_id_map(const std::string &_id_map) {
     for (std::size_t i = 0; i < ids.size(); ++i) {
         p_impl->id_map[i] = boost::lexical_cast<std::size_t>(ids[i]) - 1;
     }
-    seeder::core::logger->info("decklink id_map={}", p_impl->id_map);
 }
 
 void device_manager::set_id_map(const std::vector<int> &_id_map) {

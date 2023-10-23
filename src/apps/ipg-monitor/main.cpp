@@ -13,7 +13,7 @@
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/logger.h>
-#include <spdlog/fmt/ranges.h>
+// #include <spdlog/fmt/ranges.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <boost/system/error_code.hpp>
@@ -248,7 +248,7 @@ private:
         actual_args.emplace_back("--config_file");
         actual_args.emplace_back(ipg_config_file_path);
 
-        logger->info("start_ipg_process(): ipg_exe_path={} args={}", ipg_exe_path, spdlog::fmt_lib::join(actual_args, " "));
+        logger->info("start_ipg_process(): ipg_exe_path={} args={}", ipg_exe_path, join(actual_args, " "));
         auto old_pid = std::make_shared<bp::pid_t>(ipg_process.id());
         ipg_process = bp::child(ipg_exe_path, actual_args, io_context, bp::on_exit([this, old_pid](int exit, const std::error_code& ec) {
             logger->info("process exited with code {}", exit);
