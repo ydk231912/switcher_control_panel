@@ -8,9 +8,7 @@ add_library(
     src/util/buffer.cpp
     src/util/color_conversion.cpp
     src/util/fs.cpp
-    src/util/lodepng.cpp
     src/util/logger.cpp
-    src/util/png_writer.cpp
     src/util/uuid.cpp
     src/video_format.cpp
 )
