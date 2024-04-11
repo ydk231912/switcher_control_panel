@@ -548,7 +548,7 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_HTTP_SERVER_PORT:
         ctx->http_port = std::atoi(optarg);
         break;
-      case ST_ARG_TX_SESSIONS_CNT_MAX:
+      /* case ST_ARG_TX_SESSIONS_CNT_MAX:
         {
           int cnt = std::atoi(optarg);
           if (cnt > 0) {
@@ -564,16 +564,16 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
           }
         }
         
-        break;
+        break; */
       case ST_ARG_DECKLINK_ID_MAP:
         ctx->decklink_id_map = optarg;
         break;
-      case ST_ARG_MTL_DETECT_RETRY:
+      /* case ST_ARG_MTL_DETECT_RETRY:
         {
           int retry = std::atoi(optarg);
           mtl_seeder_dev_set_detect_retry(retry);
         }
-        break;
+        break; */
       case '?':
         break;
       default:

@@ -216,41 +216,21 @@ int st_app_args_check(struct st_app_context *ctx)
     if (!ctx->json_ctx) {
         return -1;
     }
-    if(ctx->json_ctx->tx_video_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||
-        ctx->json_ctx->tx_st22p_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||
-        ctx->json_ctx->tx_st20p_sessions.size() > ST_APP_MAX_TX_VIDEO_SESSIONS ||
-        ctx->json_ctx->tx_audio_sessions.size() > ST_APP_MAX_TX_AUDIO_SESSIONS ||
-        ctx->json_ctx->tx_anc_sessions.size() > ST_APP_MAX_TX_ANC_SESSIONS ||
-        ctx->json_ctx->rx_video_sessions.size() > ST_APP_MAX_RX_VIDEO_SESSIONS ||
-        ctx->json_ctx->rx_st22p_sessions.size() > ST_APP_MAX_RX_VIDEO_SESSIONS ||
-        ctx->json_ctx->rx_st20p_sessions.size() > ST_APP_MAX_RX_VIDEO_SESSIONS ||
-        ctx->json_ctx->rx_audio_sessions.size() > ST_APP_MAX_RX_AUDIO_SESSIONS ||
-        ctx->json_ctx->rx_anc_sessions.size() > ST_APP_MAX_RX_ANC_SESSIONS)
-    {
-        return -1;
-    }
-    if (ctx->para.tx_sessions_cnt_max == 0) {
-        ctx->para.tx_sessions_cnt_max = ctx->json_ctx->tx_video_sessions.size() + ctx->json_ctx->tx_audio_sessions.size() +
-                                        ctx->json_ctx->tx_anc_sessions.size() +
-                                        ctx->json_ctx->tx_st20p_sessions.size() + ctx->json_ctx->tx_st22p_sessions.size();
-    }
-    if (ctx->para.rx_sessions_cnt_max == 0) {
-        ctx->para.rx_sessions_cnt_max = ctx->json_ctx->rx_video_sessions.size() + ctx->json_ctx->rx_audio_sessions.size() +
-                                        ctx->json_ctx->rx_anc_sessions.size() +
-                                        ctx->json_ctx->rx_st22p_sessions.size() + ctx->json_ctx->rx_st20p_sessions.size();
-    }
-    logger->info("para.tx_sessions_cnt_max={} para.rx_sessions_cnt_max={}", ctx->para.tx_sessions_cnt_max, ctx->para.rx_sessions_cnt_max);
-    
-
+    int max_tx_queue_count = 16 * 4; // 16 路 * 2 (video,audio) * 2 (冗余)
+    int max_rx_queue_count = 16 * 4;
+#if MTL_VERSION_MAJOR < 23
+    ctx->para.tx_sessions_cnt_max = max_tx_queue_count;
+    ctx->para.rx_sessions_cnt_max = max_rx_queue_count;
+#endif
     for(int i = 0; i < ctx->para.num_ports; i++)
     {
         ctx->para.pmd[i] = mtl_pmd_by_port_name(ctx->para.port[i]);
-        if(ctx->para.tx_sessions_cnt_max > ctx->para.rx_sessions_cnt_max) {
-            ctx->para.xdp_info[i].queue_count = ctx->para.tx_sessions_cnt_max;
-        }
-        else {
-            ctx->para.xdp_info[i].queue_count = ctx->para.rx_sessions_cnt_max;
-        }
+#if MTL_VERSION_MAJOR >= 23
+        ctx->para.tx_queues_cnt[i] = max_tx_queue_count;
+        ctx->para.rx_queues_cnt[i] = max_rx_queue_count;
+#else
+        ctx.params.xdp_info[i].queue_count = max_tx_queue_count + max_rx_queue_count;
+#endif
     }
 
     if(ctx->enable_hdr_split)
