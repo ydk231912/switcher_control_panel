@@ -10,6 +10,8 @@
 #include "core/util/fs.h"
 #include <cstring>
 #include <initializer_list>
+#include <json-c/json_object.h>
+#include <json-c/json_types.h>
 #include <json/reader.h>
 #include <json/value.h>
 #include <json_object.h>
@@ -431,6 +433,28 @@ static st_app_errc st_json_parse_interfaces(json_object* interface_obj,
   return st_app_errc::SUCCESS;
 }
 
+static st_app_errc parse_array_device_id(json_object* obj,st_app_tx_output_sdi* base)
+{
+  int deviceid = json_object_get_int(st_json_object_object_get(obj, "device_id"));
+  if(device_id <= 0)
+  {
+    return st_app_errc::JSON_PARSE_FAIL;
+  }
+  base->device_id = deviceid;
+  return st_app_errc::SUCCESS;
+}
+
+static void parse_array_enable(json_object* obj,st_app_tx_output_sdi* base)
+{
+  json_object* enable_obj=st_json_object_object_get(obj, "enable");
+  bool enable = true;
+  if(enable_obj)
+  {
+    enable = json_object_get_boolean(enable_obj);
+  }
+  base->enable = enabel;
+}
+
 static st_app_errc parse_base_udp_port(json_object* obj, st_json_session_base_t* base, int idx) {
   int start_port = json_object_get_int(st_json_object_object_get(obj, "start_port"));
   if (start_port <= 0 || start_port > 65535) {
@@ -638,6 +662,25 @@ static st_app_errc st_json_parse_tx_video(int idx, json_object* video_obj,
   /* parse video url */
   // ret = parse_url(video_obj, "video_url", video->info.video_url);
   // ERRC_EXPECT_SUCCESS(ret);
+
+  return st_app_errc::SUCCESS;
+}
+
+static st_app_errc st_json_parse_tx_outputsdi(json_object* outputsdiobj,st_app_tx_output_sdi* outputsdi)
+{
+  if(outputsdiobj == NULL || outputsdi == NULL)
+  {
+    logger->error("{}, can not parse tx outputsdi session", __func__);
+    return st_app_errc::JSON_NULL;
+  }
+  st_app_errc ret;
+
+  /* parse device_id */
+  ret = parse_array_device_id(outputsdiobj,outputsdi);
+  ERRC_EXPECT_SUCCESS(ret);
+
+  /* parse enable */
+  parse_array_enable(outputsdiobj,outputsdi);
 
   return st_app_errc::SUCCESS;
 }
@@ -1683,6 +1726,7 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
     int num_anc = 0;
     int num_st22p = 0;
     int num_st20p = 0;
+    int num_outputsdi = 0;
 
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
       json_object* tx_group = json_object_array_get_idx(tx_group_array, i);
@@ -1732,6 +1776,17 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       } else {
         logger->error("{}, can not parse interface_array", __func__);
         return st_app_errc::JSON_PARSE_FAIL;
+      }
+
+      /* parse tx outputsdi sessions */
+      json_object* outputsdi_array = st_json_object_object_get(tx_group, "outputsdi");
+      if(outputsdi_array != NULL && json_object_get_type(outputsdi_array)==json_type_array)
+      {
+        for(int j=0;j<json_object_array_length(outputsdi_array);++i){
+          json_object* outputsdi_session = json_object_array_get_idx(outputsdi_array, j);
+          ret = st_json_parse_tx_outputsdi(outputsdi_session,&ctx->tx_outputsdi[num_outputsdi]);
+          num_outputsdi++;
+        }
       }
 
       /* parse tx video sessions */

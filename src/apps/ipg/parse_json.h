@@ -15,6 +15,7 @@
 #include <vector>
 #include <memory>
 
+#include "app_base.h"
 #include "app_platform.h"
 #include "core/video_format.h"
 #include "fmt.h"
@@ -220,7 +221,7 @@ typedef struct st_json_context {
 
   std::vector<struct st_app_tx_source> tx_sources;
   std::vector<struct st_app_rx_output> rx_output;
-
+  std::vector<struct st_app_tx_output_sdi> tx_outputsdi;
   Json::Value json_root;
 
   ~st_json_context();

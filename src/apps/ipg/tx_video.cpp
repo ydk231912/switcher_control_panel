@@ -3,6 +3,7 @@
 #include <exception>
 #include <memory>
 
+#include "app_base.h"
 #include "tx_video.h"
 #include "core/util/logger.h"
 #include "core/stream/input.h"
@@ -258,6 +259,19 @@ static void* app_tx_video_frame_thread(void* arg)
     logger->info("{}({}), stop", __func__, idx);
 
     return NULL;
+} 
+ 
+static int app_tx_video_sdi_init(struct st_app_context* ctx, st_app_tx_source *source,
+                             struct st_app_tx_video_sdi_session *s) 
+{
+    int ret;
+    char name[32];
+
+    // tx video source
+    s->tx_source = ctx->tx_sources[source->id];
+    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[source->id]);
+    snprintf(name, 32, "TX Video SDI %d", s->source_info->device_id);
+    return 0;
 }
 
 static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t* video,
@@ -396,6 +410,15 @@ static int st_app_tx_video_session_init(st_app_context* ctx, st_json_video_sessi
     return ret;
 }
 
+static int st_app_tx_video_sdi_session_init(st_app_context* ctx, st_app_tx_source *json_source, st_app_tx_video_sdi_session *s) {
+    int ret = 0;
+    
+    ret = app_tx_video_sdi_init(ctx, json_source, s);
+    if (ret < 0) logger->error("{}, app_tx_video_sdi_init fail {}", __func__, ret);
+    return ret;
+}
+
+
 int st_app_tx_video_sessions_init(struct st_app_context* ctx) 
 {
     int ret = 0;
@@ -428,6 +451,24 @@ int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_jso
     }
     return 0;
 }
+
+int st_app_tx_video_sessions_sdi_add(st_app_context* ctx, st_json_context_t *new_json_ctx) {
+    int ret = 0;
+    //实例化tx_source
+    for(auto &json_source : new_json_ctx->tx_sources)
+    {
+        auto s = std::shared_ptr<st_app_tx_video_sdi_session>(new st_app_tx_video_sdi_session {});
+        ret = st_app_tx_video_sdi_session_init(ctx,&json_source,s.get());
+        if(ret)
+        {
+            continue;
+        }
+        ctx->tx_video_sdi_sessions.push_back(s);
+    }
+    return 0;
+}
+
+
 
 int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {
     for(int i = 0; i < c->tx_sources.size(); i++) {

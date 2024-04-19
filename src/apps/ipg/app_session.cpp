@@ -236,12 +236,13 @@ static std::error_code make_device_error(int code) {
 
 static std::error_code st_app_add_tx_sessions_device(st_app_context *ctx, st_json_context *new_json_ctx) {
     int ret = 0;
-    // tx source init
+    // tx source init  初始化一个新的tx_source
     if ((ret = st_tx_video_source_init(ctx, new_json_ctx))) return make_device_error(ret);
-    // tx session init
+    // 通过实例化将tx_source的数据传输到context中保存
+    if ((ret = st_app_tx_video_sessions_sdi_add(ctx,new_json_ctx))) return make_device_error(ret);
+    // tx session init   通过实例化的方式将tx_source放入到context中
     if ((ret = st_app_tx_video_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
     if ((ret = st_app_tx_audio_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
-
     // tx source start
     std::unordered_map<std::string, st_app_tx_source *> json_tx_source_map;
     for (auto &s : new_json_ctx->tx_sources) {
@@ -254,6 +255,8 @@ static std::error_code st_app_add_tx_sessions_device(st_app_context *ctx, st_jso
             }
         }
     }
+
+
 
     return {};
 }

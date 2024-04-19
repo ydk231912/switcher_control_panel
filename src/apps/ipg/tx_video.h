@@ -16,6 +16,8 @@ int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *json_
 
 int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_json_ctx);
 
+int st_app_tx_video_sessions_sdi_add(st_app_context* ctx, st_json_context_t *new_json_ctx);
+
 int st_tx_video_source_start(st_app_context *ctx, seeder::core::input *source);
 
 int st_app_tx_video_session_uinit(struct st_app_tx_video_session* s);
