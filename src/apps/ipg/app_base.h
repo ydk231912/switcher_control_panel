@@ -112,20 +112,10 @@ struct st_app_rx_output
 };
 struct st_app_tx_output_sdi
 {
-  int device_id;
+  std::string id; // uuid,用于绑定对应tx_source
+  int device_id;  // decklink
   bool enable;
 };
-
-struct st_app_tx_video_sdi_session{
-
-  // video source handle
-  std::shared_ptr<seeder::core::input> tx_source;
-  std::shared_ptr<st_app_tx_source> source_info;
-
-  // video output handle
-  std::shared_ptr<seeder::core::output> rx_output;
-  st_app_rx_output output_info;
-}
 
 struct st_app_tx_video_session {
   int idx;
@@ -194,6 +184,10 @@ struct st_app_tx_video_session {
   // video source
   std::shared_ptr<seeder::core::input> tx_source;
   std::shared_ptr<st_app_tx_source> source_info;
+
+  // sdi_outoput 转播存储信息
+  std::unordered_map<std::string, std::shared_ptr<seeder::core::output>> sdi_output;
+  std::unordered_map<std::string, st_app_tx_output_sdi> sdi_output_info;
 
   std::atomic<int> next_frame_stat = 0;
   std::atomic<int> next_frame_not_ready_stat = 0;
@@ -578,9 +572,6 @@ struct st_app_context {
   char tx_video_url[ST_APP_URL_MAX_LEN]; /* send video content url*/
   std::vector<std::shared_ptr<struct st_app_tx_video_session>> tx_video_sessions;
   int tx_video_rtp_ring_size; /* the ring size for tx video rtp type */
-
-  //ToDo：新增加tx_video_sdi_sessions结构，主要用于将tx_source转入到rx_output中
-  std::vector<std::shared_ptr<struct st_app_tx_video_sdi_session>> tx_video_sdi_sessions;
 
   std::vector<std::shared_ptr<st_app_tx_audio_session>> tx_audio_sessions;
   char tx_audio_url[ST_APP_URL_MAX_LEN];

@@ -1,9 +1,14 @@
 
 #include <cstdint>
+#include <cstdio>
 #include <exception>
 #include <memory>
+#include <string>
 
 #include "app_base.h"
+#include "core/stream/output.h"
+#include "core/video_format.h"
+#include "decklink/output/decklink_output.h"
 #include "tx_video.h"
 #include "core/util/logger.h"
 #include "core/stream/input.h"
@@ -115,6 +120,20 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
             return;
         }
     }
+    
+    //consume_decklink_video_frame
+    for(auto &[device_id,output]:s->sdi_output)
+    {
+        if(s->source_info->type=="decklink")
+        {
+            auto decklink_output = std::dynamic_pointer_cast<seeder::decklink::decklink_output>(output);
+            if (decklink_output) {
+                decklink_output->consume_decklink_video_frame(f->data[0]);
+                decklink_output->display_video_frame();
+            }
+        }
+    }
+     
     s->build_frame_stat++;
     return;
 }
@@ -261,18 +280,6 @@ static void* app_tx_video_frame_thread(void* arg)
     return NULL;
 } 
  
-static int app_tx_video_sdi_init(struct st_app_context* ctx, st_app_tx_source *source,
-                             struct st_app_tx_video_sdi_session *s) 
-{
-    int ret;
-    char name[32];
-
-    // tx video source
-    s->tx_source = ctx->tx_sources[source->id];
-    s->source_info = std::make_shared<st_app_tx_source>(ctx->source_info[source->id]);
-    snprintf(name, 32, "TX Video SDI %d", s->source_info->device_id);
-    return 0;
-}
 
 static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t* video,
                              struct st_app_tx_video_session* s) 
@@ -410,13 +417,6 @@ static int st_app_tx_video_session_init(st_app_context* ctx, st_json_video_sessi
     return ret;
 }
 
-static int st_app_tx_video_sdi_session_init(st_app_context* ctx, st_app_tx_source *json_source, st_app_tx_video_sdi_session *s) {
-    int ret = 0;
-    
-    ret = app_tx_video_sdi_init(ctx, json_source, s);
-    if (ret < 0) logger->error("{}, app_tx_video_sdi_init fail {}", __func__, ret);
-    return ret;
-}
 
 
 int st_app_tx_video_sessions_init(struct st_app_context* ctx) 
@@ -436,7 +436,8 @@ int st_app_tx_video_sessions_init(struct st_app_context* ctx)
     return 0;
 }
 
-int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_json_ctx) {
+int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_json_ctx) 
+{
     int ret = 0;
     for (auto &json_video : new_json_ctx->tx_video_sessions) {
         if (!json_video.base.enable) {
@@ -452,25 +453,46 @@ int st_app_tx_video_sessions_add(st_app_context* ctx, st_json_context_t *new_jso
     return 0;
 }
 
-int st_app_tx_video_sessions_sdi_add(st_app_context* ctx, st_json_context_t *new_json_ctx) {
-    int ret = 0;
-    //实例化tx_source
-    for(auto &json_source : new_json_ctx->tx_sources)
+int st_app_output_sdi_init(struct st_app_context* ctx, st_json_context_t *c){
+    //实例初始化outputdsi
+    for(int i = 0; i < c->tx_outputsdi.size(); i++)
     {
-        auto s = std::shared_ptr<st_app_tx_video_sdi_session>(new st_app_tx_video_sdi_session {});
-        ret = st_app_tx_video_sdi_session_init(ctx,&json_source,s.get());
-        if(ret)
+        for(int j = 0 ; j < ctx->tx_video_sessions.size();j++)
+        //for(int j = 0 ; j < c->tx_sources.size();j++)
         {
-            continue;
+            //
+            if(c->tx_outputsdi[i].id == ctx->tx_video_sessions[j]->source_info->id)
+            //if(c->tx_outputsdi[i].id == c->tx_sources[j].id)
+            {
+                //auto &s = c->tx_sources[j];
+                auto &s=c->tx_outputsdi[i];
+                auto &info = c->tx_audio_sessions[j].info;
+                auto format_desc = seeder::core::video_format_desc::get(ctx->tx_video_sessions[j]->source_info->video_format);
+                st_set_video_foramt(info, &format_desc);
+                try{
+                    if(c->tx_sources[j].type == "decklink")
+                    {
+                        std::shared_ptr<seeder::decklink::decklink_output> decklink_output(new seeder::decklink::decklink_output(
+                            ctx->tx_video_sessions[j]->source_info->id,c->tx_outputsdi[i].device_id,
+                            format_desc,ctx->tx_video_sessions[j]->source_info->pixel_format
+                        ));
+                        ctx->tx_video_sessions[j]->sdi_output.emplace(std::to_string(c->tx_outputsdi[i].device_id), decklink_output);
+                        ctx->tx_video_sessions[j]->sdi_output_info.emplace(std::to_string(c->tx_outputsdi[i].device_id), c->tx_outputsdi[i]);
+                    }
+                }catch(std::exception &e){
+                    logger->info("rx_output_sdi_init failed {} device_id={} video_format={}",e.what(),s.device_id,
+                    ctx->tx_video_sessions[j]->source_info->video_format);
+                    return -1;
+                }
+            }
         }
-        ctx->tx_video_sdi_sessions.push_back(s);
+
     }
     return 0;
 }
 
-
-
 int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {
+    //实例初始化tx_sources
     for(int i = 0; i < c->tx_sources.size(); i++) {
         auto &s = c->tx_sources[i];
         auto &info = c->tx_audio_sessions[i].info;
@@ -483,11 +505,11 @@ int st_tx_video_source_init(struct st_app_context* ctx, st_json_context_t *c) {
                 ctx->tx_sources.emplace(decklink->get_source_id(), decklink);
                 ctx->source_info.emplace(decklink->get_source_id(), s);
             }
-            //  else if(s.type == "file") {
+            //else if(s.type == "file") {
             //     auto ffmpeg = std::make_shared<seeder::ffmpeg::ffmpeg_input>(s.id, s.file_url, format_desc);
             //     ctx->tx_sources.emplace(ffmpeg->get_source_id(), ffmpeg);
             //     ctx->source_info.emplace(ffmpeg->get_source_id(), s);
-            // }
+            //}
         } catch (std::exception &e) {
             logger->info("tx_video_source_init failed {} device_id={} video_format={}", e.what(), s.device_id, s.video_format);
             return -1;
@@ -506,6 +528,15 @@ int st_tx_video_source_start(st_app_context *ctx, seeder::core::input *s) {
     return 0;
 }
 
+
+int st_tx_sdi_output_start(st_app_context *ctx, seeder::core::output *s) {
+    try {
+        if (s) s->start();
+    } catch(const std::exception& e) {
+        return -1;
+    }
+    return 0;
+}
 
 int st_app_tx_video_sessions_uinit(struct st_app_context* ctx) 
 {

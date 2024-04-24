@@ -10,6 +10,7 @@
 #include "core/util/fs.h"
 #include <cstring>
 #include <initializer_list>
+#include <iostream>
 #include <json-c/json_object.h>
 #include <json-c/json_types.h>
 #include <json/reader.h>
@@ -435,12 +436,12 @@ static st_app_errc st_json_parse_interfaces(json_object* interface_obj,
 
 static st_app_errc parse_array_device_id(json_object* obj,st_app_tx_output_sdi* base)
 {
-  int deviceid = json_object_get_int(st_json_object_object_get(obj, "device_id"));
+  int device_id = json_object_get_int(st_json_object_object_get(obj, "device_id"));
   if(device_id <= 0)
   {
     return st_app_errc::JSON_PARSE_FAIL;
   }
-  base->device_id = deviceid;
+  base->device_id = device_id;
   return st_app_errc::SUCCESS;
 }
 
@@ -452,7 +453,7 @@ static void parse_array_enable(json_object* obj,st_app_tx_output_sdi* base)
   {
     enable = json_object_get_boolean(enable_obj);
   }
-  base->enable = enabel;
+  base->enable = enable;
 }
 
 static st_app_errc parse_base_udp_port(json_object* obj, st_json_session_base_t* base, int idx) {
@@ -562,6 +563,26 @@ static st_app_errc parse_video_tr_offset(json_object* video_obj, st_json_video_s
   return st_app_errc::SUCCESS;
 }
 
+static st_app_errc st_json_parse_tx_outputsdi(json_object* object,
+              st_app_tx_output_sdi* outputsdi)
+{
+  if(object == NULL || outputsdi == NULL)
+  {
+    logger->error("{}, can not parse tx outputsdi session", __func__);
+    return st_app_errc::JSON_NULL;
+  }
+  st_app_errc ret;
+
+  /* parse device_id */
+  ret = parse_array_device_id(object,outputsdi);
+  ERRC_EXPECT_SUCCESS(ret);
+
+  /* parse enable */
+  parse_array_enable(object,outputsdi);
+
+  return st_app_errc::SUCCESS;
+}
+
 static st_app_errc parse_video_format(json_object* video_obj, st_json_video_session_t* video) {
   const char* video_format =
       json_object_get_string(st_json_object_object_get(video_obj, "video_format"));
@@ -624,7 +645,6 @@ static st_app_errc st_json_parse_tx_video(int idx, json_object* video_obj,
     return st_app_errc::JSON_NULL;
   }
   st_app_errc ret;
-
   /* parse udp port  */
   ret = parse_base_udp_port(video_obj, &video->base, idx);
   ERRC_EXPECT_SUCCESS(ret);
@@ -666,24 +686,7 @@ static st_app_errc st_json_parse_tx_video(int idx, json_object* video_obj,
   return st_app_errc::SUCCESS;
 }
 
-static st_app_errc st_json_parse_tx_outputsdi(json_object* outputsdiobj,st_app_tx_output_sdi* outputsdi)
-{
-  if(outputsdiobj == NULL || outputsdi == NULL)
-  {
-    logger->error("{}, can not parse tx outputsdi session", __func__);
-    return st_app_errc::JSON_NULL;
-  }
-  st_app_errc ret;
 
-  /* parse device_id */
-  ret = parse_array_device_id(outputsdiobj,outputsdi);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse enable */
-  parse_array_enable(outputsdiobj,outputsdi);
-
-  return st_app_errc::SUCCESS;
-}
 
 static st_app_errc st_json_parse_rx_video(int idx, json_object* video_obj,
                                   st_json_video_session_t* video) {
@@ -1545,6 +1548,18 @@ static st_app_errc parse_session_num(json_object* group, const char* name, int &
   return st_app_errc::SUCCESS;
 }
 
+static st_app_errc parse_outputsdi_num(json_object* group, const char* name, int &num)
+{
+  num = 0;
+  json_object* session_array = st_json_object_object_get(group, name);
+  if(session_array != NULL && json_object_get_type(session_array) == json_type_array)
+  {
+      int size = json_object_array_length(session_array);
+      num += size;
+  }
+  return st_app_errc::SUCCESS;
+}
+
 namespace {
 
 class JsonObjectDeleter {
@@ -1655,6 +1670,7 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
     int tx_ancillary_cnt = 0;
     int tx_st22p_cnt = 0;
     int tx_st20p_cnt = 0;
+    int tx_outputsdi_cnt = 0;
     /* parse session numbers for array allocation */
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
       json_object* tx_group = json_object_array_get_idx(tx_group_array, i);
@@ -1671,6 +1687,10 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       ret = parse_session_num(tx_group, "audio", num);
       ERRC_EXPECT_SUCCESS(ret);
       tx_audio_cnt += (num);
+      /* parse tx outputsdi */
+      ret = parse_outputsdi_num(tx_group,"outputsdi",num);
+      ERRC_EXPECT_SUCCESS(ret);
+      tx_outputsdi_cnt += (num);    
       /* parse tx ancillary sessions */
       ret = parse_session_num(tx_group, "ancillary", num);
       ERRC_EXPECT_SUCCESS(ret);
@@ -1683,6 +1703,7 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       ret = parse_session_num(tx_group, "st20p", num);
       ERRC_EXPECT_SUCCESS(ret);
       tx_st20p_cnt += (num);
+ 
 
       // parse tx source config
       json_object* source = st_json_object_object_get(tx_group, "source");
@@ -1719,14 +1740,13 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
     ctx->tx_anc_sessions.resize(tx_ancillary_cnt);
     ctx->tx_st22p_sessions.resize(tx_st22p_cnt);
     ctx->tx_st20p_sessions.resize(tx_st20p_cnt);
-    
+    ctx->tx_outputsdi.resize(tx_outputsdi_cnt);
     int num_inf = 0;
     int num_video = 0;
     int num_audio = 0;
     int num_anc = 0;
     int num_st22p = 0;
     int num_st20p = 0;
-    int num_outputsdi = 0;
 
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
       json_object* tx_group = json_object_array_get_idx(tx_group_array, i);
@@ -1778,14 +1798,16 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
         return st_app_errc::JSON_PARSE_FAIL;
       }
 
-      /* parse tx outputsdi sessions */
+      /* parse outputsdi */
       json_object* outputsdi_array = st_json_object_object_get(tx_group, "outputsdi");
-      if(outputsdi_array != NULL && json_object_get_type(outputsdi_array)==json_type_array)
+      if(outputsdi_array != NULL && json_object_get_type(outputsdi_array) == json_type_array)
       {
-        for(int j=0;j<json_object_array_length(outputsdi_array);++i){
-          json_object* outputsdi_session = json_object_array_get_idx(outputsdi_array, j);
-          ret = st_json_parse_tx_outputsdi(outputsdi_session,&ctx->tx_outputsdi[num_outputsdi]);
-          num_outputsdi++;
+        for(int i = 0;i < json_object_array_length(outputsdi_array); ++i)
+        {
+          json_object* outputsdi_session = json_object_array_get_idx(outputsdi_array, i);
+          ret = st_json_parse_tx_outputsdi(outputsdi_session,&ctx->tx_outputsdi[i]);
+          ctx->tx_outputsdi[i].id = tx_source.id;
+          ERRC_EXPECT_SUCCESS(ret);
         }
       }
 

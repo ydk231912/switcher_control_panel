@@ -176,6 +176,19 @@ static int st_rx_output_start(struct st_app_context* ctx)
     return 0;
 }
 
+static int st_sdi_output_start(struct st_app_context* ctx)
+{
+    for(int i = 0; i < ctx->tx_video_sessions.size(); i++)
+    {
+        for(auto &[source_id,outputsdi] : ctx->tx_video_sessions[i]->sdi_output)
+        {
+            st_tx_sdi_output_start(ctx,outputsdi.get());
+        }
+    }
+
+    return 0;
+}
+
 static void st_app_sig_handler(int signo) 
 {
     struct st_app_context* ctx = g_app_ctx;
@@ -373,6 +386,14 @@ int main(int argc, char **argv)
     //tx_audio
     ret = st_app_tx_audio_sessions_init(ctx.get());
 
+    //output_sdi
+    ret = st_app_output_sdi_init(ctx.get(), ctx->json_ctx.get());
+    if(ret < 0)
+    {
+        logger->error("{}, st_app_output_sdi_init fail", __func__);
+        return -EIO;
+    }
+
    //start video source input stream
     ret = st_tx_video_source_start(ctx.get());
     if(ret < 0)
@@ -387,6 +408,14 @@ int main(int argc, char **argv)
     if(ret < 0)
     {
         logger->error("{}, st_rx_output_start fail", __func__);
+        return -EIO;
+    }
+
+    //start video source sdi output stream
+    ret = st_sdi_output_start(ctx.get());
+    if(ret < 0)
+    {
+        logger->error("{}, st_sdi_output_start fail", __func__);
         return -EIO;
     }
 

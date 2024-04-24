@@ -238,11 +238,12 @@ static std::error_code st_app_add_tx_sessions_device(st_app_context *ctx, st_jso
     int ret = 0;
     // tx source init  初始化一个新的tx_source
     if ((ret = st_tx_video_source_init(ctx, new_json_ctx))) return make_device_error(ret);
-    // 通过实例化将tx_source的数据传输到context中保存
-    if ((ret = st_app_tx_video_sessions_sdi_add(ctx,new_json_ctx))) return make_device_error(ret);
     // tx session init   通过实例化的方式将tx_source放入到context中
     if ((ret = st_app_tx_video_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
     if ((ret = st_app_tx_audio_sessions_add(ctx, new_json_ctx))) return make_device_error(ret);
+    
+    // sdi_output init 实例化output_sdi信息
+    if ((ret = st_app_output_sdi_init(ctx, new_json_ctx))) return make_device_error(ret);
     // tx source start
     std::unordered_map<std::string, st_app_tx_source *> json_tx_source_map;
     for (auto &s : new_json_ctx->tx_sources) {
@@ -255,13 +256,21 @@ static std::error_code st_app_add_tx_sessions_device(st_app_context *ctx, st_jso
             }
         }
     }
-
-
-
+    // output_sdi start 此处将output_sdi的数据启动
+    for(int i = 0; i < ctx->tx_video_sessions.size(); i++)
+    {
+        for(auto &[source_id,outputsdi] : ctx->tx_video_sessions[i]->sdi_output)
+        {
+            if(!outputsdi->is_started())
+            {
+                outputsdi->start();
+            }
+        }
+    }
     return {};
 }
 
-static void st_app_add_tx_sessions_udpate_json_ctx(st_app_context *ctx, st_json_context *new_json_ctx) {
+static void st_app_add_tx_sessions_update_json_ctx(st_app_context *ctx, st_json_context *new_json_ctx) {
     for (auto &s : new_json_ctx->tx_video_sessions) {
         ctx->json_ctx->tx_video_sessions.push_back(s);
     }
@@ -340,7 +349,7 @@ std::error_code st_app_add_tx_sessions(st_app_context *ctx, st_json_context *new
         }
         return ec;
     }
-    st_app_add_tx_sessions_udpate_json_ctx(ctx, new_json_ctx);
+    st_app_add_tx_sessions_update_json_ctx(ctx, new_json_ctx);
 
     check_empty_id("st_app_add_tx_sessions", ctx);
     
@@ -376,7 +385,7 @@ std::error_code st_app_update_tx_sessions(st_app_context *ctx, st_json_context *
             st_app_remove_tx_session_device(ctx, id);
         }
     }
-    st_app_add_tx_sessions_udpate_json_ctx(ctx, new_json_ctx);
+    st_app_add_tx_sessions_update_json_ctx(ctx, new_json_ctx);
     check_empty_id("st_app_update_tx_sessions", ctx);
     return {};
 }

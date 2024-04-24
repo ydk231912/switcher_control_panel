@@ -49,6 +49,8 @@ namespace seeder::decklink
             
         void consume_st_video_frame(void *frame, uint32_t width, uint32_t height);
         void consume_st_audio_frame(void *frame, size_t frame_size);
+        //新增sdi接口
+        void consume_decklink_video_frame(void *frame);
 
         /**
          * @brief push a frame into this output stream buffer
@@ -105,6 +107,7 @@ namespace seeder::decklink
 
         IDeckLinkMutableVideoFrame*	playbackFrame_ = nullptr;
         IDeckLinkMutableVideoFrame*	yuv10Frame_ = nullptr;
+        std::size_t v210_frame_byte_size = 0;
         IDeckLinkVideoConversion* frameConverter = nullptr;
         SwsContext* sws_ctx_ = nullptr;
         AVFrame* dst_frame_ = nullptr;

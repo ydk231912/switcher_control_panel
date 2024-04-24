@@ -131,6 +131,7 @@ namespace seeder::decklink
            throw std::runtime_error("Unable to create video frame.");
         }
         auto PerRow = ((display_mode_->GetWidth() + 47) / 48) * 128; //display_mode_->GetWidth() * 4;//bmdFormat8BitBGRA //((display_mode_->GetWidth() + 47) / 48) * 128; // bmdFormat10BitYUV
+        v210_frame_byte_size = PerRow * display_mode_->GetHeight();
         result = output_->CreateVideoFrame((int32_t)display_mode_->GetWidth(),
 													  (int32_t)display_mode_->GetHeight(),
 													  PerRow,
@@ -458,6 +459,16 @@ namespace seeder::decklink
         memcpy_us_sum = 0;
         display_audio_frame_us_sum = 0;
         return r;
+    }
+
+    void decklink_output::consume_decklink_video_frame(void *frame) {
+        uint8_t* yuvBuffer = nullptr;
+        if (yuv10Frame_->GetBytes((void**)&yuvBuffer) != S_OK)
+        {
+            logger->error("Could not get DeckLinkVideoFrame buffer pointer");
+            return;
+        }
+        memcpy(yuvBuffer, frame, v210_frame_byte_size);
     }
 
     void decklink_output::consume_st_video_frame(void *frame, uint32_t width, uint32_t height) {
