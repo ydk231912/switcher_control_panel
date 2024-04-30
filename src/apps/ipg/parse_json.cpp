@@ -437,7 +437,7 @@ static st_app_errc st_json_parse_interfaces(json_object* interface_obj,
 static st_app_errc parse_array_device_id(json_object* obj,st_app_tx_output_sdi* base)
 {
   int device_id = json_object_get_int(st_json_object_object_get(obj, "device_id"));
-  if(device_id <= 0)
+  if(device_id < 0)
   {
     return st_app_errc::JSON_PARSE_FAIL;
   }
@@ -1548,17 +1548,6 @@ static st_app_errc parse_session_num(json_object* group, const char* name, int &
   return st_app_errc::SUCCESS;
 }
 
-static st_app_errc parse_outputsdi_num(json_object* group, const char* name, int &num)
-{
-  num = 0;
-  json_object* session_array = st_json_object_object_get(group, name);
-  if(session_array != NULL && json_object_get_type(session_array) == json_type_array)
-  {
-      int size = json_object_array_length(session_array);
-      num += size;
-  }
-  return st_app_errc::SUCCESS;
-}
 
 namespace {
 
@@ -1651,6 +1640,9 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
     int tx_source_cnt = json_object_array_length(tx_group_array);
     ctx->tx_sources.resize(tx_source_cnt);
     
+    /* allocate outputsdi config */
+    int num_outputsdi_array = json_object_array_length(tx_group_array);
+    ctx->tx_outputsdi.resize(num_outputsdi_array);
     // auto sz = sizeof(struct st_app_tx_source);
     // auto sc = ( st_app_tx_source*)st_app_zmalloc(ctx->tx_source_cnt*sizeof( st_app_tx_source));
     // auto str_sz = sizeof(std::string);
@@ -1670,7 +1662,6 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
     int tx_ancillary_cnt = 0;
     int tx_st22p_cnt = 0;
     int tx_st20p_cnt = 0;
-    int tx_outputsdi_cnt = 0;
     /* parse session numbers for array allocation */
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
       json_object* tx_group = json_object_array_get_idx(tx_group_array, i);
@@ -1688,9 +1679,6 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       ERRC_EXPECT_SUCCESS(ret);
       tx_audio_cnt += (num);
       /* parse tx outputsdi */
-      ret = parse_outputsdi_num(tx_group,"outputsdi",num);
-      ERRC_EXPECT_SUCCESS(ret);
-      tx_outputsdi_cnt += (num);    
       /* parse tx ancillary sessions */
       ret = parse_session_num(tx_group, "ancillary", num);
       ERRC_EXPECT_SUCCESS(ret);
@@ -1740,14 +1728,13 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
     ctx->tx_anc_sessions.resize(tx_ancillary_cnt);
     ctx->tx_st22p_sessions.resize(tx_st22p_cnt);
     ctx->tx_st20p_sessions.resize(tx_st20p_cnt);
-    ctx->tx_outputsdi.resize(tx_outputsdi_cnt);
     int num_inf = 0;
     int num_video = 0;
     int num_audio = 0;
     int num_anc = 0;
     int num_st22p = 0;
     int num_st20p = 0;
-
+    int num_outputsdi = 0;
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
       json_object* tx_group = json_object_array_get_idx(tx_group_array, i);
       if (tx_group == NULL) {
@@ -1805,9 +1792,10 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
         for(int i = 0;i < json_object_array_length(outputsdi_array); ++i)
         {
           json_object* outputsdi_session = json_object_array_get_idx(outputsdi_array, i);
-          ret = st_json_parse_tx_outputsdi(outputsdi_session,&ctx->tx_outputsdi[i]);
-          ctx->tx_outputsdi[i].id = tx_source.id;
+          ret = st_json_parse_tx_outputsdi(outputsdi_session,&ctx->tx_outputsdi[num_outputsdi]);
+          ctx->tx_outputsdi[num_outputsdi].id = tx_source.id;
           ERRC_EXPECT_SUCCESS(ret);
+          num_outputsdi++;
         }
       }
 
@@ -2025,6 +2013,201 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
 
   return ret;
 }
+
+namespace {
+
+template<class K, class V>
+Json::Value make_fmt_item(K &&name, V &&value) {
+  Json::Value item;
+  item["name"] = std::forward<K>(name);
+  item["value"] = std::forward<V>(value);
+  return item;
+}
+
+struct st_app_json_fmt_item {
+  std::string name;
+  Json::Value value;
+
+  template<class K, class V>
+  st_app_json_fmt_item(K &&_name, V &&_value):
+    name(std::forward<K>(_name)), value(std::forward<V>(_value))
+  {}
+
+  Json::Value to_json() const {
+    Json::Value item;
+    item["name"] = name;
+    item["value"] = value;
+    return item;
+  }
+};
+
+struct st_app_json_fmt_group {
+  st_app_json_fmt_group(const std::string &_name, std::initializer_list<st_app_json_fmt_item> _items):
+    name(_name), items(_items)
+  {}
+
+  std::string name;
+  std::vector<st_app_json_fmt_item> items;
+
+  static const std::vector<st_app_json_fmt_group> & get_common_groups() {
+    static std::vector<st_app_json_fmt_group> groups = {
+      {
+        "video.replicas",
+        {
+          {"1", 1}
+        }
+      },
+      {
+        "video.type",
+        {
+          {"frame", "frame"},
+          // {"rtp", "rtp"},
+          // {"slice", "slice"},
+        }
+      },
+      {
+        "video.pacing",
+        {
+          {"gap", "gap"},
+          {"linear", "linear"}
+        }
+      },
+      {
+        "video.packing",
+        {
+          {"BPM", "BPM"},
+          {"GPM SL", "GPM_SL"},
+          {"GPM", "GPM"},
+        }
+      },
+      {
+        "video.tr_offset",
+        {
+          {"default", "default"},
+          {"none", "none"}
+        }
+      },
+      {
+        "video.pg_format",
+        {
+          {"YUV 422 10bit", "YUV_422_10bit"},
+          // {"YUV 422 8bit", "YUV_422_8bit"},
+          // {"YUV 422 12bit", "YUV_422_12bit"},
+          // {"YUV 422 16bit", "YUV_422_16bit"},
+          // {"YUV 420 8bit", "YUV_420_8bit"},
+          // {"YUV 420 10bit", "YUV_420_10bit"},
+          // {"YUV 420 12bit", "YUV_420_12bit"},
+          // {"RGB 8bit", "RGB_8bit"},
+          // {"RGB 10bit", "RGB_10bit"},
+          // {"RGB 12bit", "RGB_12bit"},
+          // {"RGB 16bit", "RGB_16bit"},
+        }
+      },
+      {
+        "audio.replicas",
+        {
+          {"1", 1}
+        }
+      },
+      {
+        "audio.type",
+        {
+          {"frame", "frame"},
+          // {"rtp", "rtp"}
+        }
+      },
+      {
+        "audio.audio_format",
+        {
+          {"16", "PCM16"},
+          // {"PCM 8", "PCM8"},
+          {"24", "PCM24"},
+          // {"AM 824", "AM824"}
+        }
+      },
+      {
+        "audio.audio_channel",
+        {
+          {"ST", "ST"},
+          // {"M", "M"},
+          // {"51", "51"},
+          // {"71", "71"}
+        }
+      },
+      {
+        "audio.audio_sampling",
+        {
+            {"48kHz", "48kHz"},
+            // {"96kHz", "96kHz"},
+            // {"44.1kHz", "44.1kHz"}
+        }
+      },
+      {
+        "audio.audio_ptime",
+        {
+          {"1", "1"},
+          // {"0.12", "0.12"},
+          {"0.25", "0.25"},
+          // {"0.33", "0.33"},
+          // {"4", "4"},
+          // {"0.08", "0.08"},
+          // {"1.09", "1.09"},
+          // {"0.14", "0.14"},
+          // {"0.09", "0.09"}
+        }
+      },
+      {
+        "ancillary.type",
+        {
+          {"frame", "frame"},
+          // {"rtp", "rtp"}
+        }
+      },
+      {
+        "ancillary.ancillary_format",
+        {
+          {"closed caption", "closed_caption"}
+        }
+      },
+      {
+        "ancillary.ancillary_fps",
+        {
+          {"p25", "p25"},
+          {"p59", "p59"},
+          {"p50", "p50"},
+          {"p29", "p29"}
+        }
+      }
+    };
+    return groups;
+  }
+};
+
+void fmts_set_decklink_devices(st_json_context_t* ctx, Json::Value &root) {
+  if (ctx->json_root["decklink"].isObject() && ctx->json_root["decklink"]["devices"].isArray()) {
+    const auto &devices = ctx->json_root["decklink"]["devices"];
+    for (Json::Value::ArrayIndex i = 0; i < devices.size(); ++i) {
+      auto &device = devices[i];
+      auto device_name = device["display_name"].asString();
+      auto device_id = std::to_string(i + 1);
+      root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, device_id));
+      root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, device_id));
+      root["tx_sessions.outputsdi.device_id"].append(make_fmt_item(device_name, device_id));
+    }
+  } else {
+    auto &decklink_manager = seeder::decklink::device_manager::instance();
+    int decklink_device_count = decklink_manager.get_device_status().size();
+    for (int i = 0; i < decklink_device_count; ++i) {
+      auto device_name = "SDI " + std::to_string(i + 1);
+      root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
+      root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
+      root["tx_sessions.outputsdi.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
+    }
+  }
+}
+
+} // namespace
+
 
 st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *root_object) {
   st_app_errc ret = st_app_errc::SUCCESS;
@@ -2406,6 +2589,17 @@ void set_json_root(st_json_context_t* ctx, json_object *object) {
   const char *json_str = json_object_to_json_string(object);
   Json::Reader reader;
   reader.parse(json_str, ctx->json_root);
+  for(auto &s :ctx->json_root["tx_sessions"]) {
+    if (!s["outputsdi"].isArray()) {
+      //增加一个空的数组类型
+      Json::Value outputsdi;
+      outputsdi["enable"] = false;
+      outputsdi["device_id"] = Json::nullValue;
+      s["outputsdi"].append(outputsdi);
+
+      //s["outputsdi"] = Json::Value(Json::ValueType::arrayValue);
+    }
+  }
 }
 
 } // namespace
@@ -2539,197 +2733,6 @@ std::error_code st_app_parse_json_update(st_json_context_t* ctx, const std::stri
   return ret;
 }
 
-namespace {
-
-template<class K, class V>
-Json::Value make_fmt_item(K &&name, V &&value) {
-  Json::Value item;
-  item["name"] = std::forward<K>(name);
-  item["value"] = std::forward<V>(value);
-  return item;
-}
-
-struct st_app_json_fmt_item {
-  std::string name;
-  Json::Value value;
-
-  template<class K, class V>
-  st_app_json_fmt_item(K &&_name, V &&_value):
-    name(std::forward<K>(_name)), value(std::forward<V>(_value))
-  {}
-
-  Json::Value to_json() const {
-    Json::Value item;
-    item["name"] = name;
-    item["value"] = value;
-    return item;
-  }
-};
-
-struct st_app_json_fmt_group {
-  st_app_json_fmt_group(const std::string &_name, std::initializer_list<st_app_json_fmt_item> _items):
-    name(_name), items(_items)
-  {}
-
-  std::string name;
-  std::vector<st_app_json_fmt_item> items;
-
-  static const std::vector<st_app_json_fmt_group> & get_common_groups() {
-    static std::vector<st_app_json_fmt_group> groups = {
-      {
-        "video.replicas",
-        {
-          {"1", 1}
-        }
-      },
-      {
-        "video.type",
-        {
-          {"frame", "frame"},
-          // {"rtp", "rtp"},
-          // {"slice", "slice"},
-        }
-      },
-      {
-        "video.pacing",
-        {
-          {"gap", "gap"},
-          {"linear", "linear"}
-        }
-      },
-      {
-        "video.packing",
-        {
-          {"BPM", "BPM"},
-          {"GPM SL", "GPM_SL"},
-          {"GPM", "GPM"},
-        }
-      },
-      {
-        "video.tr_offset",
-        {
-          {"default", "default"},
-          {"none", "none"}
-        }
-      },
-      {
-        "video.pg_format",
-        {
-          {"YUV 422 10bit", "YUV_422_10bit"},
-          // {"YUV 422 8bit", "YUV_422_8bit"},
-          // {"YUV 422 12bit", "YUV_422_12bit"},
-          // {"YUV 422 16bit", "YUV_422_16bit"},
-          // {"YUV 420 8bit", "YUV_420_8bit"},
-          // {"YUV 420 10bit", "YUV_420_10bit"},
-          // {"YUV 420 12bit", "YUV_420_12bit"},
-          // {"RGB 8bit", "RGB_8bit"},
-          // {"RGB 10bit", "RGB_10bit"},
-          // {"RGB 12bit", "RGB_12bit"},
-          // {"RGB 16bit", "RGB_16bit"},
-        }
-      },
-      {
-        "audio.replicas",
-        {
-          {"1", 1}
-        }
-      },
-      {
-        "audio.type",
-        {
-          {"frame", "frame"},
-          // {"rtp", "rtp"}
-        }
-      },
-      {
-        "audio.audio_format",
-        {
-          {"16", "PCM16"},
-          // {"PCM 8", "PCM8"},
-          {"24", "PCM24"},
-          // {"AM 824", "AM824"}
-        }
-      },
-      {
-        "audio.audio_channel",
-        {
-          {"ST", "ST"},
-          // {"M", "M"},
-          // {"51", "51"},
-          // {"71", "71"}
-        }
-      },
-      {
-        "audio.audio_sampling",
-        {
-            {"48kHz", "48kHz"},
-            // {"96kHz", "96kHz"},
-            // {"44.1kHz", "44.1kHz"}
-        }
-      },
-      {
-        "audio.audio_ptime",
-        {
-          {"1", "1"},
-          // {"0.12", "0.12"},
-          {"0.25", "0.25"},
-          // {"0.33", "0.33"},
-          // {"4", "4"},
-          // {"0.08", "0.08"},
-          // {"1.09", "1.09"},
-          // {"0.14", "0.14"},
-          // {"0.09", "0.09"}
-        }
-      },
-      {
-        "ancillary.type",
-        {
-          {"frame", "frame"},
-          // {"rtp", "rtp"}
-        }
-      },
-      {
-        "ancillary.ancillary_format",
-        {
-          {"closed caption", "closed_caption"}
-        }
-      },
-      {
-        "ancillary.ancillary_fps",
-        {
-          {"p25", "p25"},
-          {"p59", "p59"},
-          {"p50", "p50"},
-          {"p29", "p29"}
-        }
-      }
-    };
-    return groups;
-  }
-};
-
-void fmts_set_decklink_devices(st_json_context_t* ctx, Json::Value &root) {
-  if (ctx->json_root["decklink"].isObject() && ctx->json_root["decklink"]["devices"].isArray()) {
-    const auto &devices = ctx->json_root["decklink"]["devices"];
-    for (Json::Value::ArrayIndex i = 0; i < devices.size(); ++i) {
-      auto &device = devices[i];
-      auto device_name = device["display_name"].asString();
-      auto device_id = std::to_string(i + 1);
-      root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, device_id));
-      root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, device_id));
-    }
-  } else {
-    auto &decklink_manager = seeder::decklink::device_manager::instance();
-    int decklink_device_count = decklink_manager.get_device_status().size();
-    for (int i = 0; i < decklink_device_count; ++i) {
-      auto device_name = "SDI " + std::to_string(i + 1);
-      root["tx_sessions.source.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
-      root["rx_sessions.output.device_id"].append(make_fmt_item(device_name, std::to_string(i + 1)));
-    }
-  }
-}
-
-} // namespace
 
 Json::Value st_app_get_fmts(st_json_context_t* ctx) {
   Json::Value root;

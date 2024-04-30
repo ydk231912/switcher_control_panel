@@ -166,6 +166,15 @@ static std::error_code st_app_check_device_status(st_app_context *ctx, st_json_c
     for (auto &[id, rx_output] : ctx->output_info) {
         used_device_id[rx_output.device_id] = id;
     }
+    // 将转SDI的输出口添加进去排查
+    for(int i = 0; i < ctx->tx_video_sessions.size(); i++)
+    {
+        for(auto &[id,sdi_output]:ctx->tx_video_sessions[i]->sdi_output_info)
+        {
+            used_device_id[sdi_output.device_id] = id;
+        }
+    }
+
     for (auto &new_tx_source : new_json_ctx->tx_sources) {
         auto it = used_device_id.find(new_tx_source.device_id);
         if (it != used_device_id.end() && it->second != new_tx_source.id) {
@@ -182,6 +191,19 @@ static std::error_code st_app_check_device_status(st_app_context *ctx, st_json_c
         }
         used_device_id[new_rx_output.device_id] = new_rx_output.id;
     }
+
+    // 将转SDI的输出口进行筛查
+    for(auto &new_sdi_output:new_json_ctx->tx_outputsdi)
+    {
+        auto it=used_device_id.find(new_sdi_output.device_id);
+        if(it != used_device_id.end() && it->second != new_sdi_output.id){
+            logger->warn("Device ID USED device_id={} id1={} id2={}",it->first,it->second,new_sdi_output.id);
+            return st_app_errc::DECKLINK_DEVICE_USED;
+        }
+        used_device_id[new_sdi_output.device_id] = new_sdi_output.id;
+    }
+
+
 
     std::vector<st_json_session_base *> tx_session_base = collection_tx_session_base(ctx->json_ctx.get());
     check_empty_id("tx_session_base", tx_session_base);

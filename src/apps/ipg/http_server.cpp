@@ -6,10 +6,12 @@
 #include <boost/system/error_code.hpp>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
 #include <exception>
 #include <functional>
 #include "httplib.h"
 #include <ios>
+#include <json/config.h>
 #include <json/forwards.h>
 #include <json/reader.h>
 #include <json/value.h>
@@ -28,6 +30,7 @@
 #include "app_stat.h"
 #include "mtl/mtl_seeder_api.h"
 #include <json.h>
+#include <iomanip>
 
 using httplib::Request;
 using httplib::Response;
@@ -42,6 +45,55 @@ void write_string_to_file_directly(const std::string &file_path, const std::stri
     std::fstream stream(file_path, std::ios_base::out);
     stream << content;
     stream.flush();
+}
+
+double get_cpu_usage()
+{
+    std::ifstream stat_file("/proc/stat");
+    if(!stat_file.is_open()){
+        seeder::core::logger->error("Failed to open /proc/stat");
+        return 0;
+    }
+    std::string line;
+    std::getline(stat_file,line);
+    stat_file.close();
+
+    long long user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice;
+    sscanf(line.c_str(), "cpu %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld",
+           &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal, &guest, &guest_nice);
+
+    long long total = user + nice + system + idle + iowait + irq + softirq + steal;
+    double cpu_usage = ((total - idle) * 100.0) / total;
+    // std::cout<<std::fixed<<std::setprecision(2)<<cpu_usage<<std::endl;
+    return cpu_usage;
+}
+
+double get_mem_usage(mem_occupy *mem)
+{
+    FILE * fd = NULL;
+    char buff[256];
+    mem_occupy *m = mem;
+    fd = fopen("/proc/meminfo","r");
+    if(!fd)
+    {
+        seeder::core::logger->error("Failed to open /proc/meminfo");
+        return 0;
+    }
+    fgets(buff,sizeof(buff),fd);
+    sscanf(buff, "%s %lu ", m->str_memtotal,&m->i_memtotal);
+    fgets(buff,sizeof(buff),fd);
+    sscanf(buff, "%s %lu ", m->str_memfree,&m->i_memfree);
+    fgets(buff,sizeof(buff),fd);
+    sscanf(buff, "%s %lu ", m->str_buffers,&m->i_buffers);
+    fgets(buff,sizeof(buff),fd);
+    sscanf(buff, "%s %lu ", m->str_cached,&m->i_cached);
+    fgets(buff,sizeof(buff),fd);
+    sscanf(buff, "%s %lu ", m->str_swapcached,&m->i_swapcached);
+
+    double mem_usage = ((m->i_memtotal - m->i_memfree) * 100.0) / m->i_memtotal;
+    // std::cout<<std::fixed<<std::setprecision(2)<<mem_usage<<std::endl;
+    fclose(fd);
+    return mem_usage;
 }
 
 void write_string_to_file(const std::string &file_path, const std::string &content) {
@@ -185,6 +237,21 @@ private:
         Json::Int64 startup_duration_count = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - startup_time).count();
         root["startup_duration"] = startup_duration_count;
         json_ok(res, root);
+    }
+
+    void get_device_info(const Request &req, Response &res) {
+        Json::Value root;
+
+        mem_occupy mem_stat;
+        double memory_usage = get_mem_usage((mem_occupy *)&mem_stat);
+        root["memory_usage"] = memory_usage;
+        //获取CPU的使用情况指令：top -n 1  |awk -F ',' '{print $4}' |grep id|awk -F ' ' '{print $2}'
+        //sprintf(cmd,"top -n 1  |awk -F ',' '{print $4}' |grep id|awk -F ' ' '{print $2}'");
+  
+        double cpu_usage = get_cpu_usage();
+        root["cpu_usage"]=cpu_usage;
+
+        json_ok(res,root);
     }
 
     void save_config(const Request& req, Response& res) {
@@ -509,6 +576,10 @@ void st_http_server::start() {
 
     server.Get("/api/ptp_dev_info", [&p] (const Request& req, Response& res) {
         p.get_ptp_dev_info(req, res);
+    });
+
+    server.Get("/api/device_info", [&p](const Request& req,Response& res){
+        p.get_device_info(req,res);
     });
 
     p.startup_time = std::chrono::system_clock::now();

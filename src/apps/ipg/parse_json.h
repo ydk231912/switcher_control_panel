@@ -93,6 +93,21 @@ struct st_video_fmt_desc {
   enum st_fps fps;
 };
 
+typedef struct mempacked
+{
+  char str_memtotal[20];
+  unsigned long i_memtotal;
+  char str_memfree[20];
+  unsigned long i_memfree;
+  char str_buffers[20];
+  unsigned long i_buffers;
+  char str_cached[20];
+  unsigned long i_cached;
+  char str_swapcached[20];
+  unsigned long i_swapcached;
+
+}mem_occupy;
+
 typedef struct st_json_interface {
   char name[MTL_PORT_MAX_LEN];
   uint8_t ip_addr[MTL_IP_ADDR_LEN];
