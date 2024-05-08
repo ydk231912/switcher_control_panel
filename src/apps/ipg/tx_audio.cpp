@@ -191,33 +191,6 @@ static void* app_tx_audio_frame_thread(void* arg)
     return NULL;
 }
 
-static int app_tx_audio_open_source(struct st_app_tx_audio_session* s) {
-  if (!s->st30_pcap_input) {
-    struct stat i;
-
-    s->st30_source_fd = st_open(s->st30_source_url, O_RDONLY);
-    if (s->st30_source_fd >= 0) {
-      fstat(s->st30_source_fd, &i);
-
-      uint8_t* m = (uint8_t*)mmap(NULL, i.st_size, PROT_READ, MAP_SHARED, s->st30_source_fd, 0);
-
-      if (MAP_FAILED != m) {
-        s->st30_source_begin = m;
-        s->st30_frame_cursor = m;
-        s->st30_source_end = m + i.st_size;
-      } else {
-        
-        return -EIO;
-      }
-    } else {
- 
-      return -EIO;
-    }
-  }
-
-  return 0;
-}
-
 static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t* audio,
                              struct st_app_tx_audio_session* s)
 {
@@ -254,41 +227,28 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     snprintf(name, 32, "TX Audio SDI %d", s->source_info->device_id);
     ops.name = name;
     ops.priv = s;
-    ops.num_port = audio ? audio->base.num_inf : ctx->para.num_ports;
-    memcpy(ops.dip_addr[MTL_PORT_P],
-            audio ? audio->base.ip[MTL_PORT_P] : ctx->tx_dip_addr[MTL_PORT_P], MTL_IP_ADDR_LEN);
-    strncpy(ops.port[MTL_PORT_P],
-            audio ? audio->base.inf[MTL_PORT_P].name : ctx->para.port[MTL_PORT_P],
-            MTL_PORT_MAX_LEN);
-    ops.udp_port[MTL_PORT_P] = audio ? audio->base.udp_port : (10100 + s->idx);
-    if(ctx->has_tx_dst_mac[MTL_PORT_P])
-    {
-        memcpy(&ops.tx_dst_mac[MTL_PORT_P][0], ctx->tx_dst_mac[MTL_PORT_P], 6);
-        ops.flags |= ST30_TX_FLAG_USER_P_MAC;
-    }
+    ops.num_port = audio->base.num_inf;
+    memcpy(ops.dip_addr[MTL_PORT_P], audio->base.ip[MTL_PORT_P], MTL_IP_ADDR_LEN);
+    strncpy(ops.port[MTL_PORT_P], audio->base.inf[MTL_PORT_P].name, MTL_PORT_MAX_LEN);
+    ops.udp_port[MTL_PORT_P] = audio->base.udp_port[0];
     if(ops.num_port > 1)
     {
         memcpy(ops.dip_addr[MTL_PORT_R],
-            audio ? audio->base.ip[MTL_PORT_R] : ctx->tx_dip_addr[MTL_PORT_R],
+            audio->base.ip[MTL_PORT_R],
             MTL_IP_ADDR_LEN);
         strncpy(ops.port[MTL_PORT_R],
-                audio ? audio->base.inf[MTL_PORT_R].name : ctx->para.port[MTL_PORT_R],
+                audio->base.inf[MTL_PORT_R].name,
                 MTL_PORT_MAX_LEN);
-        ops.udp_port[MTL_PORT_R] = audio ? audio->base.udp_port : (10100 + s->idx);
-        if(ctx->has_tx_dst_mac[MTL_PORT_R])
-        {
-            memcpy(&ops.tx_dst_mac[MTL_PORT_R][0], ctx->tx_dst_mac[MTL_PORT_R], 6);
-            ops.flags |= ST30_TX_FLAG_USER_R_MAC;
-        }
+        ops.udp_port[MTL_PORT_R] = audio->base.udp_port[1];
     }
     ops.get_next_frame = app_tx_audio_next_frame;
     ops.notify_frame_done = app_tx_audio_frame_done;
     //ops.notify_rtp_done = app_tx_audio_rtp_done;
     ops.framebuff_cnt = s->framebuff_cnt;
-    ops.fmt = audio ? audio->info.audio_format : ST30_FMT_PCM16;
-    ops.channel = audio ? audio->info.audio_channel : 2;
-    ops.sampling = audio ? audio->info.audio_sampling : ST30_SAMPLING_48K;
-    ops.ptime = audio ? audio->info.audio_ptime : ST30_PTIME_1MS;
+    ops.fmt = audio->info.audio_format;
+    ops.channel = audio->info.audio_channel;
+    ops.sampling = audio->info.audio_sampling;
+    ops.ptime = audio->info.audio_ptime;
     /* ops.sample_size = st30_get_sample_size(ops.fmt);
     ops.sample_num = st30_get_sample_num(ops.ptime, ops.sampling); */
     s->pkt_len = st30_get_packet_size(ops.fmt, ops.ptime, ops.sampling, ops.channel);
@@ -303,12 +263,9 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 
     s->st30_frame_size = pkt_per_frame * s->pkt_len;
     ops.framebuff_size = s->st30_frame_size;
-    ops.payload_type = audio ? audio->base.payload_type : ST_APP_PAYLOAD_TYPE_AUDIO;
+    ops.payload_type = audio->base.payload_type;
 
-    s->st30_pcap_input = false;
-
-    // s->st30_pcap_input = false;
-    ops.type = audio ? audio->info.type : ST30_TYPE_FRAME_LEVEL;
+    ops.type = ST30_TYPE_FRAME_LEVEL;
     handle = st30_tx_create(ctx->st, &ops);
     if (!handle) {
         logger->error("{}({}), st30_tx_create fail", __func__, idx);
@@ -316,18 +273,8 @@ static int app_tx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
         return -EIO;
     }
 
-    s->st30_pcap_input = false;
-
     s->handle = handle;
-    strncpy(s->st30_source_url, audio ? audio->info.audio_url : ctx->tx_audio_url,
-            sizeof(s->st30_source_url));
 
-    // ret = app_tx_audio_open_source(s);
-    // if (ret < 0) {
-    //     logger->error("%s(%d), app_tx_audio_session_open_source fail\n", __func__, idx);
-    //     app_tx_audio_uinit(s);
-    //     return ret;
-    // }
     //start frame thread to build frame
     ret = pthread_create(&s->st30_app_thread, NULL, app_tx_audio_frame_thread, s);
     if(ret < 0)

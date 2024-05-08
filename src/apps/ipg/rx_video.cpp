@@ -281,12 +281,6 @@ int st_app_rx_video_session_uinit(struct st_app_rx_video_session* s)
         s->framebuffs = NULL;
     }
 
-    //st_app_uinit_display(s->display);
-    if(s->display)
-    {
-        st_app_free(s->display);
-    }
-
     st_pthread_mutex_destroy(&s->st20_wake_mutex);
     st_pthread_cond_destroy(&s->st20_wake_cond);
 
@@ -309,56 +303,33 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     snprintf(name, 32, "RX Video SDI %d", s->output_info.device_id);
     ops.name = name;
     ops.priv = s;
-    ops.num_port = video ? video->base.num_inf : ctx->para.num_ports;
-    memcpy(ops.sip_addr[MTL_PORT_P],
-            video ? video->base.ip[MTL_PORT_P] : ctx->rx_sip_addr[MTL_PORT_P], MTL_IP_ADDR_LEN);
-    // strncpy(ops.port[ST_PORT_P],
-    //         video ? video->base.inf[ST_PORT_P]->name : ctx->para.port[ST_PORT_P],ST_PORT_MAX_LEN);
-    strncpy(ops.port[MTL_PORT_P],
-            video ? video->base.inf[MTL_PORT_P].name : ctx->para.port[MTL_PORT_P],MTL_PORT_MAX_LEN);
+    ops.num_port = video->base.num_inf;
+    memcpy(ops.sip_addr[MTL_PORT_P], video->base.ip[MTL_PORT_P], MTL_IP_ADDR_LEN);
+    strncpy(ops.port[MTL_PORT_P], video->base.inf[MTL_PORT_P].name,MTL_PORT_MAX_LEN);
     
-    ops.udp_port[MTL_PORT_P] = video ? video->base.udp_port : (10000 + s->idx);
+    ops.udp_port[MTL_PORT_P] = video->base.udp_port[0];
     if(ops.num_port > 1)
     {
-        memcpy(ops.sip_addr[MTL_PORT_R],
-                video ? video->base.ip[MTL_PORT_R] : ctx->rx_sip_addr[MTL_PORT_R],
-                MTL_IP_ADDR_LEN);
-        strncpy(ops.port[MTL_PORT_R],
-                video ? video->base.inf[MTL_PORT_R].name : ctx->para.port[MTL_PORT_R],
-                MTL_PORT_MAX_LEN);
-        ops.udp_port[MTL_PORT_R] = video ? video->base.udp_port : (10000 + s->idx);
+        memcpy(ops.sip_addr[MTL_PORT_R], video->base.ip[MTL_PORT_R], MTL_IP_ADDR_LEN);
+        strncpy(ops.port[MTL_PORT_R], video->base.inf[MTL_PORT_R].name, MTL_PORT_MAX_LEN);
+        ops.udp_port[MTL_PORT_R] = video->base.udp_port[1];
     }
     ops.pacing = ST21_PACING_NARROW;
-    if(ctx->rx_video_rtp_ring_size > 0)
-        ops.type = ST20_TYPE_RTP_LEVEL;
-    else
-        ops.type = video ? video->info.type : ST20_TYPE_FRAME_LEVEL;
+    ops.type = ST20_TYPE_FRAME_LEVEL;
 
     ops.flags = ST20_RX_FLAG_DMA_OFFLOAD;
-    if(video && video->info.video_format == VIDEO_FORMAT_AUTO) 
-    {
-        ops.flags |= ST20_RX_FLAG_AUTO_DETECT;
-        ops.width = 1920;
-        ops.height = 1080;
-        ops.fps = ST_FPS_P59_94;
-    }
-    else
-    {
-        ops.width = video ? st_app_get_width(video->info.video_format) : 1920;
-        ops.height = video ? st_app_get_height(video->info.video_format) : 1080;
-        ops.fps = video ? st_app_get_fps(video->info.video_format) : ST_FPS_P59_94;
-    }
-    ops.fmt = video ? video->info.pg_format : ST20_FMT_YUV_422_10BIT;
-    ops.payload_type = video ? video->base.payload_type : ST_APP_PAYLOAD_TYPE_VIDEO;
-    s->interlaced = ops.interlaced = video ? st_app_get_interlaced(video->info.video_format) : false;
+    ops.width = st_app_get_width(video->info.video_format);
+    ops.height = st_app_get_height(video->info.video_format);
+    ops.fps = st_app_get_fps(video->info.video_format);
+    ops.fmt = video->info.pg_format;
+    ops.payload_type = video->base.payload_type;
+    s->interlaced = ops.interlaced = st_app_get_interlaced(video->info.video_format);
     ops.notify_frame_ready = app_rx_video_frame_ready;
     ops.slice_lines = ops.height / 32;
 //    ops.notify_slice_ready = app_rx_video_slice_ready;
 //    ops.notify_rtp_ready = app_rx_video_rtp_ready;
     ops.notify_detected = app_rx_video_detected;
     ops.framebuff_cnt = s->framebuff_cnt;
-    ops.rtp_ring_size = ctx->rx_video_rtp_ring_size;
-    if(!ops.rtp_ring_size) ops.rtp_ring_size = 1024;
     if(ops.type == ST20_TYPE_SLICE_LEVEL)
     {
         ops.flags |= ST20_RX_FLAG_RECEIVE_INCOMPLETE_FRAME;
@@ -368,40 +339,19 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     {
         s->slice = false;
     }
+
     if(ctx->enable_hdr_split) ops.flags |= ST20_RX_FLAG_HDR_SPLIT;
 
     st_pthread_mutex_init(&s->st20_wake_mutex, NULL);
     st_pthread_cond_init(&s->st20_wake_cond, NULL);
 
-    if(mtl_pmd_by_port_name(ops.port[MTL_PORT_P]) == MTL_PMD_DPDK_AF_XDP)
-    {
-        snprintf(s->st20_dst_url, ST_APP_URL_MAX_LEN, "st_app%d_%d_%d_%s.yuv", idx, ops.width,
-                ops.height, ops.port[MTL_PORT_P]);
-    }
-    else
-    {
-        uint32_t soc = 0, b = 0, d = 0, f = 0;
-        sscanf(ops.port[MTL_PORT_P], "%x:%x:%x.%x", &soc, &b, &d, &f);
-        snprintf(s->st20_dst_url, ST_APP_URL_MAX_LEN,
-                    "st_app%d_%d_%d_%02x_%02x_%02x-%02x.yuv", idx, ops.width, ops.height, soc, b,
-                    d, f);
-    }
     ret = st20_get_pgroup(ops.fmt, &s->st20_pg);
     if(ret < 0) return ret;
-    s->user_pg.fmt = video ? video->user_pg_format : USER_FMT_MAX;
-    if(s->user_pg.fmt != USER_FMT_MAX)
-    {
-        ret = user_get_pgroup(s->user_pg.fmt, &s->user_pg);
-        if (ret < 0) return ret;
-        ops.uframe_size = ops.width * ops.height * s->user_pg.size / s->user_pg.coverage;
-        //ops.uframe_pg_callback = pg_convert_callback;
-    }
 
     s->width = ops.width;
     s->full_height = s->height = ops.height;
     if(ops.interlaced) s->height >>= 1;
     s->expect_fps = st_frame_rate(ops.fps);
-    s->pcapng_max_pkts = ctx->pcapng_max_pkts;
 
     s->framebuff_producer_idx = 0;
     s->framebuff_consumer_idx = 0;
@@ -425,8 +375,6 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     //     // }
     //     // s->display = d;
     // }
-
-    s->measure_latency = video ? video->measure_latency : true;
 
     handle = st20_rx_create(ctx->st, &ops);
     if(!handle)
@@ -467,13 +415,10 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
 }
 
 static int st_app_rx_video_session_init(st_app_context* ctx, st_json_video_session_t *json_video, st_app_rx_video_session *s) {
-    int fb_cnt = ctx->rx_video_fb_cnt;
-    if(fb_cnt <= 0) fb_cnt = 6;
+    int fb_cnt = 6;
     s->idx = ctx->next_rx_video_session_idx++;
     s->st = ctx->st;
     s->framebuff_cnt = fb_cnt;
-    s->st20_dst_fb_cnt = ctx->rx_video_file_frames;
-    s->st20_dst_fd = -1;
     s->lcore = -1;
     s->ctx = ctx;
     int ret = app_rx_video_init(ctx, json_video, s);

@@ -93,21 +93,6 @@ struct st_video_fmt_desc {
   enum st_fps fps;
 };
 
-typedef struct mempacked
-{
-  char str_memtotal[20];
-  unsigned long i_memtotal;
-  char str_memfree[20];
-  unsigned long i_memfree;
-  char str_buffers[20];
-  unsigned long i_buffers;
-  char str_cached[20];
-  unsigned long i_cached;
-  char str_swapcached[20];
-  unsigned long i_swapcached;
-
-}mem_occupy;
-
 typedef struct st_json_interface {
   char name[MTL_PORT_MAX_LEN];
   uint8_t ip_addr[MTL_IP_ADDR_LEN];
@@ -120,7 +105,7 @@ typedef struct st_json_session_base {
   std::string ip_str[MTL_PORT_MAX];
   st_json_interface_t inf[MTL_PORT_MAX];
   int num_inf;
-  uint16_t udp_port;
+  uint16_t udp_port[MTL_PORT_MAX];
   uint8_t payload_type;
   bool enable;
 } st_json_session_base_t;
@@ -132,8 +117,6 @@ typedef struct st_json_video_info {
   enum st20_packing packing;
   enum tr_offset tr_offset;
   enum st20_fmt pg_format;
-
-  char video_url[ST_APP_URL_MAX_LEN];
 } st_json_video_info_t;
 
 typedef struct st_json_audio_info {
@@ -142,53 +125,12 @@ typedef struct st_json_audio_info {
   int audio_channel;
   enum st30_sampling audio_sampling;
   enum st30_ptime audio_ptime;
-
-  char audio_url[ST_APP_URL_MAX_LEN];
 } st_json_audio_info_t;
-
-typedef struct st_json_ancillary_info {
-  enum st40_type type;
-  enum anc_format anc_format;
-  enum st_fps anc_fps;
-
-  char anc_url[ST_APP_URL_MAX_LEN];
-} st_json_ancillary_info_t;
-
-typedef struct st_json_st22p_info {
-  enum st_frame_fmt format;
-  enum pacing pacing;
-  uint32_t width;
-  uint32_t height;
-  enum st_fps fps;
-  enum st_plugin_device device;
-  enum st22_codec codec;
-  enum st22_pack_type pack_type;
-  enum st22_quality_mode quality;
-  uint32_t codec_thread_count;
-
-  char st22p_url[ST_APP_URL_MAX_LEN];
-} st_json_st22p_info_t;
-
-typedef struct st_json_st20p_info {
-  enum st_frame_fmt format;
-  enum st20_fmt transport_format;
-  enum pacing pacing;
-  uint32_t width;
-  uint32_t height;
-  enum st_fps fps;
-  enum st_plugin_device device;
-
-  char st20p_url[ST_APP_URL_MAX_LEN];
-} st_json_st20p_info_t;
 
 typedef struct st_json_video_session {
   st_json_session_base_t base;
   st_json_video_info_t info;
   
-  /* rx only items */
-  enum user_pg_fmt user_pg_format;
-  bool display;
-  bool measure_latency;
 } st_json_video_session_t;
 
 typedef struct st_json_audio_session {
@@ -197,42 +139,15 @@ typedef struct st_json_audio_session {
 
 } st_json_audio_session_t;
 
-typedef struct st_json_ancillary_session {
-  st_json_session_base_t base;
-  st_json_ancillary_info_t info;
-} st_json_ancillary_session_t;
-
-typedef struct st_json_st22p_session {
-  st_json_session_base_t base;
-  st_json_st22p_info_t info;
-
-  bool display;
-  bool measure_latency;
-} st_json_st22p_session_t;
-
-typedef struct st_json_st20p_session {
-  st_json_session_base_t base;
-  st_json_st20p_info_t info;
-
-  bool display;
-  bool measure_latency;
-} st_json_st20p_session_t;
-
 typedef struct st_json_context {
   std::vector<st_json_interface_t> interfaces;
   int sch_quota;
 
   std::vector<st_json_video_session_t> tx_video_sessions;
   std::vector<st_json_audio_session_t> tx_audio_sessions;
-  std::vector<st_json_ancillary_session_t> tx_anc_sessions;
-  std::vector<st_json_st22p_session_t> tx_st22p_sessions;
-  std::vector<st_json_st20p_session_t> tx_st20p_sessions;
 
   std::vector<st_json_video_session_t> rx_video_sessions;
   std::vector<st_json_audio_session_t> rx_audio_sessions;
-  std::vector<st_json_ancillary_session_t> rx_anc_sessions;
-  std::vector<st_json_st22p_session_t> rx_st22p_sessions;
-  std::vector<st_json_st20p_session_t> rx_st20p_sessions;
 
   std::vector<struct st_app_tx_source> tx_sources;
   std::vector<struct st_app_rx_output> rx_output;

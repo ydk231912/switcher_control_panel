@@ -160,33 +160,32 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     snprintf(name, 32, "RX Audio SDI %d", s->output_info.device_id);
     ops.name = name;
     ops.priv = s;
-    ops.num_port = audio ? audio->base.num_inf : ctx->para.num_ports;
-    memcpy(ops.sip_addr[MTL_PORT_P],
-            audio ? audio->base.ip[MTL_PORT_P] : ctx->rx_sip_addr[MTL_PORT_P], MTL_IP_ADDR_LEN);
+    ops.num_port = audio->base.num_inf;
+    memcpy(ops.sip_addr[MTL_PORT_P], audio->base.ip[MTL_PORT_P], MTL_IP_ADDR_LEN);
     strncpy(ops.port[MTL_PORT_P],
-            audio ? audio->base.inf[MTL_PORT_P].name : ctx->para.port[MTL_PORT_P],
+            audio->base.inf[MTL_PORT_P].name,
             MTL_PORT_MAX_LEN);
-    ops.udp_port[MTL_PORT_P] = audio ? audio->base.udp_port : (10100 + s->idx);
+    ops.udp_port[MTL_PORT_P] = audio->base.udp_port[0];
     if(ops.num_port > 1)
     {
         memcpy(ops.sip_addr[MTL_PORT_R],
-                audio ? audio->base.ip[MTL_PORT_R] : ctx->rx_sip_addr[MTL_PORT_R],
+                audio->base.ip[MTL_PORT_R],
                 MTL_IP_ADDR_LEN);
         strncpy(ops.port[MTL_PORT_R],
-                audio ? audio->base.inf[MTL_PORT_R].name : ctx->para.port[MTL_PORT_R],
+                audio->base.inf[MTL_PORT_R].name,
                 MTL_PORT_MAX_LEN);
-        ops.udp_port[MTL_PORT_R] = audio ? audio->base.udp_port : (10100 + s->idx);
+        ops.udp_port[MTL_PORT_R] = audio->base.udp_port[1];
     }
     
      ops.notify_frame_ready = app_rx_audio_frame_ready;
      ops.notify_rtp_ready = app_rx_audio_rtp_ready;
 
-    ops.type = audio ? audio->info.type : ST30_TYPE_FRAME_LEVEL;
-    ops.fmt = audio ? audio->info.audio_format : ST30_FMT_PCM16;
-    ops.payload_type = audio ? audio->base.payload_type : ST_APP_PAYLOAD_TYPE_AUDIO;
-    ops.channel = audio ? audio->info.audio_channel : 2;
-    ops.sampling = audio ? audio->info.audio_sampling : ST30_SAMPLING_48K;
-    ops.ptime = audio ? audio->info.audio_ptime : ST30_PTIME_1MS;
+    ops.type = ST30_TYPE_FRAME_LEVEL;
+    ops.fmt = audio->info.audio_format;
+    ops.payload_type = audio->base.payload_type;
+    ops.channel = audio->info.audio_channel;
+    ops.sampling = audio->info.audio_sampling;
+    ops.ptime = audio->info.audio_ptime;
     ops.sample_size = st30_get_sample_size(ops.fmt);
     ops.sample_num = st30_get_sample_num(ops.ptime, ops.sampling);
     s->pkt_len = ops.sample_size * ops.sample_num * ops.channel;
@@ -204,7 +203,6 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
     
     ops.framebuff_size = s->st30_frame_size;
     ops.framebuff_cnt = s->framebuff_cnt;
-    ops.rtp_ring_size = ctx->rx_audio_rtp_ring_size ? ctx->rx_audio_rtp_ring_size : 16;
     
     // audio sample number per frame
     s->sample_num = ops.sample_num;
@@ -219,8 +217,6 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
 
     st_pthread_mutex_init(&s->st30_wake_mutex, NULL);
     st_pthread_cond_init(&s->st30_wake_cond, NULL);
-
-    strncpy(s->st30_ref_url, audio ? audio->info.audio_url : "null", sizeof(s->st30_ref_url));
 
     handle = st30_rx_create(ctx->st, &ops);
     if(!handle) 

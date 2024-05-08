@@ -36,15 +36,6 @@ static std::vector<st_json_session_base *> collection_tx_session_base(st_json_co
     for (auto &s : c->tx_audio_sessions) {
         v.push_back(&s.base);
     }
-    for (auto &s : c->tx_anc_sessions) {
-        v.push_back(&s.base);
-    }
-    for (auto &s : c->tx_st22p_sessions) {
-        v.push_back(&s.base);
-    }
-    for (auto &s : c->tx_st20p_sessions) {
-        v.push_back(&s.base);
-    }
     return v;
 }
 
@@ -56,35 +47,27 @@ static std::vector<st_json_session_base *> collection_rx_session_base(st_json_co
     for (auto &s : c->rx_audio_sessions) {
         v.push_back(&s.base);
     }
-    for (auto &s : c->rx_anc_sessions) {
-        v.push_back(&s.base);
-    }
-    for (auto &s : c->rx_st22p_sessions) {
-        v.push_back(&s.base);
-    }
-    for (auto &s : c->rx_st20p_sessions) {
-        v.push_back(&s.base);
-    }
     return v;
 }
 
 static bool check_addr_used(const std::vector<st_json_session_base *> &sessions, const std::vector<st_json_session_base *> &new_sessions) {
     // {ip:port} => session.id
     std::unordered_map<std::string, std::string> used_addr;
-    for (int i = 0; i < MTL_PORT_MAX; ++i) {
-        for (auto &s : sessions) {
+    
+    for (auto &s : sessions) {
+        for (int i = 0; i < MTL_PORT_MAX && i < s->num_inf; ++i) {
             auto ip = st_app_ip_addr_to_string(s->ip[i]);
             if (!ip.empty() && ip != "0.0.0.0") {
-                auto key = ip + ":" + std::to_string(s->udp_port);
+                auto key = ip + ":" + std::to_string(s->udp_port[i]);
                 used_addr[key] = s->id;
             }
         }
     }
-    for (int i = 0; i < MTL_PORT_MAX; ++i) {
-        for (auto &s : new_sessions) {
+    for (auto &s : new_sessions) {
+        for (int i = 0; i < MTL_PORT_MAX && i < s->num_inf; ++i) {
             auto ip = st_app_ip_addr_to_string(s->ip[i]);
             if (!ip.empty() && ip != "0.0.0.0") {
-                auto key = ip + ":" + std::to_string(s->udp_port);
+                auto key = ip + ":" + std::to_string(s->udp_port[i]);
                 auto it = used_addr.find(key);
                 if (it != used_addr.end() && it->second != s->id) {
                     logger->warn("check_addr_used failed {} id1={} id2={} sessions.size={} new_sessions.size={}", 
@@ -318,6 +301,9 @@ static void st_app_remove_tx_session_update_json_ctx(st_app_context *ctx, const 
         return s.base.id == tx_source_id;
     });
     remove_if(ctx->json_ctx->tx_sources, [&tx_source_id] (auto &s) {
+        return s.id == tx_source_id;
+    });
+    remove_if(ctx->json_ctx->tx_outputsdi, [&tx_source_id] (auto &s) {
         return s.id == tx_source_id;
     });
 

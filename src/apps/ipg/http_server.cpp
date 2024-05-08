@@ -68,11 +68,26 @@ double get_cpu_usage()
     return cpu_usage;
 }
 
-double get_mem_usage(mem_occupy *mem)
+double get_mem_usage()
 {
+    typedef struct mempacked {
+    char str_memtotal[20];
+    unsigned long i_memtotal;
+    char str_memfree[20];
+    unsigned long i_memfree;
+    char str_buffers[20];
+    unsigned long i_buffers;
+    char str_cached[20];
+    unsigned long i_cached;
+    char str_swapcached[20];
+    unsigned long i_swapcached;
+
+    } mem_occupy;
+
     FILE * fd = NULL;
     char buff[256];
-    mem_occupy *m = mem;
+    mem_occupy mem;
+    mem_occupy *m = &mem;
     fd = fopen("/proc/meminfo","r");
     if(!fd)
     {
@@ -242,8 +257,7 @@ private:
     void get_device_info(const Request &req, Response &res) {
         Json::Value root;
 
-        mem_occupy mem_stat;
-        double memory_usage = get_mem_usage((mem_occupy *)&mem_stat);
+        double memory_usage = get_mem_usage();
         root["memory_usage"] = memory_usage;
         //获取CPU的使用情况指令：top -n 1  |awk -F ',' '{print $4}' |grep id|awk -F ' ' '{print $2}'
         //sprintf(cmd,"top -n 1  |awk -F ',' '{print $4}' |grep id|awk -F ' ' '{print $2}'");

@@ -300,38 +300,24 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     snprintf(name, 32, "TX Video SDI %d", s->source_info->device_id);
     ops.name = name;
     ops.priv = s;
-    ops.num_port = video ? video->base.num_inf : ctx->para.num_ports;
-    memcpy(ops.dip_addr[MTL_PORT_P],
-            video ? video->base.ip[MTL_PORT_P] : ctx->tx_dip_addr[MTL_PORT_P], MTL_IP_ADDR_LEN);
-    strncpy(ops.port[MTL_PORT_P],
-            video ? video->base.inf[MTL_PORT_P].name : ctx->para.port[MTL_PORT_P], MTL_PORT_MAX_LEN);
-    ops.udp_port[MTL_PORT_P] = video ? video->base.udp_port : (10000 + s->idx);
-    if(ctx->has_tx_dst_mac[MTL_PORT_P]) 
-    {
-        memcpy(&ops.tx_dst_mac[MTL_PORT_P][0], ctx->tx_dst_mac[MTL_PORT_P], 6);
-        ops.flags |= ST20_TX_FLAG_USER_P_MAC;
-    }
+    ops.num_port = video->base.num_inf;
+    memcpy(ops.dip_addr[MTL_PORT_P], video->base.ip[MTL_PORT_P], MTL_IP_ADDR_LEN);
+    strncpy(ops.port[MTL_PORT_P], video->base.inf[MTL_PORT_P].name, MTL_PORT_MAX_LEN);
+    ops.udp_port[MTL_PORT_P] = video->base.udp_port[0];
     if(ops.num_port > 1)
     {
-        memcpy(ops.dip_addr[MTL_PORT_R],
-            video ? video->base.ip[MTL_PORT_R] : ctx->tx_dip_addr[MTL_PORT_R], MTL_IP_ADDR_LEN);
-        strncpy(ops.port[MTL_PORT_R],
-                video ? video->base.inf[MTL_PORT_R].name : ctx->para.port[MTL_PORT_R], MTL_PORT_MAX_LEN);
-        ops.udp_port[MTL_PORT_R] = video ? video->base.udp_port : (10000 + s->idx);
-        if(ctx->has_tx_dst_mac[MTL_PORT_R]) 
-        {
-            memcpy(&ops.tx_dst_mac[MTL_PORT_R][0], ctx->tx_dst_mac[MTL_PORT_R], 6);
-            ops.flags |= ST20_TX_FLAG_USER_R_MAC;
-        }
+        memcpy(ops.dip_addr[MTL_PORT_R], video->base.ip[MTL_PORT_R], MTL_IP_ADDR_LEN);
+        strncpy(ops.port[MTL_PORT_R], video->base.inf[MTL_PORT_R].name, MTL_PORT_MAX_LEN);
+        ops.udp_port[MTL_PORT_R] = video->base.udp_port[1];
     }
     ops.pacing = ST21_PACING_NARROW;
-    ops.packing = video ? video->info.packing : ST20_PACKING_BPM;
-    ops.type = video ? video->info.type : ST20_TYPE_FRAME_LEVEL;
-    ops.width = video ? st_app_get_width(video->info.video_format) : 1920;
-    ops.height = video ? st_app_get_height(video->info.video_format) : 1080;
-    ops.fps = video ? st_app_get_fps(video->info.video_format) : ST_FPS_P59_94;
-    s->pixel_format = ops.fmt = video ? video->info.pg_format : ST20_FMT_YUV_422_10BIT;
-    ops.interlaced = video ? st_app_get_interlaced(video->info.video_format) : false;
+    ops.packing = video->info.packing;
+    ops.type = ST20_TYPE_FRAME_LEVEL;
+    ops.width = st_app_get_width(video->info.video_format);
+    ops.height = st_app_get_height(video->info.video_format);
+    ops.fps = st_app_get_fps(video->info.video_format);
+    s->pixel_format = ops.fmt = ST20_FMT_YUV_422_10BIT;
+    ops.interlaced = st_app_get_interlaced(video->info.video_format);
     ops.get_next_frame = app_tx_video_next_frame;
     ops.notify_frame_done = app_tx_video_frame_done;
     // ops.query_frame_lines_ready = app_tx_video_frame_lines_ready;
@@ -347,10 +333,6 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     s->interlaced = ops.interlaced ? true : false;
     if (s->interlaced) s->height >>= 1;
     s->linesize = s->width * s->st20_pg.size / s->st20_pg.coverage;
-    memcpy(s->st20_source_url, video ? video->info.video_url : ctx->tx_video_url,
-            ST_APP_URL_MAX_LEN);
-    s->st20_pcap_input = false;
-    s->st20_rtp_input = false;
     s->st = ctx->st;
     s->single_line = (ops.packing == ST20_PACKING_GPM_SL);
     s->slice = (ops.type == ST20_TYPE_SLICE_LEVEL);
@@ -359,7 +341,6 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
 
     s->framebuff_cnt = ops.framebuff_cnt;
     s->lines_per_slice = ops.height / 30;
-    s->st20_source_fd = -1;
 
     s->framebuffs =
         (struct st_tx_frame*)st_app_zmalloc(sizeof(*s->framebuffs) * s->framebuff_cnt);

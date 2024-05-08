@@ -396,6 +396,9 @@ static st_app_errc parse_ip_addr_str(const char *ip_addr_str, void *buf) {
 }
 
 static st_app_errc parse_multicast_ip_addr_str(const char *ip_addr_str, void *buf) {
+  if (!ip_addr_str) {
+    return st_app_errc::IP_ADDRESS_AND_PORT_REQUIRED;
+  }
   if (inet_pton(AF_INET, ip_addr_str, buf) != 1) {
     if (strlen(ip_addr_str) == 0) {
       return st_app_errc::IP_ADDRESS_AND_PORT_REQUIRED;
@@ -456,18 +459,25 @@ static void parse_array_enable(json_object* obj,st_app_tx_output_sdi* base)
   base->enable = enable;
 }
 
-static st_app_errc parse_base_udp_port(json_object* obj, st_json_session_base_t* base, int idx) {
-  int start_port = json_object_get_int(st_json_object_object_get(obj, "start_port"));
-  if (start_port <= 0 || start_port > 65535) {
-    logger->error("{}, invalid start port {}", __func__, start_port);
-    if (start_port == 0) {
+static st_app_errc parse_udp_port(json_object *obj, uint16_t &out_port) {
+  if (!obj) {
+    return st_app_errc::IP_ADDRESS_AND_PORT_REQUIRED;
+  }
+  int port = json_object_get_int(obj);
+  if (port <= 0 || port > 65535) {
+    logger->error("{}, invalid start port {}", __func__, port);
+    if (port == 0) {
       return st_app_errc::IP_ADDRESS_AND_PORT_REQUIRED;
     }
     return st_app_errc::INVALID_ADDRESS;
   }
-  base->udp_port = start_port + idx;
+  out_port = port;
 
   return st_app_errc::SUCCESS;
+}
+
+static st_app_errc parse_base_udp_port(json_object* obj, st_json_session_base_t* base) {
+  return parse_udp_port(st_json_object_object_get(obj, "start_port"), base->udp_port[0]);
 }
 
 static st_app_errc parse_base_payload_type(json_object* obj, st_json_session_base_t* base) {
@@ -638,15 +648,14 @@ static st_app_errc parse_url(json_object* obj, const char* name, char* url) {
   return st_app_errc::SUCCESS;
 }
 
-static st_app_errc st_json_parse_tx_video(int idx, json_object* video_obj,
-                                  st_json_video_session_t* video) {
+static st_app_errc st_json_parse_tx_video(json_object* video_obj, st_json_video_session_t* video) {
   if (video_obj == NULL || video == NULL) {
     logger->error("{}, can not parse tx video session", __func__);
     return st_app_errc::JSON_NULL;
   }
   st_app_errc ret;
   /* parse udp port  */
-  ret = parse_base_udp_port(video_obj, &video->base, idx);
+  ret = parse_base_udp_port(video_obj, &video->base);
   ERRC_EXPECT_SUCCESS(ret);
 
   /* parse payload type */
@@ -656,40 +665,35 @@ static st_app_errc st_json_parse_tx_video(int idx, json_object* video_obj,
   parse_base_enable(video_obj, &video->base);
 
   /* parse video type */
-  ret = parse_video_type(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_video_type(video_obj, video);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   /* parse video pacing */
-  ret = parse_video_pacing(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_video_pacing(video_obj, video);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   /* parse video packing mode */
   ret = parse_video_packing(video_obj, video);
   ERRC_EXPECT_SUCCESS(ret);
 
   /* parse tr offset */
-  ret = parse_video_tr_offset(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_video_tr_offset(video_obj, video);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   /* parse video format */
   // ret = parse_video_format(video_obj, video);
   // ERRC_EXPECT_SUCCESS(ret);
 
   /* parse pixel group format */
-  ret = parse_video_pg_format(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse video url */
-  // ret = parse_url(video_obj, "video_url", video->info.video_url);
-  // ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_video_pg_format(video_obj, video);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   return st_app_errc::SUCCESS;
 }
 
 
 
-static st_app_errc st_json_parse_rx_video(int idx, json_object* video_obj,
-                                  st_json_video_session_t* video) {
+static st_app_errc st_json_parse_rx_video(json_object* video_obj, st_json_video_session_t* video) {
   if (video_obj == NULL || video == NULL) {
     logger->error("{}, can not parse rx video session", __func__);
     return st_app_errc::JSON_NULL;
@@ -697,7 +701,7 @@ static st_app_errc st_json_parse_rx_video(int idx, json_object* video_obj,
   st_app_errc ret;
 
   /* parse udp port  */
-  ret = parse_base_udp_port(video_obj, &video->base, idx);
+  ret = parse_base_udp_port(video_obj, &video->base);
   ERRC_EXPECT_SUCCESS(ret);
 
   /* parse payload type */
@@ -707,45 +711,24 @@ static st_app_errc st_json_parse_rx_video(int idx, json_object* video_obj,
   parse_base_enable(video_obj, &video->base);
 
   /* parse video type */
-  ret = parse_video_type(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_video_type(video_obj, video);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   /* parse video pacing */
-  ret = parse_video_pacing(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_video_pacing(video_obj, video);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   /* parse tr offset */
-  ret = parse_video_tr_offset(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_video_tr_offset(video_obj, video);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   /* parse video format */
   // ret = parse_video_format(video_obj, video);
   // ERRC_EXPECT_SUCCESS(ret);
 
   /* parse pixel group format */
-  ret = parse_video_pg_format(video_obj, video);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse user pixel group format */
-  video->user_pg_format = USER_FMT_MAX;
-  const char* user_pg_format =
-      json_object_get_string(st_json_object_object_get(video_obj, "user_pg_format"));
-  if (user_pg_format != NULL) {
-    if (strcmp(user_pg_format, "YUV_422_8bit") == 0) {
-      video->user_pg_format = USER_FMT_YUV_422_8BIT;
-    } else {
-      logger->error("{}, invalid pixel group format {}", __func__, user_pg_format);
-      return st_app_errc::JSON_NOT_VALID;
-    }
-  }
-
-  /* parse display option */
-  video->display =
-      json_object_get_boolean(st_json_object_object_get(video_obj, "display"));
-
-  /* parse measure_latency option */
-  video->measure_latency =
-      json_object_get_boolean(st_json_object_object_get(video_obj, "measure_latency"));
+  /* ret = parse_video_pg_format(video_obj, video);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   return st_app_errc::SUCCESS;
 }
@@ -874,8 +857,50 @@ static st_app_errc parse_audio_ptime(json_object* audio_obj, st_json_audio_sessi
   return st_app_errc::SUCCESS;
 }
 
-static st_app_errc st_json_parse_tx_audio(int idx, json_object* audio_obj,
-                                  st_json_audio_session_t* audio) {
+/*
+{
+  "redundant": {
+    "enable": false,
+    "interface": 1,
+    "ip": "239.10.1.101",
+    "port": 20000
+  }
+}
+*/
+static st_app_errc parse_redundant(st_json_context *ctx, json_object *root_obj, st_json_session_base *base) {
+  st_app_errc ret = st_app_errc::SUCCESS;
+  json_object *r = st_json_object_object_get(root_obj, "redundant");
+  base->num_inf = 1;
+  if (r) {
+    if (json_object_get_boolean(st_json_object_object_get(r, "enable")) &&
+      ctx->interfaces.size() > 1) {
+      const char *ip_str = json_object_get_string(st_json_object_object_get(r, "ip"));
+      ret = parse_multicast_ip_addr_str(
+        ip_str,
+        base->ip[1]);
+      ERRC_EXPECT_SUCCESS(ret);
+      base->ip_str[1] = ip_str;
+      
+      ret = parse_udp_port(st_json_object_object_get(r, "port"), base->udp_port[1]);
+      ERRC_EXPECT_SUCCESS(ret);
+      json_object *interface_obj = st_json_object_object_get(r, "interface");
+      if (!interface_obj) {
+        return st_app_errc::JSON_NOT_VALID;
+      }
+      int inf_index = json_object_get_int(interface_obj);
+      if (inf_index < 0 || inf_index >= ctx->interfaces.size()) {
+        logger->error("parse_redundant invalid interface: {}", inf_index);
+        return st_app_errc::JSON_NOT_VALID;
+      }
+      base->inf[1] = ctx->interfaces[inf_index];
+
+      base->num_inf = 2;
+    }
+  }
+  return st_app_errc::SUCCESS;
+}
+
+static st_app_errc st_json_parse_tx_audio(json_object* audio_obj, st_json_audio_session_t* audio) {
   if (audio_obj == NULL || audio == NULL) {
     logger->error("{}, can not parse tx audio session", __func__);
     return st_app_errc::JSON_NULL;
@@ -883,7 +908,7 @@ static st_app_errc st_json_parse_tx_audio(int idx, json_object* audio_obj,
   st_app_errc ret;
 
   /* parse udp port  */
-  ret = parse_base_udp_port(audio_obj, &audio->base, idx);
+  ret = parse_base_udp_port(audio_obj, &audio->base);
   ERRC_EXPECT_SUCCESS(ret);
 
   /* parse payload type */
@@ -893,8 +918,8 @@ static st_app_errc st_json_parse_tx_audio(int idx, json_object* audio_obj,
   parse_base_enable(audio_obj, &audio->base);
 
   /* parse audio type */
-  ret = parse_audio_type(audio_obj, audio);
-  ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_audio_type(audio_obj, audio);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   /* parse audio format */
   ret = parse_audio_format(audio_obj, audio);
@@ -928,7 +953,7 @@ static st_app_errc st_json_parse_rx_audio(int idx, json_object* audio_obj,
   st_app_errc ret;
 
   /* parse udp port  */
-  ret = parse_base_udp_port(audio_obj, &audio->base, idx);
+  ret = parse_base_udp_port(audio_obj, &audio->base);
   ERRC_EXPECT_SUCCESS(ret);
 
   /* parse payload type */
@@ -938,8 +963,8 @@ static st_app_errc st_json_parse_rx_audio(int idx, json_object* audio_obj,
   parse_base_enable(audio_obj, &audio->base);
 
   /* parse audio type */
-  ret = parse_audio_type(audio_obj, audio);
-  ERRC_EXPECT_SUCCESS(ret);
+  /* ret = parse_audio_type(audio_obj, audio);
+  ERRC_EXPECT_SUCCESS(ret); */
 
   /* parse audio format */
   ret = parse_audio_format(audio_obj, audio);
@@ -966,584 +991,12 @@ static st_app_errc st_json_parse_rx_audio(int idx, json_object* audio_obj,
   return st_app_errc::SUCCESS;
 }
 
-static st_app_errc st_json_parse_tx_anc(int idx, json_object* anc_obj,
-                                st_json_ancillary_session_t* anc) {
-  if (anc_obj == NULL || anc == NULL) {
-    logger->error("{}, can not parse tx anc session", __func__);
-    return st_app_errc::JSON_NULL;
-  }
-  st_app_errc ret;
-
-  /* parse udp port  */
-  ret = parse_base_udp_port(anc_obj, &anc->base, idx);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse payload type */
-  ret = parse_base_payload_type(anc_obj, &anc->base);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  parse_base_enable(anc_obj, &anc->base);
-
-  /* parse anc type */
-  const char* type = json_object_get_string(st_json_object_object_get(anc_obj, "type"));
-  REQUIRED_ITEM(type);
-  if (strcmp(type, "frame") == 0) {
-    anc->info.type = ST40_TYPE_FRAME_LEVEL;
-  } else if (strcmp(type, "rtp") == 0) {
-    anc->info.type = ST40_TYPE_RTP_LEVEL;
-  } else {
-    logger->error("{}, invalid anc type {}", __func__, type);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  /* parse anc format */
-  const char* anc_format =
-      json_object_get_string(st_json_object_object_get(anc_obj, "ancillary_format"));
-  REQUIRED_ITEM(anc_format);
-  if (strcmp(anc_format, "closed_caption") == 0) {
-    anc->info.anc_format = ANC_FORMAT_CLOSED_CAPTION;
-  } else {
-    logger->error("{}, invalid anc format {}", __func__, anc_format);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-
-  /* parse anc fps */
-  const char* anc_fps =
-      json_object_get_string(st_json_object_object_get(anc_obj, "ancillary_fps"));
-  REQUIRED_ITEM(anc_fps);
-  if (strcmp(anc_fps, "p59") == 0) {
-    anc->info.anc_fps = ST_FPS_P59_94;
-  } else if (strcmp(anc_fps, "p50") == 0) {
-    anc->info.anc_fps = ST_FPS_P50;
-  } else if (strcmp(anc_fps, "p25") == 0) {
-    anc->info.anc_fps = ST_FPS_P25;
-  } else if (strcmp(anc_fps, "p29") == 0) {
-    anc->info.anc_fps = ST_FPS_P29_97;
-  } else {
-    logger->error("{}, invalid anc fps {}", __func__, anc_fps);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-
-  /* parse anc url */
-  ret = parse_url(anc_obj, "ancillary_url", anc->info.anc_url);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc st_json_parse_rx_anc(int idx, json_object* anc_obj,
-                                st_json_ancillary_session_t* anc) {
-  if (anc_obj == NULL || anc == NULL) {
-    logger->error("{}, can not parse rx anc session", __func__);
-    return st_app_errc::JSON_NULL;
-  }
-  st_app_errc ret;
-
-  /* parse udp port  */
-  ret = parse_base_udp_port(anc_obj, &anc->base, idx);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse payload type */
-  ret = parse_base_payload_type(anc_obj, &anc->base);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  parse_base_enable(anc_obj, &anc->base);
-
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st22p_width(json_object* st22p_obj, st_json_st22p_session_t* st22p) {
-  int width = json_object_get_int(st_json_object_object_get(st22p_obj, "width"));
-  if (width <= 0) {
-    logger->error("{}, invalid width {}", __func__, width);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  st22p->info.width = width;
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st22p_height(json_object* st22p_obj, st_json_st22p_session_t* st22p) {
-  int height = json_object_get_int(st_json_object_object_get(st22p_obj, "height"));
-  if (height <= 0) {
-    logger->error("{}, invalid height {}", __func__, height);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  st22p->info.height = height;
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st22p_fps(json_object* st22p_obj, st_json_st22p_session_t* st22p) {
-  const char* fps = json_object_get_string(st_json_object_object_get(st22p_obj, "fps"));
-  REQUIRED_ITEM(fps);
-  if (strcmp(fps, "p59") == 0) {
-    st22p->info.fps = ST_FPS_P59_94;
-  } else if (strcmp(fps, "p50") == 0) {
-    st22p->info.fps = ST_FPS_P50;
-  } else if (strcmp(fps, "p25") == 0) {
-    st22p->info.fps = ST_FPS_P25;
-  } else if (strcmp(fps, "p29") == 0) {
-    st22p->info.fps = ST_FPS_P29_97;
-  } else {
-    logger->error("{}, invalid anc fps {}", __func__, fps);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st22p_pack_type(json_object* st22p_obj, st_json_st22p_session_t* st22p) {
-  const char* pack_type =
-      json_object_get_string(st_json_object_object_get(st22p_obj, "pack_type"));
-  REQUIRED_ITEM(pack_type);
-  if (strcmp(pack_type, "codestream") == 0) {
-    st22p->info.pack_type = ST22_PACK_CODESTREAM;
-  } else if (strcmp(pack_type, "slice") == 0) {
-    st22p->info.pack_type = ST22_PACK_SLICE;
-  } else {
-    logger->error("{}, invalid pack_type {}", __func__, pack_type);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st22p_codec(json_object* st22p_obj, st_json_st22p_session_t* st22p) {
-  const char* codec =
-      json_object_get_string(st_json_object_object_get(st22p_obj, "codec"));
-  REQUIRED_ITEM(codec);
-  if (strcmp(codec, "JPEG-XS") == 0) {
-    st22p->info.codec = ST22_CODEC_JPEGXS;
-  } else {
-    logger->error("{}, invalid codec {}", __func__, codec);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st22p_device(json_object* st22p_obj, st_json_st22p_session_t* st22p) {
-  const char* device =
-      json_object_get_string(st_json_object_object_get(st22p_obj, "device"));
-  REQUIRED_ITEM(device);
-  if (strcmp(device, "AUTO") == 0) {
-    st22p->info.device = ST_PLUGIN_DEVICE_AUTO;
-  } else if (strcmp(device, "CPU") == 0) {
-    st22p->info.device = ST_PLUGIN_DEVICE_CPU;
-  } else if (strcmp(device, "GPU") == 0) {
-    st22p->info.device = ST_PLUGIN_DEVICE_GPU;
-  } else if (strcmp(device, "FPGA") == 0) {
-    st22p->info.device = ST_PLUGIN_DEVICE_FPGA;
-  } else {
-    logger->error("{}, invalid plugin device type {}", __func__, device);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st22p_quality(json_object* st22p_obj, st_json_st22p_session_t* st22p) {
-  const char* quality =
-      json_object_get_string(st_json_object_object_get(st22p_obj, "quality"));
-  if (quality) {
-    if (strcmp(quality, "quality") == 0) {
-      st22p->info.quality = ST22_QUALITY_MODE_QUALITY;
-    } else if (strcmp(quality, "speed") == 0) {
-      st22p->info.quality = ST22_QUALITY_MODE_SPEED;
-    } else {
-      logger->error("{}, invalid plugin quality type {}", __func__, quality);
-      return st_app_errc::JSON_NOT_VALID;
-    }
-  } else { /* default use speed mode */
-    st22p->info.quality = ST22_QUALITY_MODE_SPEED;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st22p_format(json_object* st22p_obj, st_json_st22p_session_t* st22p,
-                              const char* format_name) {
-  const char* format =
-      json_object_get_string(st_json_object_object_get(st22p_obj, format_name));
-  REQUIRED_ITEM(format);
-  if (strcmp(format, "YUV422PLANAR10LE") == 0) {
-    st22p->info.format = ST_FRAME_FMT_YUV422PLANAR10LE;
-  } else if (strcmp(format, "ARGB") == 0) {
-    st22p->info.format = ST_FRAME_FMT_ARGB;
-  } else if (strcmp(format, "BGRA") == 0) {
-    st22p->info.format = ST_FRAME_FMT_BGRA;
-  } else if (strcmp(format, "V210") == 0) {
-    st22p->info.format = ST_FRAME_FMT_V210;
-  } else if (strcmp(format, "YUV422PLANAR8") == 0) {
-    st22p->info.format = ST_FRAME_FMT_YUV422PLANAR8;
-  } else if (strcmp(format, "YUV422PACKED8") == 0) {
-    st22p->info.format = ST_FRAME_FMT_UYVY;
-  } else if (strcmp(format, "YUV422RFC4175PG2BE10") == 0) {
-    st22p->info.format = ST_FRAME_FMT_YUV422RFC4175PG2BE10;
-  } else if (strcmp(format, "RGB8") == 0) {
-    st22p->info.format = ST_FRAME_FMT_RGB8;
-  } else if (strcmp(format, "JPEGXS_CODESTREAM") == 0) {
-    st22p->info.format = ST_FRAME_FMT_JPEGXS_CODESTREAM;
-  } else {
-    logger->error("{}, invalid output format {}", __func__, format);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc st_json_parse_tx_st22p(int idx, json_object* st22p_obj,
-                                  st_json_st22p_session_t* st22p) {
-  if (st22p_obj == NULL || st22p == NULL) {
-    logger->error("{}, can not parse tx st22p session", __func__);
-    return st_app_errc::JSON_NULL;
-  }
-  st_app_errc ret;
-
-  /* parse udp port  */
-  ret = parse_base_udp_port(st22p_obj, &st22p->base, idx);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse payload type */
-  ret = parse_base_payload_type(st22p_obj, &st22p->base);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  parse_base_enable(st22p_obj, &st22p->base);
-
-  /* parse width */
-  ret = parse_st22p_width(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse height */
-  ret = parse_st22p_height(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse fps */
-  ret = parse_st22p_fps(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse pack_type */
-  ret = parse_st22p_pack_type(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse codec */
-  ret = parse_st22p_codec(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse device */
-  ret = parse_st22p_device(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse quality */
-  ret = parse_st22p_quality(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse input format */
-  ret = parse_st22p_format(st22p_obj, st22p, "input_format");
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse st22p url */
-  ret = parse_url(st22p_obj, "st22p_url", st22p->info.st22p_url);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse codec_thread_count option */
-  st22p->info.codec_thread_count =
-      json_object_get_int(st_json_object_object_get(st22p_obj, "codec_thread_count"));
-
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc st_json_parse_rx_st22p(int idx, json_object* st22p_obj,
-                                  st_json_st22p_session_t* st22p) {
-  if (st22p_obj == NULL || st22p == NULL) {
-    logger->error("{}, can not parse rx st22p session", __func__);
-    return st_app_errc::JSON_NULL;
-  }
-  st_app_errc ret;
-
-  /* parse udp port  */
-  ret = parse_base_udp_port(st22p_obj, &st22p->base, idx);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse payload type */
-  ret = parse_base_payload_type(st22p_obj, &st22p->base);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  parse_base_enable(st22p_obj, &st22p->base);
-
-  /* parse width */
-  ret = parse_st22p_width(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse height */
-  ret = parse_st22p_height(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse fps */
-  ret = parse_st22p_fps(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse pack_type */
-  ret = parse_st22p_pack_type(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse codec */
-  ret = parse_st22p_codec(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse device */
-  ret = parse_st22p_device(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse quality */
-  ret = parse_st22p_quality(st22p_obj, st22p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse output format */
-  ret = parse_st22p_format(st22p_obj, st22p, "output_format");
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse display option */
-  st22p->display =
-      json_object_get_boolean(st_json_object_object_get(st22p_obj, "display"));
-
-  /* parse measure_latency option */
-  st22p->measure_latency =
-      json_object_get_boolean(st_json_object_object_get(st22p_obj, "measure_latency"));
-
-  /* parse codec_thread_count option */
-  st22p->info.codec_thread_count =
-      json_object_get_int(st_json_object_object_get(st22p_obj, "codec_thread_count"));
-
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st20p_width(json_object* st20p_obj, st_json_st20p_session_t* st20p) {
-  int width = json_object_get_int(st_json_object_object_get(st20p_obj, "width"));
-  if (width <= 0) {
-    logger->error("{}, invalid width {}", __func__, width);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  st20p->info.width = width;
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st20p_height(json_object* st20p_obj, st_json_st20p_session_t* st20p) {
-  int height = json_object_get_int(st_json_object_object_get(st20p_obj, "height"));
-  if (height <= 0) {
-    logger->error("{}, invalid height {}", __func__, height);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  st20p->info.height = height;
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st20p_fps(json_object* st20p_obj, st_json_st20p_session_t* st20p) {
-  const char* fps = json_object_get_string(st_json_object_object_get(st20p_obj, "fps"));
-  REQUIRED_ITEM(fps);
-  if (strcmp(fps, "p59") == 0) {
-    st20p->info.fps = ST_FPS_P59_94;
-  } else if (strcmp(fps, "p50") == 0) {
-    st20p->info.fps = ST_FPS_P50;
-  } else if (strcmp(fps, "p25") == 0) {
-    st20p->info.fps = ST_FPS_P25;
-  } else if (strcmp(fps, "p29") == 0) {
-    st20p->info.fps = ST_FPS_P29_97;
-  } else {
-    logger->error("{}, invalid anc fps {}", __func__, fps);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st20p_device(json_object* st20p_obj, st_json_st20p_session_t* st20p) {
-  const char* device =
-      json_object_get_string(st_json_object_object_get(st20p_obj, "device"));
-  REQUIRED_ITEM(device);
-  if (strcmp(device, "AUTO") == 0) {
-    st20p->info.device = ST_PLUGIN_DEVICE_AUTO;
-  } else if (strcmp(device, "CPU") == 0) {
-    st20p->info.device = ST_PLUGIN_DEVICE_CPU;
-  } else if (strcmp(device, "GPU") == 0) {
-    st20p->info.device = ST_PLUGIN_DEVICE_GPU;
-  } else if (strcmp(device, "FPGA") == 0) {
-    st20p->info.device = ST_PLUGIN_DEVICE_FPGA;
-  } else {
-    logger->error("{}, invalid plugin device type {}", __func__, device);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st20p_format(json_object* st20p_obj, st_json_st20p_session_t* st20p,
-                              const char* format_name) {
-  const char* format =
-      json_object_get_string(st_json_object_object_get(st20p_obj, format_name));
-  REQUIRED_ITEM(format);
-  if (strcmp(format, "YUV422PLANAR10LE") == 0) {
-    st20p->info.format = ST_FRAME_FMT_YUV422PLANAR10LE;
-  } else if (strcmp(format, "ARGB") == 0) {
-    st20p->info.format = ST_FRAME_FMT_ARGB;
-  } else if (strcmp(format, "BGRA") == 0) {
-    st20p->info.format = ST_FRAME_FMT_BGRA;
-  } else if (strcmp(format, "V210") == 0) {
-    st20p->info.format = ST_FRAME_FMT_V210;
-  } else if (strcmp(format, "YUV422PLANAR8") == 0) {
-    st20p->info.format = ST_FRAME_FMT_YUV422PLANAR8;
-  } else if (strcmp(format, "YUV422PACKED8") == 0) {
-    st20p->info.format = ST_FRAME_FMT_UYVY;
-  } else if (strcmp(format, "YUV422RFC4175PG2BE10") == 0) {
-    st20p->info.format = ST_FRAME_FMT_YUV422RFC4175PG2BE10;
-  } else if (strcmp(format, "RGB8") == 0) {
-    st20p->info.format = ST_FRAME_FMT_RGB8;
-  } else {
-    logger->error("{}, invalid output format {}", __func__, format);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc parse_st20p_transport_format(json_object* st20p_obj,
-                                        st_json_st20p_session_t* st20p) {
-  const char* t_format =
-      json_object_get_string(st_json_object_object_get(st20p_obj, "transport_format"));
-  REQUIRED_ITEM(t_format);
-  if (strcmp(t_format, "YUV_422_10bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_YUV_422_10BIT;
-  } else if (strcmp(t_format, "YUV_422_8bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_YUV_422_8BIT;
-  } else if (strcmp(t_format, "YUV_422_12bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_YUV_422_12BIT;
-  } else if (strcmp(t_format, "YUV_422_16bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_YUV_422_16BIT;
-  } else if (strcmp(t_format, "YUV_420_8bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_YUV_420_8BIT;
-  } else if (strcmp(t_format, "YUV_420_10bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_YUV_420_10BIT;
-  } else if (strcmp(t_format, "YUV_420_12bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_YUV_420_12BIT;
-  } else if (strcmp(t_format, "RGB_8bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_RGB_8BIT;
-  } else if (strcmp(t_format, "RGB_10bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_RGB_10BIT;
-  } else if (strcmp(t_format, "RGB_12bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_RGB_12BIT;
-  } else if (strcmp(t_format, "RGB_16bit") == 0) {
-    st20p->info.transport_format = ST20_FMT_RGB_16BIT;
-  } else {
-    logger->error("{}, invalid transport format {}", __func__, t_format);
-    return st_app_errc::JSON_NOT_VALID;
-  }
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc st_json_parse_tx_st20p(int idx, json_object* st20p_obj,
-                                  st_json_st20p_session_t* st20p) {
-  if (st20p_obj == NULL || st20p == NULL) {
-    logger->error("{}, can not parse tx st20p session", __func__);
-    return st_app_errc::JSON_NULL;
-  }
-  st_app_errc ret;
-
-  /* parse udp port  */
-  ret = parse_base_udp_port(st20p_obj, &st20p->base, idx);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse payload type */
-  ret = parse_base_payload_type(st20p_obj, &st20p->base);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  parse_base_enable(st20p_obj, &st20p->base);
-
-  /* parse width */
-  ret = parse_st20p_width(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse height */
-  ret = parse_st20p_height(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse fps */
-  ret = parse_st20p_fps(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse device */
-  ret = parse_st20p_device(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse input format */
-  ret = parse_st20p_format(st20p_obj, st20p, "input_format");
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse transport format */
-  ret = parse_st20p_transport_format(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse st20p url */
-  ret = parse_url(st20p_obj, "st20p_url", st20p->info.st20p_url);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  return st_app_errc::SUCCESS;
-}
-
-static st_app_errc st_json_parse_rx_st20p(int idx, json_object* st20p_obj,
-                                  st_json_st20p_session_t* st20p) {
-  if (st20p_obj == NULL || st20p == NULL) {
-    logger->error("{}, can not parse rx st20p session", __func__);
-    return st_app_errc::JSON_NULL;
-  }
-  st_app_errc ret;
-
-  /* parse udp port  */
-  ret = parse_base_udp_port(st20p_obj, &st20p->base, idx);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse payload type */
-  ret = parse_base_payload_type(st20p_obj, &st20p->base);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  parse_base_enable(st20p_obj, &st20p->base);
-
-  /* parse width */
-  ret = parse_st20p_width(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse height */
-  ret = parse_st20p_height(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse fps */
-  ret = parse_st20p_fps(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse device */
-  ret = parse_st20p_device(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse output format */
-  ret = parse_st20p_format(st20p_obj, st20p, "output_format");
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse transport format */
-  ret = parse_st20p_transport_format(st20p_obj, st20p);
-  ERRC_EXPECT_SUCCESS(ret);
-
-  /* parse display option */
-  st20p->display =
-      json_object_get_boolean(st_json_object_object_get(st20p_obj, "display"));
-
-  /* parse measure_latency option */
-  st20p->measure_latency =
-      json_object_get_boolean(st_json_object_object_get(st20p_obj, "measure_latency"));
-
-  return st_app_errc::SUCCESS;
-}
 
 static st_app_errc parse_session_num(json_object* group, const char* name, int &num) {
   num = 0;
   json_object* session_array = st_json_object_object_get(group, name);
   if (session_array != NULL && json_object_get_type(session_array) == json_type_array) {
-    for (int j = 0; j < json_object_array_length(session_array); ++j) {
-      json_object* session = json_object_array_get_idx(session_array, j);
-      int replicas = json_object_get_int(st_json_object_object_get(session, "replicas"));
-      if (replicas < 0) {
-        logger->error("{}, invalid replicas number: {}", __func__, replicas);
-        return st_app_errc::JSON_NOT_VALID;
-      }
-      num += replicas;
-    }
+    num = json_object_array_length(session_array);
   }
   return st_app_errc::SUCCESS;
 }
@@ -1636,32 +1089,6 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
   /* parse tx sessions  */
   json_object* tx_group_array = st_json_object_object_get(root_object, "tx_sessions");
   if (tx_group_array != NULL && json_object_get_type(tx_group_array) == json_type_array) {
-    /* allocate tx source config*/
-    int tx_source_cnt = json_object_array_length(tx_group_array);
-    ctx->tx_sources.resize(tx_source_cnt);
-    
-    /* allocate outputsdi config */
-    int num_outputsdi_array = json_object_array_length(tx_group_array);
-    ctx->tx_outputsdi.resize(num_outputsdi_array);
-    // auto sz = sizeof(struct st_app_tx_source);
-    // auto sc = ( st_app_tx_source*)st_app_zmalloc(ctx->tx_source_cnt*sizeof( st_app_tx_source));
-    // auto str_sz = sizeof(std::string);
-    // sc[0].device_id = 1;
-    // sc[0].type = "type";
-    // sc[0].file_url = "file_url";
-    // sc[0].video_format = "video_format";
-    // sc[1].device_id = 2;
-    // sc[1].type = "type1";
-    // sc[1].file_url = "file_url1";
-    // sc[1].video_format = "video_format1";
-    // logger->info("{}, {},{},{}", __func__, sc[0].device_id, sc[0].type, sc[0].video_format);
-    // logger->info("{}, {},{},{}", __func__, sc[1].device_id, sc[1].type, sc[1].video_format);
-    
-    int tx_video_cnt = 0;
-    int tx_audio_cnt = 0;
-    int tx_ancillary_cnt = 0;
-    int tx_st22p_cnt = 0;
-    int tx_st20p_cnt = 0;
     /* parse session numbers for array allocation */
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
       json_object* tx_group = json_object_array_get_idx(tx_group_array, i);
@@ -1669,39 +1096,14 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
         logger->error("{}, can not parse tx session group", __func__);
         return st_app_errc::JSON_PARSE_FAIL;
       }
-      int num = 0;
-      /* parse tx video sessions */
-      ret = parse_session_num(tx_group, "video", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      tx_video_cnt += (num);
-      /* parse tx audio sessions */
-      ret = parse_session_num(tx_group, "audio", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      tx_audio_cnt += (num);
-      /* parse tx outputsdi */
-      /* parse tx ancillary sessions */
-      ret = parse_session_num(tx_group, "ancillary", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      tx_ancillary_cnt += (num);
-      /* parse tx st22p sessions */
-      ret = parse_session_num(tx_group, "st22p", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      tx_st22p_cnt += (num);
-      /* parse tx st20p sessions */
-      ret = parse_session_num(tx_group, "st20p", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      tx_st20p_cnt += (num);
- 
-
       // parse tx source config
       json_object* source = st_json_object_object_get(tx_group, "source");
-      auto &tx_source = ctx->tx_sources[i];
+      auto &tx_source = ctx->tx_sources.emplace_back();
       tx_source.type = safe_get_string(source, "type");
       tx_source.device_id = json_object_get_int(st_json_object_object_get(source, "device_id"));
       if (!tx_source.device_id) {
         return st_app_errc::DECKLINK_DEVICE_ID_REQUIRED;
       }
-      tx_source.file_url = safe_get_string(source, "file_url");
       tx_source.video_format = safe_get_string(source, "video_format");
       tx_source.pixel_format = safe_get_string(source, "pixel_format");
       
@@ -1723,18 +1125,6 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       }
     }
 
-    ctx->tx_video_sessions.resize(tx_video_cnt);
-    ctx->tx_audio_sessions.resize(tx_audio_cnt);
-    ctx->tx_anc_sessions.resize(tx_ancillary_cnt);
-    ctx->tx_st22p_sessions.resize(tx_st22p_cnt);
-    ctx->tx_st20p_sessions.resize(tx_st20p_cnt);
-    int num_inf = 0;
-    int num_video = 0;
-    int num_audio = 0;
-    int num_anc = 0;
-    int num_st22p = 0;
-    int num_st20p = 0;
-    int num_outputsdi = 0;
     for (int i = 0; i < json_object_array_length(tx_group_array); ++i) {
       json_object* tx_group = json_object_array_get_idx(tx_group_array, i);
       if (tx_group == NULL) {
@@ -1747,7 +1137,6 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
 
       /* parse destination ip */
       json_object* dip_p = NULL;
-      json_object* dip_r = NULL;
       json_object* dip_array = st_json_object_object_get(tx_group, "dip");
       if (dip_array != NULL && json_object_get_type(dip_array) == json_type_array) {
         int len = json_object_array_length(dip_array);
@@ -1756,29 +1145,17 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
           return st_app_errc::JSON_NOT_VALID;
         }
         dip_p = json_object_array_get_idx(dip_array, 0);
-        if (len == 2) {
-          dip_r = json_object_array_get_idx(dip_array, 1);
-        }
       }
 
       /* parse interface */
-      int inf_p, inf_r = 0;
+      int inf_p = 0;
       json_object* interface_array = st_json_object_object_get(tx_group, "interface");
       if (interface_array != NULL &&
           json_object_get_type(interface_array) == json_type_array) {
-        int len = json_object_array_length(interface_array);
-        num_inf = len;
         inf_p = json_object_get_int(json_object_array_get_idx(interface_array, 0));
         if (inf_p < 0 || inf_p > num_interfaces) {
           logger->error("{}, wrong interface index", __func__);
           return st_app_errc::JSON_NOT_VALID;
-        }
-        if (len == 2) {
-          inf_r = json_object_get_int(json_object_array_get_idx(interface_array, 1));
-          if (inf_r < 0 || inf_r > num_interfaces) {
-            logger->error("{}, wrong interface index", __func__);
-            return st_app_errc::JSON_NOT_VALID;
-          }
         }
       } else {
         logger->error("{}, can not parse interface_array", __func__);
@@ -1792,10 +1169,10 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
         for(int i = 0;i < json_object_array_length(outputsdi_array); ++i)
         {
           json_object* outputsdi_session = json_object_array_get_idx(outputsdi_array, i);
-          ret = st_json_parse_tx_outputsdi(outputsdi_session,&ctx->tx_outputsdi[num_outputsdi]);
-          ctx->tx_outputsdi[num_outputsdi].id = tx_source.id;
+          st_app_tx_output_sdi &output_sdi = ctx->tx_outputsdi.emplace_back();
+          ret = st_json_parse_tx_outputsdi(outputsdi_session, &output_sdi);
           ERRC_EXPECT_SUCCESS(ret);
-          num_outputsdi++;
+          output_sdi.id = tx_source.id;
         }
       }
 
@@ -1803,16 +1180,10 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       json_object* video_array = st_json_object_object_get(tx_group, "video");
       if (video_array != NULL && json_object_get_type(video_array) == json_type_array) {
         for (int j = 0; j < json_object_array_length(video_array); ++j) {
+          st_json_video_session &tx_video_session = ctx->tx_video_sessions.emplace_back();
           json_object* video_session = json_object_array_get_idx(video_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(video_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
           // 取video对象的dip，没有的话用外层的dip
           json_object* video_dip_p = NULL;
-          json_object* video_dip_r = NULL;
           json_object* video_dip_array = st_json_object_object_get(video_session, "dip");
           if (video_dip_array != NULL && json_object_get_type(video_dip_array) == json_type_array) {
             int len = json_object_array_length(video_dip_array);
@@ -1821,44 +1192,31 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
               return st_app_errc::JSON_NOT_VALID;
             }
             video_dip_p = json_object_array_get_idx(video_dip_array, 0);
-            if (len == 2) {
-              video_dip_r = json_object_array_get_idx(video_dip_array, 1);
-            }
           } else {
             video_dip_p = dip_p;
-            video_dip_r = dip_r;
           }
 
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(video_dip_p), ctx->tx_video_sessions[num_video].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-            ctx->tx_video_sessions[num_video].base.ip_str[0] = json_object_get_string(video_dip_p);
+          ret = parse_multicast_ip_addr_str(json_object_get_string(video_dip_p), tx_video_session.base.ip[0]);
+          ERRC_EXPECT_SUCCESS(ret);
+          tx_video_session.base.ip_str[0] = json_object_get_string(video_dip_p);
 
-            ctx->tx_video_sessions[num_video].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(video_dip_r), ctx->tx_video_sessions[num_video].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-              ctx->tx_video_sessions[num_video].base.ip_str[1] = json_object_get_string(video_dip_r);
+          tx_video_session.base.inf[0] = ctx->interfaces[inf_p];
+          
+          ret = parse_redundant(ctx, video_session, &tx_video_session.base);
+          ERRC_EXPECT_SUCCESS(ret);
 
-              ctx->tx_video_sessions[num_video].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->tx_video_sessions[num_video].base.num_inf = num_inf;
-            ret = st_json_parse_tx_video(k, video_session,
-                                         &ctx->tx_video_sessions[num_video]);
-            ERRC_EXPECT_SUCCESS(ret);
+          ret = st_json_parse_tx_video(video_session, &tx_video_session);
+          ERRC_EXPECT_SUCCESS(ret);
 
-            // video source handle id
-            ctx->tx_video_sessions[num_video].base.id = tx_source.id;
+          // video source handle id
+          tx_video_session.base.id = tx_source.id;
 
-            const st_video_fmt_desc *fmt_desc = get_video_fmt_from_core_fmt_name(tx_source.video_format);
-            if (!fmt_desc) {
-              logger->error("tx_sessions.video.video_format={} get_video_fmt_from_core_fmt_name failed", tx_source.video_format);
-              return st_app_errc::JSON_NOT_VALID;
-            }
-            ctx->tx_video_sessions[num_video].info.video_format = fmt_desc->fmt;
-
-            num_video++;
+          const st_video_fmt_desc *fmt_desc = get_video_fmt_from_core_fmt_name(tx_source.video_format);
+          if (!fmt_desc) {
+            logger->error("tx_sessions.video.video_format={} get_video_fmt_from_core_fmt_name failed", tx_source.video_format);
+            return st_app_errc::JSON_NOT_VALID;
           }
+          tx_video_session.info.video_format = fmt_desc->fmt;
         }
       }
 
@@ -1866,16 +1224,10 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
       json_object* audio_array = st_json_object_object_get(tx_group, "audio");
       if (audio_array != NULL && json_object_get_type(audio_array) == json_type_array) {
         for (int j = 0; j < json_object_array_length(audio_array); ++j) {
+          st_json_audio_session_t &tx_audio_session = ctx->tx_audio_sessions.emplace_back();
           json_object* audio_session = json_object_array_get_idx(audio_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(audio_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
           // 取audio对象的dip，没有的话用外层的dip
           json_object* audio_dip_p = NULL;
-          json_object* audio_dip_r = NULL;
           json_object* audio_dip_array = st_json_object_object_get(audio_session, "dip");
           if (audio_dip_array != NULL && json_object_get_type(audio_dip_array) == json_type_array) {
             int len = json_object_array_length(audio_dip_array);
@@ -1884,128 +1236,22 @@ st_app_errc st_app_parse_json_tx_sessions(st_json_context_t* ctx, json_object *r
               return st_app_errc::JSON_NOT_VALID;
             }
             audio_dip_p = json_object_array_get_idx(audio_dip_array, 0);
-            if (len == 2) {
-              audio_dip_r = json_object_array_get_idx(audio_dip_array, 1);
-            }
           } else {
             audio_dip_p = dip_p;
-            audio_dip_r = dip_r;
           }
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(audio_dip_p), ctx->tx_audio_sessions[num_audio].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-            ctx->tx_audio_sessions[num_audio].base.ip_str[0] = json_object_get_string(audio_dip_p);
+          ret = parse_multicast_ip_addr_str(json_object_get_string(audio_dip_p), tx_audio_session.base.ip[0]);
+          ERRC_EXPECT_SUCCESS(ret);
+          tx_audio_session.base.ip_str[0] = json_object_get_string(audio_dip_p);
 
-            ctx->tx_audio_sessions[num_audio].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(audio_dip_r), ctx->tx_audio_sessions[num_audio].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-              ctx->tx_audio_sessions[num_audio].base.ip_str[1] = json_object_get_string(audio_dip_r);
+          tx_audio_session.base.inf[0] = ctx->interfaces[inf_p];
+          ret = parse_redundant(ctx, audio_session, &tx_audio_session.base);
+          ERRC_EXPECT_SUCCESS(ret);
+          
+          ret = st_json_parse_tx_audio(audio_session, &tx_audio_session);
+          ERRC_EXPECT_SUCCESS(ret);
 
-              ctx->tx_audio_sessions[num_audio].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->tx_audio_sessions[num_audio].base.num_inf = num_inf;
-            ret = st_json_parse_tx_audio(k, audio_session,
-                                         &ctx->tx_audio_sessions[num_audio]);
-            ERRC_EXPECT_SUCCESS(ret);
-
-            // audio source handle id
-            ctx->tx_audio_sessions[num_audio].base.id = tx_source.id;
-
-            num_audio++;
-          }
-        }
-      }
-
-      /* parse tx ancillary sessions */
-      json_object* anc_array = st_json_object_object_get(tx_group, "ancillary");
-      if (anc_array != NULL && json_object_get_type(anc_array) == json_type_array) {
-        for (int j = 0; j < json_object_array_length(anc_array); ++j) {
-          json_object* anc_session = json_object_array_get_idx(anc_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(anc_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(dip_p), ctx->tx_anc_sessions[num_anc].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-
-            ctx->tx_anc_sessions[num_anc].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(dip_r), ctx->tx_anc_sessions[num_anc].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-
-              ctx->tx_anc_sessions[num_anc].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->tx_anc_sessions[num_anc].base.num_inf = num_inf;
-            ret = st_json_parse_tx_anc(k, anc_session, &ctx->tx_anc_sessions[num_anc]);
-            ERRC_EXPECT_SUCCESS(ret);
-            num_anc++;
-          }
-        }
-      }
-
-      /* parse tx st22p sessions */
-      json_object* st22p_array = st_json_object_object_get(tx_group, "st22p");
-      if (st22p_array != NULL && json_object_get_type(st22p_array) == json_type_array) {
-        for (int j = 0; j < json_object_array_length(st22p_array); ++j) {
-          json_object* st22p_session = json_object_array_get_idx(st22p_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(st22p_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(dip_p), ctx->tx_st22p_sessions[num_st22p].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-
-            ctx->tx_st22p_sessions[num_st22p].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(dip_r), ctx->tx_st22p_sessions[num_st22p].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-
-              ctx->tx_st22p_sessions[num_st22p].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->tx_st22p_sessions[num_st22p].base.num_inf = num_inf;
-            ret = st_json_parse_tx_st22p(k, st22p_session,
-                                         &ctx->tx_st22p_sessions[num_st22p]);
-            ERRC_EXPECT_SUCCESS(ret);
-            num_st22p++;
-          }
-        }
-      }
-
-      /* parse tx st20p sessions */
-      json_object* st20p_array = st_json_object_object_get(tx_group, "st20p");
-      if (st20p_array != NULL && json_object_get_type(st20p_array) == json_type_array) {
-        for (int j = 0; j < json_object_array_length(st20p_array); ++j) {
-          json_object* st20p_session = json_object_array_get_idx(st20p_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(st20p_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(dip_p), ctx->tx_st20p_sessions[num_st20p].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-
-            ctx->tx_st20p_sessions[num_st20p].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(dip_r), ctx->tx_st20p_sessions[num_st20p].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-
-              ctx->tx_st20p_sessions[num_st20p].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->tx_st20p_sessions[num_st20p].base.num_inf = num_inf;
-            ret = st_json_parse_tx_st20p(k, st20p_session,
-                                         &ctx->tx_st20p_sessions[num_st20p]);
-            ERRC_EXPECT_SUCCESS(ret);
-            num_st20p++;
-          }
+          // audio source handle id
+          tx_audio_session.base.id = tx_source.id;
         }
       }
     }
@@ -2052,13 +1298,13 @@ struct st_app_json_fmt_group {
   static const std::vector<st_app_json_fmt_group> & get_common_groups() {
     static std::vector<st_app_json_fmt_group> groups = {
       {
-        "video.replicas",
+        "video.replicas", // TODO 移除
         {
           {"1", 1}
         }
       },
       {
-        "video.type",
+        "video.type", // TODO 移除
         {
           {"frame", "frame"},
           // {"rtp", "rtp"},
@@ -2081,14 +1327,14 @@ struct st_app_json_fmt_group {
         }
       },
       {
-        "video.tr_offset",
+        "video.tr_offset", // TODO 移除
         {
           {"default", "default"},
           {"none", "none"}
         }
       },
       {
-        "video.pg_format",
+        "video.pg_format", // TODO 移除
         {
           {"YUV 422 10bit", "YUV_422_10bit"},
           // {"YUV 422 8bit", "YUV_422_8bit"},
@@ -2104,13 +1350,13 @@ struct st_app_json_fmt_group {
         }
       },
       {
-        "audio.replicas",
+        "audio.replicas", // TODO 移除
         {
           {"1", 1}
         }
       },
       {
-        "audio.type",
+        "audio.type", // TODO 移除
         {
           {"frame", "frame"},
           // {"rtp", "rtp"}
@@ -2156,28 +1402,6 @@ struct st_app_json_fmt_group {
           // {"0.09", "0.09"}
         }
       },
-      {
-        "ancillary.type",
-        {
-          {"frame", "frame"},
-          // {"rtp", "rtp"}
-        }
-      },
-      {
-        "ancillary.ancillary_format",
-        {
-          {"closed caption", "closed_caption"}
-        }
-      },
-      {
-        "ancillary.ancillary_fps",
-        {
-          {"p25", "p25"},
-          {"p59", "p59"},
-          {"p50", "p50"},
-          {"p29", "p29"}
-        }
-      }
     };
     return groups;
   }
@@ -2213,18 +1437,9 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
   st_app_errc ret = st_app_errc::SUCCESS;
   int num_interfaces = ctx->interfaces.size();
 
-  int rx_video_session_cnt = 0;
-  int rx_audio_session_cnt = 0;
-  int rx_anc_session_cnt = 0;
-  int rx_st22p_session_cnt = 0;
-  int rx_st20p_session_cnt = 0;
   /* parse rx sessions */
   json_object* rx_group_array = st_json_object_object_get(root_object, "rx_sessions");
   if (rx_group_array != NULL && json_object_get_type(rx_group_array) == json_type_array) {
-    /* allocate rx output config*/
-    int rx_output_cnt = json_object_array_length(rx_group_array);
-    ctx->rx_output.resize(rx_output_cnt);
-
     /* parse session numbers for array allocation */
     for (int i = 0; i < json_object_array_length(rx_group_array); ++i) {
       json_object* rx_group = json_object_array_get_idx(rx_group_array, i);
@@ -2232,38 +1447,15 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
         logger->error("{}, can not parse rx session group", __func__);
         return st_app_errc::JSON_PARSE_FAIL;
       }
-      int num = 0;
-      /* parse rx video sessions */
-      ret = parse_session_num(rx_group, "video", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      rx_video_session_cnt += num;
-      /* parse rx audio sessions */
-      ret = parse_session_num(rx_group, "audio", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      rx_audio_session_cnt += num;
-      /* parse rx ancillary sessions */
-      ret = parse_session_num(rx_group, "ancillary", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      rx_anc_session_cnt += num;
-      /* parse rx st22p sessions */
-      ret = parse_session_num(rx_group, "st22p", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      rx_st22p_session_cnt += num;
-      /* parse rx st20p sessions */
-      ret = parse_session_num(rx_group, "st20p", num);
-      ERRC_EXPECT_SUCCESS(ret);
-      rx_st20p_session_cnt += num;
 
       // parse rx output config
       json_object* output = st_json_object_object_get(rx_group, "output");
-      auto &rx_output = ctx->rx_output[i];
+      auto &rx_output = ctx->rx_output.emplace_back();
       rx_output.type = safe_get_string(output, "type");
       rx_output.device_id = json_object_get_int(st_json_object_object_get(output, "device_id"));
       if (!rx_output.device_id) {
         return st_app_errc::DECKLINK_DEVICE_ID_REQUIRED;
       }
-      std::string fu = safe_get_string(output, "file_url");
-      if(!(fu.empty())) rx_output.file_url = fu;
       rx_output.video_format = safe_get_string(output, "video_format");
       rx_output.pixel_format = safe_get_string(output, "pixel_format");
 
@@ -2285,20 +1477,6 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
       }
     }
 
-    /* allocate tx sessions */
-    ctx->rx_video_sessions.resize(rx_video_session_cnt);
-    ctx->rx_audio_sessions.resize(rx_audio_session_cnt);
-    ctx->rx_anc_sessions.resize(rx_anc_session_cnt);
-    ctx->rx_st22p_sessions.resize(rx_st22p_session_cnt);
-    ctx->rx_st20p_sessions.resize(rx_st20p_session_cnt);
-
-    int num_inf = 0;
-    int num_video = 0;
-    int num_audio = 0;
-    int num_anc = 0;
-    int num_st22p = 0;
-    int num_st20p = 0;
-
     for (int i = 0; i < json_object_array_length(rx_group_array); ++i) {
       json_object* rx_group = json_object_array_get_idx(rx_group_array, i);
       if (rx_group == NULL) {
@@ -2311,7 +1489,6 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
 
       /* parse receiving ip */
       json_object* ip_p = NULL;
-      json_object* ip_r = NULL;
       json_object* ip_array = st_json_object_object_get(rx_group, "ip");
       if (ip_array != NULL && json_object_get_type(ip_array) == json_type_array) {
         int len = json_object_array_length(ip_array);
@@ -2320,29 +1497,16 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
           return st_app_errc::JSON_NOT_VALID;
         }
         ip_p = json_object_array_get_idx(ip_array, 0);
-        if (len == 2) {
-          ip_r = json_object_array_get_idx(ip_array, 1);
-        }
       }
 
       /* parse interface */
-      int inf_p, inf_r = 0;
+      int inf_p = 0;
       json_object* interface_array = st_json_object_object_get(rx_group, "interface");
-      if (interface_array != NULL &&
-          json_object_get_type(interface_array) == json_type_array) {
-        int len = json_object_array_length(interface_array);
-        num_inf = len;
+      if (interface_array != NULL && json_object_get_type(interface_array) == json_type_array) {
         inf_p = json_object_get_int(json_object_array_get_idx(interface_array, 0));
         if (inf_p < 0 || inf_p > num_interfaces) {
           logger->error("{}, wrong interface index", __func__);
           return st_app_errc::JSON_NOT_VALID;
-        }
-        if (len == 2) {
-          inf_r = json_object_get_int(json_object_array_get_idx(interface_array, 1));
-          if (inf_r < 0 || inf_r > num_interfaces) {
-            logger->error("{}, wrong interface index", __func__);
-            return st_app_errc::JSON_NOT_VALID;
-          }
         }
       } else {
         logger->error("{}, can not parse interface_array", __func__);
@@ -2353,16 +1517,11 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
       json_object* video_array = st_json_object_object_get(rx_group, "video");
       if (video_array != NULL && json_object_get_type(video_array) == json_type_array) {
         for (int j = 0; j < json_object_array_length(video_array); ++j) {
+          st_json_video_session &rx_video_session = ctx->rx_video_sessions.emplace_back();
+
           json_object* video_session = json_object_array_get_idx(video_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(video_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
           // 取video对象的ip，没有的话用外层的ip
           json_object* video_sip_p = NULL;
-          json_object* video_sip_r = NULL;
           json_object* video_sip_array = st_json_object_object_get(video_session, "ip");
           if (video_sip_array != NULL && json_object_get_type(video_sip_array) == json_type_array) {
             int len = json_object_array_length(video_sip_array);
@@ -2371,44 +1530,31 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
               return st_app_errc::JSON_NOT_VALID;
             }
             video_sip_p = json_object_array_get_idx(video_sip_array, 0);
-            if (len == 2) {
-              video_sip_r = json_object_array_get_idx(video_sip_array, 1);
-            }
           } else {
             video_sip_p = ip_p;
-            video_sip_r = ip_r;
           }
           
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(video_sip_p), ctx->rx_video_sessions[num_video].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-            ctx->rx_video_sessions[num_video].base.ip_str[0] = json_object_get_string(video_sip_p);
+          ret = parse_multicast_ip_addr_str(json_object_get_string(video_sip_p), rx_video_session.base.ip[0]);
+          ERRC_EXPECT_SUCCESS(ret);
+          rx_video_session.base.ip_str[0] = json_object_get_string(video_sip_p);
 
-            ctx->rx_video_sessions[num_video].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(video_sip_r), ctx->rx_video_sessions[num_video].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-              ctx->rx_video_sessions[num_video].base.ip_str[1] = json_object_get_string(video_sip_r);
+          rx_video_session.base.inf[0] = ctx->interfaces[inf_p];
 
-              ctx->rx_video_sessions[num_video].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->rx_video_sessions[num_video].base.num_inf = num_inf;
-            ret = st_json_parse_rx_video(k, video_session,
-                                         &ctx->rx_video_sessions[num_video]);
-            ERRC_EXPECT_SUCCESS(ret);
+          ret = parse_redundant(ctx, video_session, &rx_video_session.base);
+          ERRC_EXPECT_SUCCESS(ret);
 
-            // video output handle id
-            ctx->rx_video_sessions[num_video].base.id = rx_output.id;
+          ret = st_json_parse_rx_video(video_session, &rx_video_session);
+          ERRC_EXPECT_SUCCESS(ret);
 
-            const st_video_fmt_desc *fmt_desc = get_video_fmt_from_core_fmt_name(rx_output.video_format);
-            if (!fmt_desc) {
-              logger->error("rx_sessions.video.video_format={} get_video_fmt_from_core_fmt_name failed", rx_output.video_format);
-              return st_app_errc::JSON_NOT_VALID;
-            }
-            ctx->rx_video_sessions[num_video].info.video_format = fmt_desc->fmt;
+          // video output handle id
+          rx_video_session.base.id = rx_output.id;
 
-            num_video++;
+          const st_video_fmt_desc *fmt_desc = get_video_fmt_from_core_fmt_name(rx_output.video_format);
+          if (!fmt_desc) {
+            logger->error("rx_sessions.video.video_format={} get_video_fmt_from_core_fmt_name failed", rx_output.video_format);
+            return st_app_errc::JSON_NOT_VALID;
           }
+          rx_video_session.info.video_format = fmt_desc->fmt;
         }
       }
 
@@ -2416,16 +1562,11 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
       json_object* audio_array = st_json_object_object_get(rx_group, "audio");
       if (audio_array != NULL && json_object_get_type(audio_array) == json_type_array) {
         for (int j = 0; j < json_object_array_length(audio_array); ++j) {
+          st_json_audio_session &rx_audio_session = ctx->rx_audio_sessions.emplace_back();
+
           json_object* audio_session = json_object_array_get_idx(audio_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(audio_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
           // 取audio对象的dip，没有的话用外层的dip
           json_object* audio_sip_p = NULL;
-          json_object* audio_sip_r = NULL;
           json_object* audio_sip_array = st_json_object_object_get(audio_session, "ip");
           if (audio_sip_array != NULL && json_object_get_type(audio_sip_array) == json_type_array) {
             int len = json_object_array_length(audio_sip_array);
@@ -2434,131 +1575,28 @@ st_app_errc st_app_parse_json_rx_sessions(st_json_context_t* ctx, json_object *r
               return st_app_errc::JSON_NOT_VALID;
             }
             audio_sip_p = json_object_array_get_idx(audio_sip_array, 0);
-            if (len == 2) {
-              audio_sip_r = json_object_array_get_idx(audio_sip_array, 1);
-            }
           } else {
             audio_sip_p = ip_p;
-            audio_sip_r = ip_r;
           }
 
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(audio_sip_p), ctx->rx_audio_sessions[num_audio].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-            ctx->rx_audio_sessions[num_audio].base.ip_str[0] = json_object_get_string(audio_sip_p);
+          ret = parse_multicast_ip_addr_str(json_object_get_string(audio_sip_p), rx_audio_session.base.ip[0]);
+          ERRC_EXPECT_SUCCESS(ret);
+          rx_audio_session.base.ip_str[0] = json_object_get_string(audio_sip_p);
 
-            ctx->rx_audio_sessions[num_audio].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(audio_sip_r), ctx->rx_audio_sessions[num_audio].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-              ctx->rx_audio_sessions[num_audio].base.ip_str[1] = json_object_get_string(audio_sip_r);
+          rx_audio_session.base.inf[0] = ctx->interfaces[inf_p];
 
-              ctx->rx_audio_sessions[num_audio].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->rx_audio_sessions[num_audio].base.num_inf = num_inf;
-            ret = st_json_parse_rx_audio(k, audio_session,
-                                         &ctx->rx_audio_sessions[num_audio]);
-            ERRC_EXPECT_SUCCESS(ret);
+          ret = parse_redundant(ctx, audio_session, &rx_audio_session.base);
+          ERRC_EXPECT_SUCCESS(ret);
 
-            // video output handle id
-            ctx->rx_audio_sessions[num_audio].base.id = rx_output.id;
+          ret = st_json_parse_rx_audio(0, audio_session,
+                                        &rx_audio_session);
+          ERRC_EXPECT_SUCCESS(ret);
 
-            num_audio++;
-          }
+          // video output handle id
+          rx_audio_session.base.id = rx_output.id;
         }
       }
 
-      /* parse rx ancillary sessions */
-      json_object* anc_array = st_json_object_object_get(rx_group, "ancillary");
-      if (anc_array != NULL && json_object_get_type(anc_array) == json_type_array) {
-        for (int j = 0; j < json_object_array_length(anc_array); ++j) {
-          json_object* anc_session = json_object_array_get_idx(anc_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(anc_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(ip_p), ctx->rx_anc_sessions[num_anc].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-
-            ctx->rx_anc_sessions[num_anc].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(ip_r), ctx->rx_anc_sessions[num_anc].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-
-              ctx->rx_anc_sessions[num_anc].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->rx_anc_sessions[num_anc].base.num_inf = num_inf;
-            ret = st_json_parse_rx_anc(k, anc_session, &ctx->rx_anc_sessions[num_anc]);
-            ERRC_EXPECT_SUCCESS(ret);
-            num_anc++;
-          }
-        }
-      }
-
-      /* parse rx st22p sessions */
-      json_object* st22p_array = st_json_object_object_get(rx_group, "st22p");
-      if (st22p_array != NULL && json_object_get_type(st22p_array) == json_type_array) {
-        for (int j = 0; j < json_object_array_length(st22p_array); ++j) {
-          json_object* st22p_session = json_object_array_get_idx(st22p_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(st22p_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(ip_p), ctx->rx_st22p_sessions[num_st22p].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-
-            ctx->rx_st22p_sessions[num_st22p].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(ip_r), ctx->rx_st22p_sessions[num_st22p].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-
-              ctx->rx_st22p_sessions[num_st22p].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->rx_st22p_sessions[num_st22p].base.num_inf = num_inf;
-            ret = st_json_parse_rx_st22p(k, st22p_session,
-                                         &ctx->rx_st22p_sessions[num_st22p]);
-            ERRC_EXPECT_SUCCESS(ret);
-            num_st22p++;
-          }
-        }
-      }
-
-      /* parse rx st20p sessions */
-      json_object* st20p_array = st_json_object_object_get(rx_group, "st20p");
-      if (st20p_array != NULL && json_object_get_type(st20p_array) == json_type_array) {
-        for (int j = 0; j < json_object_array_length(st20p_array); ++j) {
-          json_object* st20p_session = json_object_array_get_idx(st20p_array, j);
-          int replicas =
-              json_object_get_int(st_json_object_object_get(st20p_session, "replicas"));
-          if (replicas < 0) {
-            logger->error("{}, invalid replicas number: {}", __func__, replicas);
-            return st_app_errc::JSON_NOT_VALID;
-          }
-          for (int k = 0; k < replicas; ++k) {
-            ret = parse_multicast_ip_addr_str(json_object_get_string(ip_p), ctx->rx_st20p_sessions[num_st20p].base.ip[0]);
-            ERRC_EXPECT_SUCCESS(ret);
-
-            ctx->rx_st20p_sessions[num_st20p].base.inf[0] = ctx->interfaces[inf_p];
-            if (num_inf == 2) {
-              ret = parse_multicast_ip_addr_str(json_object_get_string(ip_r), ctx->rx_st20p_sessions[num_st20p].base.ip[1]);
-              ERRC_EXPECT_SUCCESS(ret);
-
-              ctx->rx_st20p_sessions[num_st20p].base.inf[1] = ctx->interfaces[inf_r];
-            }
-            ctx->rx_st20p_sessions[num_st20p].base.num_inf = num_inf;
-            ret = st_json_parse_rx_st20p(k, st20p_session,
-                                         &ctx->rx_st20p_sessions[num_st20p]);
-            ERRC_EXPECT_SUCCESS(ret);
-            num_st20p++;
-          }
-        }
-      }
     }
   }
 
@@ -2742,8 +1780,13 @@ Json::Value st_app_get_fmts(st_json_context_t* ctx) {
     if (!ctx->interfaces[i].ip_addr_str.empty()) {
       inf_name.append(" (").append(ctx->interfaces[i].ip_addr_str).append(")");
     }
-    root["tx_sessions.interface"].append(make_fmt_item(inf_name, i));
-    root["rx_sessions.interface"].append(make_fmt_item(inf_name, i));
+    auto item = make_fmt_item(inf_name, i);
+    root["tx_sessions.interface"].append(item);
+    root["rx_sessions.interface"].append(item);
+    root["tx_sessions.video.redundant.interface"].append(item);
+    root["tx_sessions.audio.redundant.interface"].append(item);
+    root["rx_sessions.video.redundant.interface"].append(item);
+    root["rx_sessions.audio.redundant.interface"].append(item);
   }
 
   root["tx_sessions.source.type"].append(make_fmt_item("decklink", "decklink"));

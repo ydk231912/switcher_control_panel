@@ -204,38 +204,6 @@ static int app_args_parse_lcores(struct mtl_init_params* p, char* list) {
   return 0;
 }
 
-static int app_args_parse_p_tx_mac(struct st_app_context* ctx, char* mac_str) {
-  int ret;
-  uint8_t* mac;
-
-  if (!mac_str) return -EIO;
-  logger->debug("{}, tx dst mac {}", __func__, mac_str);
-
-  mac = &ctx->tx_dst_mac[MTL_PORT_P][0];
-  ret = sscanf(mac_str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac[0], &mac[1],
-               &mac[2], &mac[3], &mac[4], &mac[5]);
-  if (ret < 0) return ret;
-
-  ctx->has_tx_dst_mac[MTL_PORT_P] = true;
-  return 0;
-}
-
-static int app_args_parse_r_tx_mac(struct st_app_context* ctx, char* mac_str) {
-  int ret;
-  uint8_t* mac;
-
-  if (!mac_str) return -EIO;
-  logger->debug("{}, tx dst mac {}", __func__, mac_str);
-
-  mac = &ctx->tx_dst_mac[MTL_PORT_R][0];
-  ret = sscanf(mac_str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac[0], &mac[1],
-               &mac[2], &mac[3], &mac[4], &mac[5]);
-  if (ret < 0) return ret;
-
-  ctx->has_tx_dst_mac[MTL_PORT_R] = true;
-  return 0;
-}
-
 static int app_args_dma_dev(struct mtl_init_params* p, char* in_dev) {
   if (!in_dev) return -EIO;
   char devs[128] = {0};
@@ -309,75 +277,6 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_R_SIP:
         inet_pton(AF_INET, optarg, mtl_r_sip_addr(p));
         break;
-      case ST_ARG_P_TX_IP:
-        inet_pton(AF_INET, optarg, ctx->tx_dip_addr[MTL_PORT_P]);
-        break;
-      case ST_ARG_R_TX_IP:
-        inet_pton(AF_INET, optarg, ctx->tx_dip_addr[MTL_PORT_R]);
-        break;
-      case ST_ARG_P_RX_IP:
-        inet_pton(AF_INET, optarg, ctx->rx_sip_addr[MTL_PORT_P]);
-        break;
-      case ST_ARG_R_RX_IP:
-        inet_pton(AF_INET, optarg, ctx->rx_sip_addr[MTL_PORT_R]);
-        break;
-      case ST_ARG_TX_VIDEO_URL:
-        snprintf(ctx->tx_video_url, sizeof(ctx->tx_video_url), "%s", optarg);
-        break;
-      case ST_ARG_TX_VIDEO_RTP_RING_SIZE:
-        ctx->tx_video_rtp_ring_size = atoi(optarg);
-        break;
-      // case ST_ARG_TX_VIDEO_SESSIONS_CNT:
-      //   ctx->tx_video_session_cnt = atoi(optarg);
-      //   break;
-      case ST_ARG_TX_AUDIO_URL:
-        snprintf(ctx->tx_audio_url, sizeof(ctx->tx_audio_url), "%s", optarg);
-        break;
-      // case ST_ARG_TX_AUDIO_SESSIONS_CNT:
-      //   ctx->tx_audio_session_cnt = atoi(optarg);
-      //   break;
-      case ST_ARG_TX_AUDIO_RTP_RING_SIZE:
-        ctx->tx_audio_rtp_ring_size = atoi(optarg);
-        break;
-      case ST_ARG_TX_ANC_URL:
-        snprintf(ctx->tx_anc_url, sizeof(ctx->tx_anc_url), "%s", optarg);
-        break;
-      case ST_ARG_TX_ANC_RTP_RING_SIZE:
-        ctx->tx_anc_rtp_ring_size = atoi(optarg);
-        break;
-      // case ST_ARG_TX_ANC_SESSIONS_CNT:
-      //   ctx->tx_anc_session_cnt = atoi(optarg);
-      //   break;
-      // case ST_ARG_RX_VIDEO_SESSIONS_CNT:
-      //   ctx->rx_video_session_cnt = atoi(optarg);
-      //   break;
-      case ST_ARG_RX_VIDEO_FLIE_FRAMES:
-        ctx->rx_video_file_frames = atoi(optarg);
-        break;
-      case ST_ARG_RX_VIDEO_FB_CNT:
-        ctx->rx_video_fb_cnt = atoi(optarg);
-        break;
-      case ST_ARG_RX_VIDEO_RTP_RING_SIZE:
-        ctx->rx_video_rtp_ring_size = atoi(optarg);
-        break;
-      // case ST_ARG_RX_AUDIO_SESSIONS_CNT:
-      //   ctx->rx_audio_session_cnt = atoi(optarg);
-      //   break;
-      case ST_ARG_RX_AUDIO_RTP_RING_SIZE:
-        ctx->rx_audio_rtp_ring_size = atoi(optarg);
-        break;
-      // case ST_ARG_RX_ANC_SESSIONS_CNT:
-      //   ctx->rx_anc_session_cnt = atoi(optarg);
-      //   break;
-      // case ST22_ARG_TX_SESSIONS_CNT:
-      //   ctx->tx_st22_session_cnt = atoi(optarg);
-      //   break;
-      case ST22_ARG_TX_URL:
-        snprintf(ctx->tx_st22_url, sizeof(ctx->tx_st22_url), "%s", optarg);
-        break;
-      // case ST22_ARG_RX_SESSIONS_CNT:
-      //   ctx->rx_st22_session_cnt = atoi(optarg);
-      //   break;
       case ST_ARG_HDR_SPLIT:
         ctx->enable_hdr_split = true;
         break;
@@ -447,17 +346,8 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
           p->data_quota_mbs_per_sch = nb * st20_1080p59_yuv422_10bit_bandwidth_mps();
         }
         break;
-      case ST_ARG_P_TX_DST_MAC:
-        app_args_parse_p_tx_mac(ctx, optarg);
-        break;
-      case ST_ARG_R_TX_DST_MAC:
-        app_args_parse_r_tx_mac(ctx, optarg);
-        break;
       case ST_ARG_NIC_RX_PROMISCUOUS:
         p->flags |= MTL_FLAG_NIC_RX_PROMISCUOUS;
-        break;
-      case ST_ARG_RX_VIDEO_DISPLAY:
-        ctx->display = true;
         break;
       case ST_ARG_LIB_PTP:
         p->flags |= MTL_FLAG_PTP_ENABLE;
@@ -499,14 +389,8 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_DMA_DEV:
         app_args_dma_dev(p, optarg);
         break;
-      case ST_ARG_PCAPNG_DUMP:
-        ctx->pcapng_max_pkts = atoi(optarg);
-        break;
       case ST_ARG_RUNTIME_SESSION:
         ctx->runtime_session = true;
-        break;
-      case ST_ARG_TTF_FILE:
-        snprintf(ctx->ttf_file, sizeof(ctx->ttf_file), "%s", optarg);
         break;
       case ST_ARG_AF_XDP_ZC_DISABLE:
         p->flags |= MTL_FLAG_AF_XDP_ZC_DISABLE;
