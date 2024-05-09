@@ -321,7 +321,7 @@ static int app_rx_video_init(struct st_app_context* ctx, st_json_video_session_t
     ops.width = st_app_get_width(video->info.video_format);
     ops.height = st_app_get_height(video->info.video_format);
     ops.fps = st_app_get_fps(video->info.video_format);
-    ops.fmt = video->info.pg_format;
+    ops.fmt = ST20_FMT_YUV_422_10BIT;
     ops.payload_type = video->base.payload_type;
     s->interlaced = ops.interlaced = st_app_get_interlaced(video->info.video_format);
     ops.notify_frame_ready = app_rx_video_frame_ready;

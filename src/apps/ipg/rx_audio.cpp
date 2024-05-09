@@ -177,8 +177,7 @@ static int app_rx_audio_init(struct st_app_context* ctx, st_json_audio_session_t
         ops.udp_port[MTL_PORT_R] = audio->base.udp_port[1];
     }
     
-     ops.notify_frame_ready = app_rx_audio_frame_ready;
-     ops.notify_rtp_ready = app_rx_audio_rtp_ready;
+    ops.notify_frame_ready = app_rx_audio_frame_ready;
 
     ops.type = ST30_TYPE_FRAME_LEVEL;
     ops.fmt = audio->info.audio_format;
