@@ -14,7 +14,7 @@
 int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int argc,
                       char** argv);
 
-void st_app_init_logger_from_args(int argc, char **argv);
+void st_app_init_logger_from_args(struct st_app_context* ctx, int argc, char **argv);
 
 // #if defined(__cplusplus)
 // }

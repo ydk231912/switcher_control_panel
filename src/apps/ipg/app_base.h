@@ -292,6 +292,7 @@ struct st_app_rx_audio_session {
 struct st_app_context {
   std::shared_ptr<st_json_context_t> json_ctx;
   std::string config_file_path;
+  std::string nmos_node_config_file;
   struct mtl_init_params para;
   mtl_handle st;
   int test_time_s;

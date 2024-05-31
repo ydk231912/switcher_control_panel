@@ -468,7 +468,7 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
   return 0;
 }
 
-void st_app_init_logger_from_args(int argc, char **argv) {
+void st_app_init_logger_from_args(struct st_app_context* ctx, int argc, char **argv) {
   namespace po = boost::program_options;
 
   std::string log_level = "info";
@@ -484,7 +484,8 @@ void st_app_init_logger_from_args(int argc, char **argv) {
     ("log_path", po::value(&log_path), "logging output file path")
     ("file_log_level", po::value(&file_level), "logging level for file")
     ("file_log_max_size", po::value(&max_size_mb), "logging output file max size in MB")
-    ("file_log_max_files", po::value(&max_files), "logging output file max rotation files");
+    ("file_log_max_files", po::value(&max_files), "logging output file max rotation files")
+    ("node_config_file", po::value(&ctx->nmos_node_config_file), "nmos node config file");
   po::parsed_options parsed = po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
   po::variables_map po_vm;
   po::store(parsed, po_vm);

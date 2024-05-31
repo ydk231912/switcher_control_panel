@@ -105,7 +105,7 @@ private:
   int st_get_component_depth(st20_fmt fmt);
 
 public:
-  nmos_node(st_app_context *ctx_, int argc, char **argv);
+  nmos_node(st_app_context *ctx_);
   ~nmos_node();
   void start();
   void add();

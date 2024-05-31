@@ -2,9 +2,6 @@
 #include "nmos/sdp_utils.h"
 #include "node_implementation.h"
 #include <algorithm>
-#include <boost/program_options.hpp>
-#include <boost/program_options/parsers.hpp>
-#include <boost/program_options/variables_map.hpp>
 #include <cpprest/json.h>
 #include <cpprest/json_ops.h>
 #include <cstddef>
@@ -28,22 +25,10 @@ using web::json::value_of;
 void seeder::nmos_node::start() {
   thread_ = std::thread([this] { nmos_node_start(); });
 }
-seeder::nmos_node::nmos_node(st_app_context *ctx, int argc, char **argv)
+seeder::nmos_node::nmos_node(st_app_context *ctx)
     : ctx_(ctx) {
 
-  namespace po = boost::program_options;
-  std::string config_file;
-  po::options_description desc("Command Line Options For Nmos Node");
-  desc.add_options()("node_config_file", po::value(&config_file),
-                     "nmos node config file");
-  po::parsed_options parsed = po::command_line_parser(argc, argv)
-                                  .options(desc)
-                                  .allow_unregistered()
-                                  .run();
-  po::variables_map po_vm;
-  po::store(parsed, po_vm);
-  po::notify(po_vm);
-  config_file_ = config_file;
+  config_file_ = ctx->nmos_node_config_file;
 }
 seeder::nmos_node::~nmos_node() {}
 int seeder::nmos_node::nmos_node_start() {
@@ -84,6 +69,9 @@ int seeder::nmos_node::nmos_node_start() {
     // http://localhost:3209/settings/all -d
     // "{\"logging_level\":-40}" # curl -X PATCH -H "Content-Type:
     // application/json" http://localhost:3209/settings/all -T config.json
+
+        slog::log<slog::severities::info>(gate, SLOG_FLF)
+        << "node_config_file_path: "<<config_file_;
     if (config_file_.empty()) {
       return -1;
       ;

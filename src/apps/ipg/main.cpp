@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
   // seeder::config config;
   try {
     // create logger
-    st_app_init_logger_from_args(argc, argv);
+    st_app_init_logger_from_args(ctx.get(), argc, argv);
   } catch (std::exception &e) {
     std::cout << e.what() << std::endl;
     return 0;
@@ -390,7 +390,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  seeder::nmos_node node(ctx.get(), argc, argv);
+  seeder::nmos_node node(ctx.get());
   node.start();
 
   seeder::st_http_server http_server{ctx.get(), &node};
