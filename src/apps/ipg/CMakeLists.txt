@@ -14,7 +14,10 @@ add_executable(
     rx_audio.cpp
     rx_video.cpp
     tx_audio.cpp
-    tx_video.cpp    
+    tx_video.cpp   
+     node_implementation.cpp
+    node.cpp
+    st_config_utils.cpp
 )
 
 # aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/json SRC)
@@ -37,6 +40,9 @@ target_link_libraries(
     spdlog_deps
     json_cpp_deps
     httplib
+
+    nmos-cpp::compile-settings
+    nmos-cpp::nmos-cpp
 )
 
 target_include_directories(
