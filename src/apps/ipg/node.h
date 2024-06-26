@@ -87,6 +87,7 @@ private:
   int nmos_node_start();
   st_json_video_session_t find_tx_session_by_id(std::string id);
   st_json_video_session_t find_rx_session_by_id(std::string id);
+  
   void add_audio_sender(std::string id);
   void add_video_sender(std::string id);
   void remove_audio_sender(std::string id, bool use_lock);

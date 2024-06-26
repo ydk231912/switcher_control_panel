@@ -10,6 +10,7 @@ add_library(
     src/util/fs.cpp
     src/util/logger.cpp
     src/util/uuid.cpp
+    src/util/thread.cpp
     src/video_format.cpp
 )
 target_include_directories(
@@ -22,4 +23,5 @@ target_link_libraries(
     core
     PUBLIC
     ffmpeg_deps
+    DPDK
 )

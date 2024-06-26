@@ -4,6 +4,8 @@
 #include "app_session.h"
 #include "app_stat.h"
 #include "core/util/logger.h"
+#include "core/util/thread.h"
+#define CPPHTTPLIB_USE_POLL
 #include "httplib.h"
 #include "mtl/mtl_seeder_api.h"
 #include "node.h"
@@ -584,7 +586,7 @@ void st_http_server::start() {
   }
 
   server.set_logger([&p](const Request &req, const Response &res) {
-    p.logger->trace("http {} status code {}", req.path, res.status);
+    p.logger->debug("http {} status code {}", req.path, res.status);
   });
 
   server.Get("/api/json", [&p](const Request &req, Response &res) {
@@ -644,6 +646,7 @@ void st_http_server::start() {
   p.startup_time = std::chrono::system_clock::now();
 
   p.server_thread = std::thread([&] {
+    seeder::core::util::set_thread_name("http_server");
     const std::string host = "0.0.0.0";
     int port = p.app_ctx->http_port;
     p.logger->info("http server listen on {}:{}", host, port);
