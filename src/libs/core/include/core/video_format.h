@@ -97,6 +97,8 @@ namespace seeder::core
         static const video_format_desc & get(video_fmt f);
 
         static const video_format_desc & get(const std::string &name);
+
+        static video_format_desc change_interlace(const video_format_desc &in_format_desc);
     };
 
     extern const std::vector<video_format_desc> format_descs;

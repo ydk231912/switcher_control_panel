@@ -51,6 +51,10 @@ namespace seeder::core
         {video_fmt::invalid, 1, 0, 0, 0, 0, 1, 1, "invalid", "invalid", {1}}
     };
 
+    static const seeder::core::video_format_desc & get_invalid_instance() {
+        return format_descs.at(static_cast<int>(video_fmt::invalid));
+    }
+
     video_format_desc::video_format_desc(video_fmt           format,
                                int              field_count,
                                int              width,
@@ -80,10 +84,7 @@ namespace seeder::core
     }
     
 
-    video_format_desc::video_format_desc()
-    {
-        *this = format_descs.at(static_cast<int>(video_fmt::invalid));
-    }
+    video_format_desc::video_format_desc() {}
 
     static std::unordered_map<video_fmt, video_format_desc> init_format_map() {
         std::unordered_map<video_fmt, video_format_desc> fmt_map;
@@ -95,12 +96,11 @@ namespace seeder::core
 
     const video_format_desc & video_format_desc::get(video_fmt f) {
         static const std::unordered_map<video_fmt, video_format_desc> format_map = init_format_map();
-        static const video_format_desc invalid_instance;
         auto it = format_map.find(f);
         if (it != format_map.end()) {
             return it->second;
         }
-        return invalid_instance;
+        return get_invalid_instance();
     }
 
     static std::unordered_map<std::string, video_format_desc> init_format_name_map() {
@@ -113,13 +113,32 @@ namespace seeder::core
 
     const video_format_desc & video_format_desc::get(const std::string &name) {
         static const std::unordered_map<std::string, video_format_desc> format_map = init_format_name_map();
-        static const video_format_desc invalid_instance;
         auto it = format_map.find(name);
         if (it != format_map.end()) {
             return it->second;
         }
-        return invalid_instance;
+        return get_invalid_instance();
     }
 
+    video_format_desc video_format_desc::change_interlace(const video_format_desc &in_format_desc) {
+        struct ChangeInterlaceEntry {
+            std::string progressive_format;
+            std::string interlaced_format;
+        };
+        static const std::vector<ChangeInterlaceEntry> entries = {
+            {"1080p5000", "1080i5000"},
+            {"1080p5994", "1080i5994"},
+            {"1080p6000", "1080i6000"},
+        };
+        for (auto &e : entries) {
+            if (in_format_desc.name == e.progressive_format) {
+                return video_format_desc::get(e.interlaced_format);
+            }
+            if(in_format_desc.name == e.interlaced_format) {
+                return video_format_desc::get(e.progressive_format);
+            }
+        }
+        return get_invalid_instance();
+    }
 
 } // namespace seeder::core

@@ -98,13 +98,25 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
     // // convert pixel format
     if(s->source_info->type == "decklink")
     {
-        if (s->interlaced) {
-            framebuff->second_field = f->opaque;
-        }
-        ret = st20_v210_to_rfc4175_422be10(f->data[0], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
-        if(ret < 0) {
-            logger->error("{}, convet v210 to yuv422be10 fail", __func__);
-            return;
+        if (!s->change_interlace) {
+            if (s->interlaced) {
+                framebuff->second_field = f->opaque;
+            }
+            ret = st20_v210_to_rfc4175_422be10(f->data[0], (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
+            if(ret < 0) {
+                logger->error("{}, convet v210 to yuv422be10 fail", __func__);
+                return;
+            }
+        } else {
+            size_t row_bytes = f->linesize[0];
+            if (!s->half_height_buffer) {
+                s->half_height_buffer.reset(new uint8_t[row_bytes * s->height]);
+            }
+            int first_line = (size_t) f->opaque;
+            for (int i = 0; i < f->height; ++i) {
+                memcpy(s->half_height_buffer.get() + row_bytes * (i * 2 + first_line), (const uint8_t *)f->data[0] + row_bytes * i, row_bytes);
+            }
+            st20_v210_to_rfc4175_422be10(s->half_height_buffer.get(), (st20_rfc4175_422_10_pg2_be*)frame, s->width, s->height);
         }
     }
     else if(s->source_info->type == "file")
@@ -317,7 +329,24 @@ static int app_tx_video_init(struct st_app_context* ctx, st_json_video_session_t
     ops.height = st_app_get_height(video->info.video_format);
     ops.fps = st_app_get_fps(video->info.video_format);
     s->pixel_format = ops.fmt = ST20_FMT_YUV_422_10BIT;
-    ops.interlaced = st_app_get_interlaced(video->info.video_format);
+
+    s->change_interlace = false;
+    auto format_desc = seeder::core::video_format_desc::get(st_app_get_core_video_fmt(video->info.video_format));
+    if (video->info.change_interlace) {
+        if (st_app_get_interlaced(video->info.video_format)) {
+            s->change_interlace = true;
+        } else {
+            logger->debug("app_tx_video_init {} ignore change_interlace format: {}", video->base.id, format_desc.name);
+        }
+    }
+    if (s->change_interlace) {
+        std::string old_format_name = format_desc.name;
+        format_desc = seeder::core::video_format_desc::change_interlace(format_desc);
+        ops.interlaced = st_app_get_interlaced(st_app_core_video_fmt_to_video_format(format_desc.format));
+        logger->debug("app_tx_video_init {} change_interlace {} => {}", video->base.id, old_format_name, format_desc.name);
+    } else {
+        ops.interlaced = st_app_get_interlaced(video->info.video_format);
+    }
     ops.get_next_frame = app_tx_video_next_frame;
     ops.notify_frame_done = app_tx_video_frame_done;
     // ops.query_frame_lines_ready = app_tx_video_frame_lines_ready;

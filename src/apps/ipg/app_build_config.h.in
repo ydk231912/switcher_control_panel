@@ -1,0 +1,3 @@
+#pragma once
+
+#cmakedefine PROJECT_GIT_HASH "@PROJECT_GIT_HASH@"

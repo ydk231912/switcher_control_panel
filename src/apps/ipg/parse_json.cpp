@@ -18,6 +18,7 @@
 #include <json_object.h>
 #include <json_tokener.h>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <system_error>
 #include <unordered_map>
@@ -349,6 +350,25 @@ static const std::vector<st_video_fmt_desc> & st_app_get_video_fmts() {
   return fmts;
 }
 
+seeder::core::video_fmt st_app_get_core_video_fmt(enum video_format fmt) {
+  for (auto &f : st_app_get_video_fmts()) {
+    if (f.fmt == fmt) {
+      return f.core_fmt;
+    }
+  }
+  return seeder::core::video_fmt::invalid;
+}
+
+enum video_format st_app_core_video_fmt_to_video_format(seeder::core::video_fmt fmt) {
+  for (auto &f : st_app_get_video_fmts()) {
+    if (f.core_fmt == fmt) {
+      return f.fmt;
+    }
+  }
+  logger->error("st_app_core_video_fmt_to_video_format invalid format: {}", (int) fmt);
+  throw std::runtime_error("st_app_core_video_fmt_to_video_format");
+}
+
 static std::unordered_map<std::string, st_video_fmt_desc> init_fmt_core_name_map() {
   std::unordered_map<std::string, st_video_fmt_desc> name_map;
   for (auto &f : st_app_get_video_fmts()) {
@@ -558,6 +578,13 @@ static st_app_errc parse_video_packing(json_object* video_obj, st_json_video_ses
   return st_app_errc::SUCCESS;
 }
 
+static void parse_video_change_interlace(json_object* video_obj, st_json_video_session_t* video) {
+  json_object *obj = st_json_object_object_get(video_obj, "change_interlace");
+  if (obj) {
+    video->info.change_interlace = json_object_get_boolean(obj);
+  }
+}
+
 static st_app_errc parse_video_tr_offset(json_object* video_obj, st_json_video_session_t* video) {
   const char* tr_offset =
       json_object_get_string(st_json_object_object_get(video_obj, "tr_offset"));
@@ -675,6 +702,8 @@ static st_app_errc st_json_parse_tx_video(json_object* video_obj, st_json_video_
   /* parse video packing mode */
   ret = parse_video_packing(video_obj, video);
   ERRC_EXPECT_SUCCESS(ret);
+
+  parse_video_change_interlace(video_obj, video);
 
   /* parse tr offset */
   /* ret = parse_video_tr_offset(video_obj, video);

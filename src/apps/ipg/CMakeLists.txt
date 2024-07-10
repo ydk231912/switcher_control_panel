@@ -1,3 +1,5 @@
+configure_file(app_build_config.h.in app_build_config.h @ONLY)
+
 add_executable(
     ipg
 
@@ -49,6 +51,7 @@ target_include_directories(
     ipg
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 set_target_properties(ipg PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

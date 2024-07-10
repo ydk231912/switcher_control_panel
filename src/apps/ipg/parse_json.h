@@ -117,6 +117,7 @@ typedef struct st_json_video_info {
   enum st20_packing packing;
   enum tr_offset tr_offset;
   enum st20_fmt pg_format;
+  bool change_interlace = false; // 如果输入1080 50i 则转换输出 1080 50p
 } st_json_video_info_t;
 
 typedef struct st_json_audio_info {
@@ -163,6 +164,8 @@ enum st_fps st_app_get_fps(enum video_format fmt);
 uint32_t st_app_get_width(enum video_format fmt);
 uint32_t st_app_get_height(enum video_format fmt);
 bool st_app_get_interlaced(enum video_format fmt);
+seeder::core::video_fmt st_app_get_core_video_fmt(enum video_format fmt);
+enum video_format st_app_core_video_fmt_to_video_format(seeder::core::video_fmt fmt);
 
 std::error_code st_app_parse_json_add(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);
 std::error_code st_app_parse_json_update(st_json_context_t* ctx, const std::string &json, std::unique_ptr<st_json_context_t> &new_ctx);

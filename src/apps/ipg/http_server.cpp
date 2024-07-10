@@ -5,7 +5,6 @@
 #include "app_stat.h"
 #include "core/util/logger.h"
 #include "core/util/thread.h"
-#define CPPHTTPLIB_USE_POLL
 #include "httplib.h"
 #include "mtl/mtl_seeder_api.h"
 #include "node.h"
@@ -34,6 +33,8 @@
 #include <string>
 #include <system_error>
 #include <thread>
+
+#include "app_build_config.h"
 
 using httplib::Request;
 using httplib::Response;
@@ -262,6 +263,8 @@ private:
             std::chrono::system_clock::now() - startup_time)
             .count();
     root["startup_duration"] = startup_duration_count;
+    root["rev"] = PROJECT_GIT_HASH;
+    
     json_ok(res, root);
   }
 

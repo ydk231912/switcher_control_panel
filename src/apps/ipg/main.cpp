@@ -37,16 +37,14 @@
 #include "tx_video.h"
 #include <mtl/mtl_seeder_api.h>
 
-extern "C" {
-#include "test.h"
-}
-
 // #include "player.h"
 #include "node.h"
 #include <rte_lcore.h>
 // #include "core/video_format.h"
 // #include "config.h"
 // #include "server.h"
+
+#include "app_build_config.h"
 
 using namespace seeder::core;
 
@@ -280,6 +278,8 @@ int main(int argc, char **argv) {
     std::cout << e.what() << std::endl;
     return 0;
   }
+
+  logger->info("rev: {}", PROJECT_GIT_HASH);
 
   if (!ctx) {
     logger->error("{}, app_context alloc fail", __func__);

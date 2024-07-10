@@ -117,6 +117,7 @@ struct st_app_tx_video_session {
   bool second_field;
   bool single_line;
   bool slice;
+  bool change_interlace = false;
 
   /* rtp info */
   bool st20_rtp_input;
@@ -155,6 +156,7 @@ struct st_app_tx_video_session {
   std::atomic<int> frame_done_stat = 0;
   std::atomic<int> build_frame_stat = 0;
   std::unique_ptr<uint8_t[]> half_height_buffer;
+  std::shared_ptr<AVFrame> last_source_frame;
 };
 
 struct st_app_tx_audio_session {
