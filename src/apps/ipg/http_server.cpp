@@ -6,7 +6,7 @@
 #include "core/util/logger.h"
 #include "core/util/thread.h"
 #include "httplib.h"
-#include "mtl/mtl_seeder_api.h"
+// #include "mtl/mtl_seeder_api.h"
 #include "node.h"
 #include "parse_json.h"
 #include <boost/filesystem.hpp>
@@ -324,7 +324,11 @@ private:
       return;
     }
     save_config_file();
-    node->add();
+    try {
+      node->add();
+    } catch (std::exception &e) {
+      logger->error("http_server add_session nmos error: {}", e.what());
+    }
     json_ok(res);
   }
 
@@ -366,31 +370,41 @@ private:
       return;
     }
     save_config_file();
-    auto &tx_sessions = root["tx_sessions"];
-    if (tx_sessions.isArray()) {
-      for (Json::ArrayIndex i = 0; i < tx_sessions.size(); ++i) {
-        auto &s = tx_sessions[i];
-        if (s["id"].isString() && !s["id"].asString().empty()) {
-          node->udpate_sender(s["id"].asString());
+    try {
+      auto &tx_sessions = root["tx_sessions"];
+      if (tx_sessions.isArray()) {
+        for (Json::ArrayIndex i = 0; i < tx_sessions.size(); ++i) {
+          auto &s = tx_sessions[i];
+          if (s["id"].isString() && !s["id"].asString().empty()) {
+            node->udpate_sender(s["id"].asString());
+          }
         }
-      }
-    };
-    auto &rx_sessions = root["rx_sessions"];
-    if (rx_sessions.isArray()) {
-      for (Json::ArrayIndex i = 0; i < rx_sessions.size(); ++i) {
-        auto &s = rx_sessions[i];
-        if (s["id"].isString() && !s["id"].asString().empty()) {
-          node->update_receiver(s["id"].asString());
+      };
+      auto &rx_sessions = root["rx_sessions"];
+      if (rx_sessions.isArray()) {
+        for (Json::ArrayIndex i = 0; i < rx_sessions.size(); ++i) {
+          auto &s = rx_sessions[i];
+          if (s["id"].isString() && !s["id"].asString().empty()) {
+            node->update_receiver(s["id"].asString());
+          }
         }
-      }
-    };
+      };
+    } catch (std::exception &e) {
+      logger->error("http_server update_session nmos error: {}", e.what());
+    }
+    
     json_ok(res);
   }
 
   void remove_tx_session(const Request &req, Response &res) {
     auto root = parse_json_body(req);
     auto tx_source_id = root["tx_source_id"].asString();
-    node->remove_sender(tx_source_id, true);
+    try {
+      node->remove_sender(tx_source_id, true);
+    } catch (std::exception &e) {
+      logger->error("http_server remove_tx_session nmos error: {}", e.what());
+    }
+    
     if (tx_source_id.empty()) {
       json_err(res, "tx_source_id empty");
       return;
@@ -412,7 +426,12 @@ private:
   void remove_rx_session(const Request &req, Response &res) {
     auto root = parse_json_body(req);
     auto rx_output_id = root["rx_output_id"].asString();
-    node->remove_receiver(rx_output_id, true);
+    try {
+      node->remove_receiver(rx_output_id, true);
+    } catch (std::exception &e) {
+      logger->error("http_server remove_rx_session nmos error: {}", e.what());
+    }
+    
     if (rx_output_id.empty()) {
       json_err(res, "rx_output_id empty");
       return;
@@ -445,12 +464,13 @@ private:
     json_ok(res, status);
   }
 
+  /* TODO dlopen 
   void get_ptp_dev_info(const Request &req, Response &res) {
     json_object *tmp_json = nullptr;
     mtl_seeder_get_ptp_dev_info(app_ctx->st, &tmp_json);
     std::unique_ptr<json_object, JsonObjectDeleter> ptp_info(tmp_json);
     json_ok(res, json_object_to_json_string(ptp_info.get()));
-  }
+  } */
 
   void save_config_file() {
     try {
@@ -638,9 +658,9 @@ void st_http_server::start() {
     p.get_status(req, res);
   });
 
-  server.Get("/api/ptp_dev_info", [&p](const Request &req, Response &res) {
+  /* server.Get("/api/ptp_dev_info", [&p](const Request &req, Response &res) {
     p.get_ptp_dev_info(req, res);
-  });
+  }); */
 
   server.Get("/api/device_info", [&p](const Request &req, Response &res) {
     p.get_device_info(req, res);

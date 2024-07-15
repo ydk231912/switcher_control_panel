@@ -25,6 +25,8 @@ extern "C"
 #include "decklink/util.h"
 #include "decklink/manager.h"
 
+#include <tracy/Tracy.hpp>
+
 using namespace seeder::decklink::util;
 using namespace seeder::core;
 namespace seeder::decklink
@@ -355,6 +357,7 @@ namespace seeder::decklink
     HRESULT decklink_input::VideoInputFrameArrived(IDeckLinkVideoInputFrame* video, 
                                                        IDeckLinkAudioInputPacket* audio)
     {
+
         BMDTimeValue in_video_pts = 0LL;
         // BMDTimeValue in_audio_pts = 0LL;
         auto frm = std::make_shared<core::frame>(); 
@@ -365,6 +368,7 @@ namespace seeder::decklink
 
         if(video)
         {
+            ZoneScopedN("decklink_input.VideoInputFrameArrived.video");
             bool is_frame_valid = (video->GetFlags() & bmdFrameHasNoInputSource) == 0;
             void* video_bytes = nullptr;
             if(video->GetBytes(&video_bytes) == S_OK && video_bytes)
@@ -372,6 +376,7 @@ namespace seeder::decklink
                 if (format_desc_.field_count > 1) {
                     // decklink 接收i信号时，接收到的帧率会变为一半，1080i50实际收到的帧率只有25
                     for (int i = 0; i < format_desc_.field_count; ++i) {
+                        ZoneScopedN("interlace_set_video_frame");
                         auto vframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* ptr) { 
                             av_frame_free(&ptr);
                         });
@@ -406,6 +411,8 @@ namespace seeder::decklink
                         this->set_video_frame(vframe);
                     }
                 } else {
+                    ZoneScopedN("set_video_frame");
+
                     video->AddRef();
                     auto vframe = std::shared_ptr<AVFrame>(av_frame_alloc(), [video](AVFrame* ptr) { 
                         av_frame_free(&ptr);

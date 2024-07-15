@@ -24,4 +24,5 @@ target_link_libraries(
     PUBLIC
     ffmpeg_deps
     DPDK
+    TracyClient
 )

@@ -7,6 +7,7 @@
 
 #include "app_base.h"
 #include "core/stream/output.h"
+#include "core/util/thread.h"
 #include "core/video_format.h"
 #include "decklink/output/decklink_output.h"
 #include "tx_video.h"
@@ -17,6 +18,8 @@
 #include "core/util/timer.h"
 // #include "ffmpeg/input/ffmpeg_input.h"
 #include "decklink/input/decklink_input.h"
+
+#include <tracy/Tracy.hpp>
 
 
 using namespace seeder::core;
@@ -90,15 +93,21 @@ static int app_tx_video_frame_done(void* priv, uint16_t frame_idx, struct st20_t
 
 static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* frame, size_t frame_size, struct st_tx_frame* framebuff) 
 {
-    int ret = 0;
-    auto f = s->tx_source->get_video_frame();
-    if(!f) return;
+    ZoneScopedN("app_tx_video_build_frame");
 
+    int ret = 0;
+    std::shared_ptr<AVFrame> f;
+    {
+        ZoneScopedN("get_video_frame");
+        f = s->tx_source->get_video_frame();
+        if(!f) return;
+    }
 
     // // convert pixel format
     if(s->source_info->type == "decklink")
     {
         if (!s->change_interlace) {
+            ZoneScopedN("st20_v210_to_rfc4175_422be10");
             if (s->interlaced) {
                 framebuff->second_field = f->opaque;
             }
@@ -108,6 +117,7 @@ static void app_tx_video_build_frame(struct st_app_tx_video_session* s, void* fr
                 return;
             }
         } else {
+            ZoneScopedN("change_interlace.st20_v210_to_rfc4175_422be10");
             size_t row_bytes = f->linesize[0];
             if (!s->half_height_buffer) {
                 s->half_height_buffer.reset(new uint8_t[row_bytes * s->height]);
@@ -245,6 +255,7 @@ static void* app_tx_video_frame_thread(void* arg)
 
     logger->debug("{}({}), start", __func__, idx);
     logger->debug("tx video {} framebuffer_size={} width={} height={}", idx, s->st20_frame_size, s->width, s->height);
+    seeder::core::util::set_thread_name(fmt::format("tv_{}", s->source_info->device_id));
     while(!s->st20_app_thread_stop) 
     {
         st_pthread_mutex_lock(&s->st20_wake_mutex);

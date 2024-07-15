@@ -14,6 +14,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <json-c/json.h>
 #include <json/value.h>
 #include <json/writer.h>
 #include <malloc.h>
@@ -35,7 +36,7 @@
 #include "rx_video.h"
 #include "tx_audio.h"
 #include "tx_video.h"
-#include <mtl/mtl_seeder_api.h>
+// #include <mtl/mtl_seeder_api.h>
 
 // #include "player.h"
 #include "node.h"
@@ -116,8 +117,8 @@ static void user_param_init(struct st_app_context *ctx,
   p->pmd[MTL_PORT_P] = MTL_PMD_DPDK_USER;
   p->pmd[MTL_PORT_R] = MTL_PMD_DPDK_USER;
   /* defalut start queue set to 1 */
-  p->xdp_info[MTL_PORT_P].start_queue = 1;
-  p->xdp_info[MTL_PORT_R].start_queue = 1;
+  /* p->xdp_info[MTL_PORT_P].start_queue = 1;
+  p->xdp_info[MTL_PORT_R].start_queue = 1; */
   p->flags |= MTL_FLAG_BIND_NUMA; /* default bind to numa */
   p->flags |= MTL_FLAG_TX_VIDEO_MIGRATE;
   p->flags |= MTL_FLAG_RX_VIDEO_MIGRATE;
@@ -231,6 +232,7 @@ int st_app_args_check(struct st_app_context *ctx) {
     ctx->para.nb_rx_hdr_split_queues = ctx->rx_video_sessions.size();
   }
 
+  /* TODO 暂时没什么用，后面改成dlopen动态加载调用的方式 
   auto &ptp_config = ctx->json_ctx->json_root["ptp_config"];
   if (ptp_config.isObject()) {
     auto ptp_config_obj = convert_json_object(ptp_config);
@@ -238,7 +240,7 @@ int st_app_args_check(struct st_app_context *ctx) {
       logger->error("mtl_seeder_set_ptp_params failed");
       return -1;
     }
-  }
+  } */
 
   return 0;
 }

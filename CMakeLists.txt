@@ -18,4 +18,6 @@ execute_process(
     ERROR_QUIET
 )
 
+add_subdirectory(thirdparty/tracy)
+
 add_subdirectory(src)

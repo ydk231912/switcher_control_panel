@@ -45,6 +45,8 @@ target_link_libraries(
 
     nmos-cpp::compile-settings
     nmos-cpp::nmos-cpp
+
+    TracyClient
 )
 
 target_include_directories(

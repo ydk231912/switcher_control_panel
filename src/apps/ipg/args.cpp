@@ -309,9 +309,6 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
       case ST_ARG_TEST_TIME:
         ctx->test_time_s = atoi(optarg);
         break;
-      case ST_ARG_RX_EBU:
-        p->flags |= MTL_FLAG_RX_VIDEO_EBU;
-        break;
       case ST_ARG_RX_MONO_POOL:
         p->flags |= MTL_FLAG_RX_MONO_POOL;
         break;
@@ -394,16 +391,6 @@ int st_app_parse_args(struct st_app_context* ctx, struct mtl_init_params* p, int
         break;
       case ST_ARG_AF_XDP_ZC_DISABLE:
         p->flags |= MTL_FLAG_AF_XDP_ZC_DISABLE;
-        break;
-      case ST_ARG_START_QUEUE:
-        p->xdp_info[MTL_PORT_P].start_queue = atoi(optarg);
-        p->xdp_info[MTL_PORT_R].start_queue = atoi(optarg);
-        break;
-      case ST_ARG_P_START_QUEUE:
-        p->xdp_info[MTL_PORT_P].start_queue = atoi(optarg);
-        break;
-      case ST_ARG_R_START_QUEUE:
-        p->xdp_info[MTL_PORT_R].start_queue = atoi(optarg);
         break;
       case ST_ARG_TASKLET_TIME:
         p->flags |= MTL_FLAG_TASKLET_TIME_MEASURE;
