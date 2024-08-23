@@ -1,0 +1,76 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+      "major": 3,
+      "minor": 23,
+      "patch": 0
+    },
+    "configurePresets": [
+      {
+        "name": "base",
+        "generator": "Ninja",
+        "cacheVariables": {
+          "CMAKE_CUDA_ARCHITECTURES": "all"
+        }
+      },
+      {
+        "name": "debug",
+        "inherits": "base",
+        "displayName": "debug build",
+        "binaryDir": "${sourceDir}/build/debug",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Debug",
+          "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+          "TRACY_ENABLE": "ON",
+          "TRACY_ON_DEMAND": "ON"
+        }
+      },
+      {
+        "name": "release",
+        "inherits": "base",
+        "displayName": "release build",
+        "binaryDir": "${sourceDir}/build/release",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Release"
+        }
+      }
+    ],
+    "buildPresets": [
+      {
+        "name": "debug",
+        "configurePreset": "debug"
+      },
+      {
+        "name": "release",
+        "configurePreset": "release"
+      }
+    ],
+    "workflowPresets": [
+      {
+        "name": "debug",
+        "steps": [
+          {
+            "type": "configure",
+            "name": "debug"
+          },
+          {
+            "type": "build",
+            "name": "debug"
+          }
+        ]
+      },
+      {
+        "name": "release",
+        "steps": [
+          {
+            "type": "configure",
+            "name": "release"
+          },
+          {
+            "type": "build",
+            "name": "release"
+          }
+        ]
+      }
+    ]
+  }

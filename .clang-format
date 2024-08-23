@@ -1,0 +1,22 @@
+---
+Language:        Cpp
+BasedOnStyle:  Google
+AccessModifierOffset: -4
+Standard:        c++17
+IndentWidth:     4
+TabWidth:        4
+UseTab:          Never
+ColumnLimit:     80
+AlignAfterOpenBracket: AlwaysBreak
+AlignOperands: DontAlign
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+AllowAllArgumentsOnNextLine: false
+AlignEscapedNewlines: DontAlign
+AlwaysBreakTemplateDeclarations: Yes
+PackConstructorInitializers: CurrentLine
+BreakConstructorInitializers: AfterColon
+IndentPPDirectives: BeforeHash
+SortIncludes:    Never
+SpaceAfterTemplateKeyword: false
