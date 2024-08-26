@@ -10,9 +10,9 @@ public:
     virtual ~St2110BaseOutput() {}
 
     // 阻塞
-    virtual std::shared_ptr<seeder::core::AbstractBuffer> wait_get_video_frame() = 0;
+    virtual bool wait_get_video_frame(void *dst) = 0;
     // 阻塞
-    virtual std::shared_ptr<seeder::core::AbstractBuffer> wait_get_audio_frame_slice() = 0;
+    virtual bool wait_get_audio_frame(void *dst) = 0;
 };
 
 } // namespace seeder

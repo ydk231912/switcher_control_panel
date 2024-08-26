@@ -4,7 +4,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "server/config_servce.h"
+#include "server/config_service.h"
 #include "server/http_service.h"
 #include "app_build_config.h"
 #include "util/io.h"

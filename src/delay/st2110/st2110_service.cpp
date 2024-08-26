@@ -1,7 +1,7 @@
 #include "st2110_service.h"
 
 #include "core/util/logger.h"
-#include "server/config_servce.h"
+#include "server/config_service.h"
 #include "st2110/st2110_session.h"
 
 #include "st2110_config.h"

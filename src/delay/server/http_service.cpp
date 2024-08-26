@@ -13,7 +13,7 @@
 #include <boost/asio.hpp>
 
 #include "core/util/logger.h"
-#include "server/config_servce.h"
+#include "server/config_service.h"
 #include "util/io.h"
 #include "util/json_util.h"
 #include "core/util/thread.h"

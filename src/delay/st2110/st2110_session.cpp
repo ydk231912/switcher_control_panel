@@ -774,12 +774,11 @@ public:
                 writable_frame_index = writable_frame_queue.front();
                 writable_frame_queue.pop_front();
                 lock.unlock();
-                auto buffer = output->wait_get_video_frame();
-                if (!buffer) {
+
+                auto &frame = frame_list[writable_frame_index];
+                if (!output->wait_get_video_frame(frame.data)) {
                     break;
                 }
-
-                build_frame(frame_list[writable_frame_index], buffer->get_data());
 
                 lock.lock();
                 readable_frame_queue.push_back(writable_frame_index);
@@ -839,10 +838,6 @@ public:
         std::unique_lock<std::mutex> lock(mutex);
         writable_frame_queue.push_back(frame_idx);
         condition_variable.notify_one();
-    }
-
-    void build_frame(FramebufferInfo &frame, const void *data) {
-        memcpy(frame.data, data, frame_bytes_size);
     }
 
     seeder::config::ST2110OutputConfig output_config;
@@ -957,22 +952,17 @@ public:
                 writable_frame_index = writable_frame_queue.front();
                 writable_frame_queue.pop_front();
                 lock.unlock();
-                auto buffer = output->wait_get_audio_frame_slice();
-                if (!buffer) {
+
+                auto &frame = frame_list[writable_frame_index];
+                if (!output->wait_get_audio_frame(frame.data)) {
                     break;
                 }
-
-                build_frame(frame_list[writable_frame_index], buffer->get_data());
 
                 lock.lock();
                 readable_frame_queue.push_back(writable_frame_index);
             }
         }
         logger->info("St2110TxAudioSession {} run finish", short_name);
-    }
-
-    void build_frame(FramebufferInfo &frame, const void *data) {
-        memcpy(frame.data, data, frame_bytes_size);
     }
 
     void close() {

@@ -27,6 +27,9 @@ add_executable(
     server/app_ctx.cpp
     server/service.cpp
     server/http_service.cpp
+    server/slice_manager.cpp
+    server/slice_service.cpp
+    server/delay_control_service.cpp
 
     util/os_util.cpp
     util/io.cpp
