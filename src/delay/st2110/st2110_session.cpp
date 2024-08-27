@@ -268,9 +268,7 @@ public:
         return ((uint64_t)spec.tv_sec * NS_PER_S) + spec.tv_nsec;
     }
 
-    static void app_stat(void *priv) {
-        seeder::StatRecorderRegistry::get_instance().dump();
-    }
+    static void app_stat(void *priv) {}
 
     void close() {
         mtl_stop(handle);

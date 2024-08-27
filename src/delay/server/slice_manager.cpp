@@ -197,7 +197,7 @@ public:
         size_t in_slice_block_size,
         size_t in_slice_block_max_count
     ):
-        max_slice_count(in_max_read_slice_count + 3),
+        max_slice_count(in_max_read_slice_count + preopen_write_slice_count + 1),
         max_read_slice_count(in_max_read_slice_count),
         slice_first_block_offset(in_slice_first_block_offset),
         slice_block_size(in_slice_block_size),
@@ -229,40 +229,40 @@ public:
     std::error_code write_slice_block(const ConstBufferSeq &buffers, size_t block_offset) {
         ZoneScopedN("write_slice_block");
         auto lock = acquire_lock();
-        if (!opened_write_slice.first) {
+        if (!opened_write_slice) {
             return SliceError::NoSlice;
         }
-        if (!opened_write_slice.first->is_opened) {
+        if (!opened_write_slice->is_opened) {
             return SliceError::NotOpened;
         }
-        if (opened_write_slice.first->writer_index >= slice_block_max_count) {
+        if (opened_write_slice->writer_index >= slice_block_max_count) {
             return SliceError::InvalidState;
         }
         if (block_offset + asio::buffer_size(buffers) > slice_block_size) {
             return SliceError::InvalidArgument;
         }
-        if (opened_write_slice.first->is_writing) {
+        if (opened_write_slice->is_writing) {
             return SliceError::InvalidState;
         }
 
-        opened_write_slice.first->is_writing = true;
+        opened_write_slice->is_writing = true;
         lock.unlock();
 
         {
             ZoneScopedN("write_slice_block.mempcy");
             // 由SliceManager确保opened_write_slice有效，所以不需要再给SliceFile加锁
-            uint8_t* dst = slice_block_begin(opened_write_slice.first, opened_write_slice.first->writer_index) + block_offset;
+            uint8_t* dst = slice_block_begin(opened_write_slice, opened_write_slice->writer_index) + block_offset;
             asio::buffer_copy(asio::buffer(dst, slice_block_size - block_offset), buffers);
         }
         
         lock.lock();
-        opened_write_slice.first->is_writing = false;
-        opened_write_slice.first->writer_index++;
-        lastest_writer_index = opened_write_slice.first->writer_index;
-        if (opened_write_slice.first->writer_index >= slice_block_max_count) {
-            finish_write_slice(opened_write_slice.first);
+        opened_write_slice->is_writing = false;
+        opened_write_slice->writer_index++;
+        lastest_writer_index = opened_write_slice->writer_index;
+        if (opened_write_slice->writer_index >= slice_block_max_count) {
+            finish_write_slice(opened_write_slice);
             lastest_writer_index = 0;
-            opened_write_slice.first = nullptr;
+            opened_write_slice = nullptr;
             do_prepare_write_slice_async();
             update_read_slices();
         }
@@ -346,41 +346,24 @@ private:
     }
 
     void do_prepare_write_slice_async() {
-        if (free_slices.empty()) {
-            return;
-        }
-        if (opened_write_slice.first) {
-            return;
-        }
-        std::swap(opened_write_slice.first, opened_write_slice.second);
-        if (!opened_write_slice.first && !free_slices.empty()) {
+        while (!free_slices.empty() && preopen_write_slices.size() < preopen_write_slice_count) {
             auto slice = free_slices.front();
             free_slices.pop_front();
-            opened_write_slice.first = slice;
+            preopen_write_slices.push_back(slice);
             start_async([this, slice] {
-                ZoneScopedN("async_open_write.first");
+                ZoneScopedN("async_open_write");
                 try {
                     logger->debug("slice open write {}", slice->file_name);
                     slice->open(slice_file_size(), true);
                 } catch (std::exception &e) {
-                    logger->error("do_prepare_next_write_slice_async error: {}", e.what());
+                    logger->error("do_prepare_write_slice_async error: {}", e.what());
                 }
             });
         }
-        if (!opened_write_slice.second && !free_slices.empty()) {
-            auto slice = free_slices.front();
-            free_slices.pop_front();
-            opened_write_slice.second = slice;
-
-            start_async([this, slice] {
-                ZoneScopedN("async_open_write.second");
-                try {
-                    logger->debug("slice open write {}", slice->file_name);
-                    slice->open(slice_file_size(), true);
-                } catch (std::exception &e) {
-                    logger->error("do_prepare_next_write_slice_async error: {}", e.what());
-                }
-            });
+        if (opened_write_slice == nullptr && !preopen_write_slices.empty()) {
+            opened_write_slice = preopen_write_slices.front();
+            preopen_write_slices.pop_front();
+            logger->debug("slice start write {}", opened_write_slice->file_name);
         }
     }
 
@@ -394,7 +377,7 @@ private:
             return false;
         }
         size_t r = read_cursor - lastest_writer_index;
-        return r >= (slice_rindex * slice_block_max_count) + 1 && r <= (slice_rindex + 2) * slice_block_max_count;
+        return r >= (slice_rindex * slice_block_max_count) + 1 && r <= (slice_rindex + preopen_read_slice_count) * slice_block_max_count;
     }
 
     void update_read_slices() {
@@ -418,7 +401,7 @@ private:
                 BOOST_ASSERT(read_cursor > 0);
                 BOOST_ASSERT(lastest_writer_index < slice_block_max_count);
                 if (read_cursor <= lastest_writer_index) {
-                    reader->slice = opened_write_slice.first; 
+                    reader->slice = opened_write_slice; 
                     reader->read_index = lastest_writer_index - read_cursor;
                     BOOST_ASSERT(reader->read_index < reader->slice->writer_index);
                 } else {
@@ -515,10 +498,14 @@ private:
     std::deque<std::shared_ptr<SliceFile>> free_slices;
     // 由旧到新，最后一个slice是最近写入的
     std::deque<std::shared_ptr<SliceFile>> read_slices;
-    std::pair<std::shared_ptr<SliceFile>, std::shared_ptr<SliceFile>> opened_write_slice;
+    std::deque<std::shared_ptr<SliceFile>> preopen_write_slices;
+    std::shared_ptr<SliceFile> opened_write_slice;
     std::unordered_map<SliceReader *, std::shared_ptr<SliceReader>> readers;
     size_t lastest_writer_index = 0;
     asio::thread_pool thread_pool;
+
+    static constexpr size_t preopen_write_slice_count = 3;
+    static constexpr size_t preopen_read_slice_count = 3;
 };
 
 SliceManager::SliceManager(

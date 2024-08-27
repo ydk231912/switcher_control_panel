@@ -311,31 +311,81 @@ public:
     std::shared_ptr<St2110TxSession> session;
 };
 
+class ErrorCodeCollector : public seeder::AbstractStatRecorder {
+public:
+    explicit ErrorCodeCollector(const std::string &in_name): name(in_name) {}
+
+    void dump() override {
+        std::unique_lock<std::mutex> lock(mutex);
+        if (error_map.empty()) {
+            return;
+        }
+        logger->warn("{}: {}", name, dump_slice_errors(error_map));
+    }
+
+    void reset() override {
+        std::unique_lock<std::mutex> lock(mutex);
+        error_map.clear();
+    }
+
+    void record(const std::error_code &ec) {
+        std::unique_lock<std::mutex> lock(mutex);
+        error_map[ec]++;
+    }
+
+    static std::string dump_slice_errors(std::unordered_map<std::error_code, uint32_t> &error_map) {
+        std::string s;
+        bool is_first = true;
+        for (auto &p : error_map) {
+            if (!is_first) {
+                s.append(",");
+            }
+            s.append(p.first.message()).append("=").append(std::to_string(p.second));
+            is_first = false;
+        }
+        error_map.clear();
+        return s;
+    }
+
+    static std::shared_ptr<ErrorCodeCollector> create(const std::string &name) {
+        std::shared_ptr<ErrorCodeCollector> r(new ErrorCodeCollector(name));
+        StatRecorderRegistry::get_instance().add_recorder(r);
+        return r;
+    }
+
+    std::string name;
+    std::mutex mutex;
+    std::unordered_map<std::error_code, uint32_t> error_map;
+};
+
 class St2110SourceImpl : public St2110BaseSource {
 public:
     bool push_video_frame(seeder::core::AbstractBuffer &in_buffer) override {
         std::unique_lock<std::mutex> video_lock(video_mutex);
         if (slice_manager) {
-            SEEDER_STATIC_STAT_RECORDER_SIMPLE_VALUE_NO_ZERO(int, g_stat_write_failed, warn, "St2110SourceImpl.write_slice_block_failed");
             std::error_code ec;
             if (audio_frame_size) {
+                muxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
                 {
                     std::unique_lock<std::mutex> audio_lock(audio_mutex);
-                    std::swap(audio_data, muxer_audio_buffer);
-                    audio_data.clear();
+                    size_t len = std::min(audio_frame_size * audio_frame_count, audio_data.size());
+                    if (len) {
+                        memcpy(muxer_audio_buffer.data(), audio_data.data(), len);
+                        audio_data.erase(audio_data.begin(), audio_data.begin() + len);
+                    }
                 }
-                muxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
                 buffers = {
                     asio::buffer(in_buffer.get_data(), video_frame_size),
                     asio::buffer(muxer_audio_buffer)
                 };
                 ec = slice_manager->write_slice_block(buffers, 0);
+                muxer_audio_buffer.clear();
             } else {
                 // video only
                 ec = slice_manager->write_slice_block(asio::buffer(in_buffer.get_data(), video_frame_size), 0);
             }
             if (ec) {
-                ++g_stat_write_failed->get_atomic();
+                slice_errors->record(ec);
             }
         }
         return true;
@@ -344,9 +394,9 @@ public:
     void push_audio_frame(seeder::core::AbstractBuffer &in_buffer) override {
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
         if (audio_frame_size) {
-            if (audio_data.size() < audio_frame_size * audio_frame_count) {
+            if (audio_data.size() < audio_frame_size * (audio_frame_count + extra_audio_frame_count)) {
                 const uint8_t *src_data = (uint8_t *)in_buffer.get_data();
-                size_t len = std::min(audio_frame_size * audio_frame_count - audio_data.size(), in_buffer.get_size());
+                size_t len = std::min(audio_frame_size * (audio_frame_count + extra_audio_frame_count) - audio_data.size(), in_buffer.get_size());
                 audio_data.insert(audio_data.end(), src_data, src_data + len);
             } else {
                 SEEDER_STATIC_STAT_RECORDER_SIMPLE_VALUE_NO_ZERO(int, g_stat_frame_drop, warn, "St2110SourceImpl.audio_frame_drop");
@@ -368,9 +418,10 @@ public:
         audio_frame_size = in_audio_frame_size;
         audio_frame_count = in_audio_frame_count;
         audio_data.clear();
-        audio_data.reserve(audio_frame_size * audio_frame_count);
+        audio_data.reserve(audio_frame_size * (audio_frame_count + extra_audio_frame_count));
         muxer_audio_buffer.clear();
         muxer_audio_buffer.reserve(audio_frame_size * audio_frame_count);
+        slice_errors = ErrorCodeCollector::create("St2110SourceImpl.write_slice_block");
     }
 
     void close() {
@@ -389,6 +440,9 @@ private:
     std::vector<uint8_t> audio_data;
     std::vector<uint8_t> muxer_audio_buffer;
     std::vector<asio::const_buffer> buffers;
+    std::shared_ptr<ErrorCodeCollector> slice_errors;
+
+    static constexpr size_t extra_audio_frame_count = 3;
 };
 
 class St2110OutputImpl : public St2110BaseOutput {
@@ -401,7 +455,6 @@ public:
         if (is_closed) {
             return false;
         }
-        SEEDER_STATIC_STAT_RECORDER_SIMPLE_VALUE_NO_ZERO(int, g_stat_read_failed, warn, "St2110SourceImpl.read_slice_block_failed");
         std::error_code ec;
         if (audio_frame_size) {
             demuxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
@@ -423,7 +476,7 @@ public:
             ec = slice_manager->read_slice_block(slice_reader, asio::buffer(dst, video_frame_size));
         }
         if (ec) {
-            ++g_stat_read_failed->get_atomic();
+            slice_errors->record(ec);
         }
 
         return true;
@@ -464,6 +517,8 @@ public:
         audio_packets.clear();
         demuxer_audio_buffer.clear();
         demuxer_audio_buffer.reserve(audio_frame_size * audio_frame_count);
+        slice_errors = ErrorCodeCollector::create("St2110SourceImpl.read_slice_block");
+        cv.notify_all();
     }
 
     void close() {
@@ -488,14 +543,17 @@ private:
     std::deque<uint8_t *> audio_packets;
     std::vector<uint8_t> demuxer_audio_buffer;
     std::vector<asio::mutable_buffer> buffers;
+    std::shared_ptr<ErrorCodeCollector> slice_errors;
 };
 
 struct DelayStreamConfig {
-    int delay_duration_sec = 60;
+    int delay_duration_sec = 0;
+    int delay_duration_frames = 0;
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
         DelayStreamConfig,
-        delay_duration_sec
+        delay_duration_sec,
+        delay_duration_frames
     )
 };
 
@@ -652,13 +710,13 @@ public:
         seeder::setup_st2110_audio_format(format_desc, input_audio_config);
         size_t video_frame_size = seeder::get_st2110_20_frame_size(format_desc);
         size_t audio_frame_size = format_desc.st30_frame_size;
-        size_t audio_frame_count = std::ceil(1 / format_desc.fps / format_desc.st30_ptime);
+        size_t audio_frame_count = std::ceil(1000 / format_desc.fps / format_desc.st30_ptime);
         size_t slice_block_size = video_frame_size + audio_frame_size * audio_frame_count;
         size_t slice_block_count = format_desc.fps;
 
         delay_stream.reset(new DelayStream);
         delay_stream->slice_manager = slice_service->create_slice_manager(slice_block_size, slice_block_count);
-        delay_stream->slice_reader = delay_stream->slice_manager->add_read_cursor(delay_stream_config.delay_duration_sec);
+        delay_stream->slice_reader = delay_stream->slice_manager->add_read_cursor(delay_stream_config.delay_duration_sec * format_desc.fps + delay_stream_config.delay_duration_frames);
         if (!delay_stream->slice_reader) {
             logger->error("add_read_cursor error");
             return;
@@ -815,6 +873,7 @@ DelayControlService::~DelayControlService() {}
 void DelayControlService::setup(ServiceSetupCtx &ctx) {
     p_impl->config_service = ctx.get_service<ConfigService>();
     p_impl->st2110_service = ctx.get_service<St2110Service>();
+    p_impl->slice_service = ctx.get_service<SliceService>();
     p_impl->setup();
 }
 

@@ -13,6 +13,7 @@
 #include "server/command_line_service.h"
 #include "server/config_service.h"
 #include "server/http_service.h"
+#include "server/slice_service.h"
 #include "server/stat_service.h"
 #include "st2110/st2110_service.h"
 #include "server/delay_control_service.h"
@@ -34,6 +35,7 @@ public:
         service_manager.add_service<HttpService>();
         service_manager.add_service<St2110Service>();
         service_manager.add_service<StatService>();
+        service_manager.add_service<SliceService>();
         service_manager.add_service<DelayControlService>();
 
         service_manager.start();

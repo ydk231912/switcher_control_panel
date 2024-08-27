@@ -2,9 +2,16 @@
 
 #include <string>
 
+#include <boost/filesystem.hpp>
+
+#include "core/util/logger.h"
 #include "slice_manager.h"
 #include "server/config_service.h"
 
+
+namespace fs = boost::filesystem;
+
+using seeder::core::logger;
 
 namespace seeder {
 
@@ -40,6 +47,10 @@ void SliceService::setup(ServiceSetupCtx &ctx) {
 
 void SliceService::start() {
     p_impl->config_proxy.try_get_to(p_impl->slice_config);
+    if (!fs::is_directory(p_impl->slice_config.data_dir)) {
+        logger->error("slice directory data_dir={}", p_impl->slice_config.data_dir);
+        throw std::runtime_error("slice.data_dir");
+    }
 }
 
 std::shared_ptr<SliceManager> SliceService::create_slice_manager(
