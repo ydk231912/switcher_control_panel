@@ -9,6 +9,7 @@
 
 #include "core/util/logger.h"
 #include "core/video_format.h"
+#include "server/http_service.h"
 #include "util/io.h"
 #include "util/json_util.h"
 #include "util/stat_recorder.h"
@@ -365,7 +366,7 @@ public:
         if (slice_manager) {
             std::error_code ec;
             if (audio_frame_size) {
-                muxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
+                muxer_audio_buffer.resize(audio_frame_size * audio_frame_count);
                 {
                     std::unique_lock<std::mutex> audio_lock(audio_mutex);
                     size_t len = std::min(audio_frame_size * audio_frame_count, audio_data.size());
@@ -378,11 +379,11 @@ public:
                     asio::buffer(in_buffer.get_data(), video_frame_size),
                     asio::buffer(muxer_audio_buffer)
                 };
-                ec = slice_manager->write_slice_block(buffers, 0);
+                ec = slice_manager->write_slice_block(buffers);
                 muxer_audio_buffer.clear();
             } else {
                 // video only
-                ec = slice_manager->write_slice_block(asio::buffer(in_buffer.get_data(), video_frame_size), 0);
+                ec = slice_manager->write_slice_block(asio::buffer(in_buffer.get_data(), video_frame_size));
             }
             if (ec) {
                 slice_errors->record(ec);
@@ -445,6 +446,53 @@ private:
     static constexpr size_t extra_audio_frame_count = 3;
 };
 
+class SliceReaderHolder {
+public:
+    explicit SliceReaderHolder() {}
+
+    explicit SliceReaderHolder(
+        SliceManager *in_slice_manager,
+        SliceReader *in_reader
+    ): reader(in_reader)
+    {}
+
+    SliceReaderHolder(const SliceReaderHolder &) = delete;
+    SliceReaderHolder & operator=(const SliceReaderHolder &) = delete;
+
+    SliceReaderHolder(SliceReaderHolder &&other) {
+        release();
+        slice_manager = other.slice_manager;
+        reader = other.reader;
+    }
+
+    SliceReaderHolder & operator=(SliceReaderHolder &&other) {
+        release();
+        slice_manager = other.slice_manager;
+        reader = other.reader;
+        return *this;
+    }
+
+    ~SliceReaderHolder() {
+        release();
+    }
+
+    SliceReader * get() {
+        return reader;
+    }
+
+private:
+    void release() {
+        if (slice_manager && reader) {
+            slice_manager->remove_slice_cursor(reader);
+            reader = nullptr;
+        }
+    }
+
+private:
+    SliceManager *slice_manager = nullptr;
+    SliceReader *reader = nullptr;
+};
+
 class St2110OutputImpl : public St2110BaseOutput {
 public:
     bool wait_get_video_frame(void *dst) override {
@@ -456,13 +504,17 @@ public:
             return false;
         }
         std::error_code ec;
+        SliceReader *reader = is_bypass_enable ? bypass_slice.get() : delay_slice.get();
+        if (!reader) {
+            return true;
+        }
         if (audio_frame_size) {
             demuxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
             buffers = {
                 asio::buffer(dst, video_frame_size),
                 asio::buffer(demuxer_audio_buffer)
             };
-            ec = slice_manager->read_slice_block(slice_reader, buffers);
+            ec = slice_manager->read_slice_block(reader, buffers);
             {
                 std::unique_lock<std::mutex> audio_lock(audio_mutex);
                 std::swap(demuxer_audio_buffer, audio_data);
@@ -473,7 +525,7 @@ public:
             }
         } else {
             // video only
-            ec = slice_manager->read_slice_block(slice_reader, asio::buffer(dst, video_frame_size));
+            ec = slice_manager->read_slice_block(reader, asio::buffer(dst, video_frame_size));
         }
         if (ec) {
             slice_errors->record(ec);
@@ -500,7 +552,6 @@ public:
 
     void set_slice_manager(
         const std::shared_ptr<SliceManager> &in_slice_manager,
-        SliceReader *in_slice_reader,
         size_t in_video_frame_size,
         size_t in_audio_frame_size,
         size_t in_audio_frame_count
@@ -508,7 +559,7 @@ public:
         std::unique_lock<std::mutex> video_lock(video_mutex);
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
         slice_manager = in_slice_manager;
-        slice_reader = in_slice_reader;
+        bypass_slice = SliceReaderHolder(slice_manager.get(), slice_manager->add_read_cursor(1));
         video_frame_size = in_video_frame_size;
         audio_frame_size = in_audio_frame_size;
         audio_frame_count = in_audio_frame_count;
@@ -529,6 +580,18 @@ public:
         cv.notify_all();
     }
 
+    void set_bypass(bool in_bypass_enable) {
+        std::unique_lock<std::mutex> video_lock(video_mutex);
+        std::unique_lock<std::mutex> audio_lock(audio_mutex);
+        is_bypass_enable = in_bypass_enable;
+    }
+
+    void set_read_cursor(int read_cursor) {
+        std::unique_lock<std::mutex> video_lock(video_mutex);
+        std::unique_lock<std::mutex> audio_lock(audio_mutex);
+        delay_slice = SliceReaderHolder(slice_manager.get(), slice_manager->add_read_cursor(read_cursor));
+    }
+
 private:
     size_t video_frame_size = 0;
     size_t audio_frame_size = 0;
@@ -538,7 +601,9 @@ private:
     std::condition_variable cv;
     bool is_closed = false;
     std::shared_ptr<SliceManager> slice_manager;
-    SliceReader *slice_reader = nullptr;
+    SliceReaderHolder delay_slice;
+    SliceReaderHolder bypass_slice;
+    bool is_bypass_enable = false;
     std::vector<uint8_t> audio_data;
     std::deque<uint8_t *> audio_packets;
     std::vector<uint8_t> demuxer_audio_buffer;
@@ -547,11 +612,16 @@ private:
 };
 
 struct DelayStreamConfig {
+    std::string main_input_id;
+    std::string main_output_id;
+    // std::string preview_output_id;
     int delay_duration_sec = 0;
     int delay_duration_frames = 0;
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
         DelayStreamConfig,
+        main_input_id,
+        main_output_id,
         delay_duration_sec,
         delay_duration_frames
     )
@@ -561,9 +631,6 @@ class DelayStream {
 public:
 
     ~DelayStream() {
-        if (slice_manager && slice_reader) {
-            slice_manager->remove_slice_cursor(slice_reader);
-        }
         if (st2110_source) {
             st2110_source->close();
         }
@@ -572,7 +639,16 @@ public:
         }
     }
 
-    SliceReader *slice_reader = nullptr;
+    void set_bypass(bool in_bypass_enable) {
+        is_bypass_enable = in_bypass_enable;
+        if (st2110_output) {
+            st2110_output->set_bypass(in_bypass_enable);
+        }
+    }
+
+    DelayStreamConfig config;
+    double fps = 0;
+    bool is_bypass_enable = false;
     std::shared_ptr<SliceManager> slice_manager;
     std::shared_ptr<St2110SourceImpl> st2110_source;
     std::shared_ptr<St2110OutputImpl> st2110_output;
@@ -595,9 +671,7 @@ public:
         delay_stream_config_proxy.init_add(*config_service, "delay_stream");
     }
 
-    void setup_http() {
-
-    }
+    void setup_http();
 
     void setup_device_config_factory() {
         auto st2110_input = input_device_config_factory.add<St2110InputDeviceContext>("st2110");
@@ -615,7 +689,7 @@ public:
         startup_st2110();
         startup_inputs();
         startup_outputs();
-        startup_delay_stream();
+        reset_delay_stream();
     }
 
     void startup_st2110() {
@@ -674,23 +748,17 @@ public:
         logger->debug("DelayControlService startup_outputs finish");
     }
 
-    void startup_delay_stream() {
+    void reset_delay_stream() {
         DelayStreamConfig delay_stream_config;
         delay_stream_config_proxy.try_get_to(delay_stream_config);
 
-        if (input_device_map.size() != 1) {
-            return;
-        }
-        if (output_device_map.size() != 1) {
-            return;
-        }
-        auto input_ctx = input_device_map.begin()->second;
+        auto input_ctx = find_input(delay_stream_config.main_input_id);
         auto st2110_input_ctx = std::dynamic_pointer_cast<St2110InputDeviceContext>(input_ctx);
         if (!st2110_input_ctx) {
             return;
         }
         auto st2110_source = std::dynamic_pointer_cast<St2110SourceImpl>(st2110_input_ctx->session->get_source());
-        auto output_ctx = output_device_map.begin()->second;
+        auto output_ctx = find_output(delay_stream_config.main_output_id);
         auto st2110_output_ctx = std::dynamic_pointer_cast<St2110OutputDeviceContext>(output_ctx);
         if (!st2110_output_ctx) {
             return;
@@ -714,17 +782,20 @@ public:
         size_t slice_block_size = video_frame_size + audio_frame_size * audio_frame_count;
         size_t slice_block_count = format_desc.fps;
 
-        delay_stream.reset(new DelayStream);
-        delay_stream->slice_manager = slice_service->create_slice_manager(slice_block_size, slice_block_count);
-        delay_stream->slice_reader = delay_stream->slice_manager->add_read_cursor(delay_stream_config.delay_duration_sec * format_desc.fps + delay_stream_config.delay_duration_frames);
-        if (!delay_stream->slice_reader) {
-            logger->error("add_read_cursor error");
-            return;
+        try {
+            delay_stream.reset(new DelayStream);
+            delay_stream->config = delay_stream_config;
+            delay_stream->fps = format_desc.fps;
+            delay_stream->slice_manager = slice_service->create_slice_manager(slice_block_size, slice_block_count);
+            delay_stream->st2110_output = st2110_output;
+            delay_stream->st2110_source = st2110_source;
+            st2110_output->set_slice_manager(delay_stream->slice_manager, video_frame_size, audio_frame_size, audio_frame_count);
+            st2110_output->set_read_cursor(delay_stream_config.delay_duration_sec * format_desc.fps + delay_stream_config.delay_duration_frames);
+            st2110_source->set_slice_manager(delay_stream->slice_manager, video_frame_size, audio_frame_size, audio_frame_count);
+        } catch (std::exception &e) {
+            logger->error("startup_delay_stream: {}", e.what());
+            delay_stream = nullptr;
         }
-        delay_stream->st2110_output = st2110_output;
-        delay_stream->st2110_source = st2110_source;
-        st2110_output->set_slice_manager(delay_stream->slice_manager, delay_stream->slice_reader, video_frame_size, audio_frame_size, audio_frame_count);
-        st2110_source->set_slice_manager(delay_stream->slice_manager, video_frame_size, audio_frame_size, audio_frame_count);
     }
 
     void add_input(const std::shared_ptr<AbstractDeviceContext> &input) {
@@ -833,6 +904,101 @@ public:
         return true;
     }
 
+    nlohmann::json get_device_info() const {
+        nlohmann::json result;
+        if (delay_stream) {
+            auto &j_stream = result["delay_stream"];
+            auto input_ctx = find_input(delay_stream->config.main_input_id);
+            auto st2110_input_ctx = std::dynamic_pointer_cast<St2110InputDeviceContext>(input_ctx);
+            if (st2110_input_ctx) {
+                auto &input_config = st2110_input_ctx->get_device_config();
+                auto &j_input = j_stream["main_input"];
+                j_input = input_config;
+            }
+            
+            auto output_ctx = find_output(delay_stream->config.main_output_id);
+            auto st2110_output_ctx = std::dynamic_pointer_cast<St2110OutputDeviceContext>(output_ctx);
+            if (st2110_output_ctx) {
+                auto &output_config = st2110_output_ctx->get_device_config();
+                auto &j_output = j_stream["main_output"];
+                j_output["device_id"] = output_config.device_id;
+                j_output = output_config;
+            }
+        }
+
+        return result;
+    }
+
+    nlohmann::json get_delay_stream_config() const {
+        nlohmann::json result;
+
+        if (delay_stream) {
+            result["delay_duration"] = nlohmann::json({
+                {"sec_num", delay_stream->config.delay_duration_sec},
+                {"frame_num", delay_stream->config.delay_duration_frames}
+            });
+            result["max_delay_duration"] = nlohmann::json({
+                {"sec_num", slice_service->get_max_read_slice_count()}
+            });
+        }
+
+        return result;
+    }
+
+    void update_delay_device_config(nlohmann::json &param) {
+        DelayStreamConfig delay_stream_config;
+        delay_stream_config_proxy.try_get_to(delay_stream_config);
+
+        auto input_ctx = find_input(delay_stream_config.main_input_id);
+        auto st2110_input_ctx = std::dynamic_pointer_cast<St2110InputDeviceContext>(input_ctx);
+        if (!st2110_input_ctx) {
+            return;
+        }
+        auto st2110_source = std::dynamic_pointer_cast<St2110SourceImpl>(st2110_input_ctx->session->get_source());
+        auto output_ctx = find_output(delay_stream_config.main_output_id);
+        auto st2110_output_ctx = std::dynamic_pointer_cast<St2110OutputDeviceContext>(output_ctx);
+        if (!st2110_output_ctx) {
+            return;
+        }
+
+        auto &j_stream = param["delay_stream"];
+        bool should_reset_stream = false;
+        auto &j_input = j_stream["main_input"];
+        if (j_input.is_object()) {
+            seeder::config::ST2110InputConfig new_input_config = j_input;
+            update_input(new_input_config);
+            should_reset_stream = true;
+        }
+        auto &j_output = j_stream["main_output"];
+        if (j_output.is_object()) {
+            seeder::config::ST2110OutputConfig new_output_config = j_output;
+            update_output(new_output_config);
+            should_reset_stream = true;
+        }
+
+        if (should_reset_stream) {
+            reset_delay_stream();
+        }
+    }
+
+    void update_delay_config(nlohmann::json &param) {
+        if (param.contains("delay_duration") && delay_stream) {
+            int sec_num = 0;
+            int frame_num = 0;
+            seeder::json::object_safe_get_to(param, "sec_num", sec_num);
+            seeder::json::object_safe_get_to(param, "frame_num", frame_num);
+            int max_frame_num = slice_service->get_max_read_slice_count() * delay_stream->fps;
+            int new_frame_num = sec_num * delay_stream->fps + frame_num;
+            int old_frame_num = delay_stream->config.delay_duration_sec * delay_stream->fps + delay_stream->config.delay_duration_frames;
+            if (new_frame_num > 0 && new_frame_num <= max_frame_num && new_frame_num != old_frame_num) {
+                delay_stream->config.delay_duration_sec = sec_num;
+                delay_stream->config.delay_duration_frames = frame_num;
+                delay_stream_config_proxy.update(delay_stream->config);
+                delay_stream->st2110_output->set_read_cursor(new_frame_num);
+            }
+        }
+    }
+
     void start() {
         asio::post(*io_ctx, [this] {
             try {
@@ -845,6 +1011,7 @@ public:
     }
 
     std::shared_ptr<ConfigService> config_service;
+    std::shared_ptr<HttpService> http_service;
     std::shared_ptr<St2110Service> st2110_service;
     std::shared_ptr<SliceService> slice_service;
 
@@ -873,6 +1040,7 @@ DelayControlService::~DelayControlService() {}
 void DelayControlService::setup(ServiceSetupCtx &ctx) {
     p_impl->config_service = ctx.get_service<ConfigService>();
     p_impl->st2110_service = ctx.get_service<St2110Service>();
+    p_impl->http_service = ctx.get_service<HttpService>();
     p_impl->slice_service = ctx.get_service<SliceService>();
     p_impl->setup();
 }
@@ -884,5 +1052,45 @@ void DelayControlService::start() {
 boost::signals2::signal<void(DeviceEventType, const std::any &)> & DelayControlService::get_device_event_signal() {
     return p_impl->on_device_event;
 }
+
+#define POST_PROMISE(type, body, value) \
+    auto promise = std::make_shared<std::promise<type>>();\
+    asio::post(*p_impl->io_ctx, [=] {\
+        try {\
+            body;\
+            promise->set_value(value);\
+        } catch (...) {\
+            promise->set_exception(std::current_exception());\
+        }\
+    });\
+    return promise->get_future();
+
+std::future<nlohmann::json> DelayControlService::get_device_info_async() {
+    POST_PROMISE(nlohmann::json, {}, p_impl->get_device_info());
+}
+
+std::future<void> DelayControlService::update_device_config_async(const nlohmann::json &param) {
+    POST_PROMISE(void, {
+        auto j = param;
+        p_impl->update_delay_device_config(j);
+    }, );
+}
+
+
+#define HTTP_ROUTE(method, path, handler) \
+    http_service->add_route_with_ctx(HttpMethod::method, path, [this] (const HttpRequest &req, HttpResponse &resp) handler, io_ctx)
+
+void DelayControlService::Impl::setup_http() {
+    HTTP_ROUTE(Get, "/api/delay/delay_status", {
+        resp.json_ok(this->get_delay_stream_config());
+    });
+
+    HTTP_ROUTE(Post, "/api/delay/update_delay_config", {
+        auto j = req.parse_json_body();
+        this->update_delay_config(j);
+        resp.json_ok();
+    });
+}
+
 
 } // namespace seeder

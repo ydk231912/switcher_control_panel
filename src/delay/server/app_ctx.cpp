@@ -17,6 +17,7 @@
 #include "server/stat_service.h"
 #include "st2110/st2110_service.h"
 #include "server/delay_control_service.h"
+#include "server/delay_http_service.h"
 
 namespace asio = boost::asio;
 
@@ -37,6 +38,7 @@ public:
         service_manager.add_service<StatService>();
         service_manager.add_service<SliceService>();
         service_manager.add_service<DelayControlService>();
+        service_manager.add_service<DelayHttpService>();
 
         service_manager.start();
     }

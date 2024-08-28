@@ -2,10 +2,12 @@
 
 #include <memory>
 #include <any>
-
-#include "server/service.h"
+#include <future>
 
 #include <boost/signals2/signal.hpp>
+#include <nlohmann/json.hpp>
+
+#include "server/service.h"
 
 
 namespace seeder {
@@ -26,6 +28,10 @@ public:
     void setup(ServiceSetupCtx &ctx) override;
 
     void start() override;
+
+    std::future<nlohmann::json> get_device_info_async();
+
+    std::future<void> update_device_config_async(const nlohmann::json &param);
 
     boost::signals2::signal<void(DeviceEventType, const std::any &)> & get_device_event_signal();
 

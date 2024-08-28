@@ -20,6 +20,11 @@ public:
         return std::dynamic_pointer_cast<T>(service);
     }
 
+    template<class T>
+    void get_service(std::shared_ptr<T> &out_service) {
+        out_service = std::dynamic_pointer_cast<T>(find_service(T::ID));
+    }
+
 private:
     ServiceManager &service_manager;
 };
