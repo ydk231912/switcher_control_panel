@@ -17,14 +17,17 @@ namespace seeder {
 
 namespace {
 
-struct SliceConfig {
-    std::string data_dir;
-    int max_read_slice_count = 60;
+struct SliceConfig : SliceManager::Config {
+    SliceConfig() {
+        max_read_slice_count = 60;
+    }
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
         SliceConfig,
         data_dir,
-        max_read_slice_count
+        max_read_slice_count,
+        preopen_read_slice_count,
+        preopen_write_slice_count
     )
 };
 
@@ -57,13 +60,13 @@ std::shared_ptr<SliceManager> SliceService::create_slice_manager(
     size_t in_slice_block_size,
     size_t in_slice_block_max_count
 ) {
-    std::shared_ptr<SliceManager> slice_manager(new SliceManager(
-        p_impl->slice_config.max_read_slice_count,
-        0,
-        in_slice_block_size,
-        in_slice_block_max_count
-    ));
-    slice_manager->init(p_impl->slice_config.data_dir, "map");
+    auto config = p_impl->slice_config;
+    config.slice_file_prefix = "map";
+    config.slice_first_block_offset = 0;
+    config.slice_block_size = in_slice_block_size;
+    config.slice_block_max_count = in_slice_block_max_count;
+    std::shared_ptr<SliceManager> slice_manager(new SliceManager(config));
+    slice_manager->init();
     return slice_manager;
 }
 

@@ -191,32 +191,25 @@ public:
 
 class SliceManager::Impl {
 public:
-    explicit Impl(
-        size_t in_max_read_slice_count,
-        size_t in_slice_first_block_offset,
-        size_t in_slice_block_size,
-        size_t in_slice_block_max_count
-    ):
-        max_slice_count(in_max_read_slice_count + preopen_write_slice_count + 1),
-        max_read_slice_count(in_max_read_slice_count),
-        slice_first_block_offset(in_slice_first_block_offset),
-        slice_block_size(in_slice_block_size),
-        slice_block_max_count(in_slice_block_max_count),
+    explicit Impl(const Config &in_config):
+        config(in_config),
+        max_slice_count(config.max_read_slice_count + config.preopen_write_slice_count + 1),
+        max_read_slice_count(config.max_read_slice_count),
+        slice_first_block_offset(config.slice_first_block_offset),
+        slice_block_size(config.slice_block_size),
+        slice_block_max_count(config.slice_block_max_count),
         // FIXME 这里用多线程反而会导致 write_slice_block 的 memcpy 变慢...
         thread_pool(1)
     {
-        if (in_max_read_slice_count == 0) {
+        if (max_read_slice_count == 0) {
             throw std::invalid_argument("max_slice_count");
         }
     }
 
-    void init(
-        const std::string &slice_dir,
-        const std::string &slice_file_prefix
-    ) {
+    void init() {
         for (int i = 0; i < max_slice_count; ++i) {
-            std::string file_name = (boost::format("%s-%d") % slice_file_prefix % i).str();
-            fs::path file_path = fs::path(slice_dir).append(file_name);
+            std::string file_name = (boost::format("%s-%d") % config.slice_file_prefix % i).str();
+            fs::path file_path = fs::path(config.data_dir).append(file_name);
             std::shared_ptr<SliceFile> slice(new SliceFile);
             slice->file_path = file_path;
             slice->file_name = file_path.filename().string();
@@ -282,13 +275,21 @@ public:
         reader->read_cursor = read_cursor;
         readers[reader.get()] = reader;
         update_read_slices();
+        logger->debug("add_read_cursor {} {}", read_cursor, (size_t)reader.get());
 
         return reader.get();
     }
 
-    bool remove_slice_cursor(SliceReader *reader) {
+    bool remove_read_cursor(SliceReader *reader) {
         auto lock = acquire_lock();
-        return readers.erase(reader);
+        auto iter = readers.find(reader);
+        if (iter != readers.end()) {
+            auto reader = iter->second;
+            logger->debug("remove_read_cursor {} {}", reader->read_cursor, (size_t)reader.get());
+            readers.erase(iter);
+            return true;
+        }
+        return false;
     }
 
     template<class MutableBufferSeq>
@@ -346,7 +347,7 @@ private:
     }
 
     void do_prepare_write_slice_async() {
-        while (!free_slices.empty() && preopen_write_slices.size() < preopen_write_slice_count) {
+        while (!free_slices.empty() && preopen_write_slices.size() < config.preopen_write_slice_count) {
             auto slice = free_slices.front();
             free_slices.pop_front();
             preopen_write_slices.push_back(slice);
@@ -377,7 +378,7 @@ private:
             return false;
         }
         size_t r = read_cursor - lastest_writer_index;
-        return r >= (slice_rindex * slice_block_max_count) + 1 && r <= (slice_rindex + preopen_read_slice_count) * slice_block_max_count;
+        return r >= (slice_rindex * slice_block_max_count) + 1 && r <= (slice_rindex + config.preopen_read_slice_count) * slice_block_max_count;
     }
 
     void update_read_slices() {
@@ -488,6 +489,7 @@ private:
     }
 
 private:
+    const Config config;
     const size_t max_slice_count;
     const size_t max_read_slice_count;
     const size_t slice_first_block_offset;
@@ -503,30 +505,14 @@ private:
     std::unordered_map<SliceReader *, std::shared_ptr<SliceReader>> readers;
     size_t lastest_writer_index = 0;
     asio::thread_pool thread_pool;
-
-    static constexpr size_t preopen_write_slice_count = 3;
-    static constexpr size_t preopen_read_slice_count = 3;
 };
 
-SliceManager::SliceManager(
-    size_t in_max_read_slice_count,
-    size_t in_slice_first_block_offset,
-    size_t in_slice_block_size,
-    size_t in_slice_block_max_count
-): p_impl(new Impl(
-    in_max_read_slice_count,
-    in_slice_first_block_offset,
-    in_slice_block_size,
-    in_slice_block_max_count
-)) {}
+SliceManager::SliceManager(const Config &in_config): p_impl(new Impl(in_config)) {}
 
 SliceManager::~SliceManager() {}
 
-void SliceManager::init(
-    const std::string &slice_dir,
-    const std::string &slice_file_prefix
-) {
-    p_impl->init(slice_dir, slice_file_prefix);
+void SliceManager::init() {
+    p_impl->init();
 }
 
 std::error_code SliceManager::write_slice_block(const boost::asio::const_buffer &buffer, size_t block_offset) {
@@ -551,8 +537,8 @@ SliceReader * SliceManager::add_read_cursor(uint32_t read_cursor) {
     return p_impl->add_read_cursor(read_cursor);
 }
 
-bool SliceManager::remove_slice_cursor(SliceReader *in_reader) {
-    return p_impl->remove_slice_cursor(in_reader);
+bool SliceManager::remove_read_cursor(SliceReader *in_reader) {
+    return p_impl->remove_read_cursor(in_reader);
 }
 
 } // namespace seeder

@@ -7,6 +7,8 @@
 
 #include <boost/asio.hpp>
 
+#include <tracy/Tracy.hpp>
+
 #include "core/util/logger.h"
 #include "core/video_format.h"
 #include "server/http_service.h"
@@ -362,17 +364,21 @@ public:
 class St2110SourceImpl : public St2110BaseSource {
 public:
     bool push_video_frame(seeder::core::AbstractBuffer &in_buffer) override {
+        ZoneScopedN("push_video_frame");
         std::unique_lock<std::mutex> video_lock(video_mutex);
         if (slice_manager) {
             std::error_code ec;
             if (audio_frame_size) {
-                muxer_audio_buffer.resize(audio_frame_size * audio_frame_count);
+                muxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
                 {
                     std::unique_lock<std::mutex> audio_lock(audio_mutex);
                     size_t len = std::min(audio_frame_size * audio_frame_count, audio_data.size());
                     if (len) {
                         memcpy(muxer_audio_buffer.data(), audio_data.data(), len);
                         audio_data.erase(audio_data.begin(), audio_data.begin() + len);
+                    }
+                    if (video_frame_write_count == 0) {
+                        audio_data.clear();
                     }
                 }
                 buffers = {
@@ -385,8 +391,10 @@ public:
                 // video only
                 ec = slice_manager->write_slice_block(asio::buffer(in_buffer.get_data(), video_frame_size));
             }
+            video_frame_write_count++;
             if (ec) {
                 slice_errors->record(ec);
+                TracyMessageL("write_slice_block failed");
             }
         }
         return true;
@@ -402,6 +410,7 @@ public:
             } else {
                 SEEDER_STATIC_STAT_RECORDER_SIMPLE_VALUE_NO_ZERO(int, g_stat_frame_drop, warn, "St2110SourceImpl.audio_frame_drop");
                 ++g_stat_frame_drop->get_atomic();
+                TracyMessageL("push_audio_frame drop");
             }
         }
     }
@@ -418,6 +427,7 @@ public:
         video_frame_size = in_video_frame_size;
         audio_frame_size = in_audio_frame_size;
         audio_frame_count = in_audio_frame_count;
+        extra_audio_frame_count = in_audio_frame_count / 2;
         audio_data.clear();
         audio_data.reserve(audio_frame_size * (audio_frame_count + extra_audio_frame_count));
         muxer_audio_buffer.clear();
@@ -435,6 +445,7 @@ private:
     size_t video_frame_size = 0;
     size_t audio_frame_size = 0;
     size_t audio_frame_count = 0;
+    size_t extra_audio_frame_count = 0;
     std::mutex video_mutex;
     std::mutex audio_mutex;
     std::shared_ptr<SliceManager> slice_manager;
@@ -442,8 +453,7 @@ private:
     std::vector<uint8_t> muxer_audio_buffer;
     std::vector<asio::const_buffer> buffers;
     std::shared_ptr<ErrorCodeCollector> slice_errors;
-
-    static constexpr size_t extra_audio_frame_count = 3;
+    uint32_t video_frame_write_count = 0;
 };
 
 class SliceReaderHolder {
@@ -453,7 +463,7 @@ public:
     explicit SliceReaderHolder(
         SliceManager *in_slice_manager,
         SliceReader *in_reader
-    ): reader(in_reader)
+    ): slice_manager(in_slice_manager), reader(in_reader)
     {}
 
     SliceReaderHolder(const SliceReaderHolder &) = delete;
@@ -463,12 +473,14 @@ public:
         release();
         slice_manager = other.slice_manager;
         reader = other.reader;
+        other.reader = nullptr;
     }
 
     SliceReaderHolder & operator=(SliceReaderHolder &&other) {
         release();
         slice_manager = other.slice_manager;
         reader = other.reader;
+        other.reader = nullptr;
         return *this;
     }
 
@@ -480,10 +492,9 @@ public:
         return reader;
     }
 
-private:
     void release() {
         if (slice_manager && reader) {
-            slice_manager->remove_slice_cursor(reader);
+            slice_manager->remove_read_cursor(reader);
             reader = nullptr;
         }
     }
@@ -575,6 +586,8 @@ public:
     void close() {
         std::unique_lock<std::mutex> video_lock(video_mutex);
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
+        delay_slice.release();
+        bypass_slice.release();
         slice_manager = nullptr;
         is_closed = true;
         cv.notify_all();
@@ -983,10 +996,11 @@ public:
 
     void update_delay_config(nlohmann::json &param) {
         if (param.contains("delay_duration") && delay_stream) {
+            auto &delay_duration = param["delay_duration"];
             int sec_num = 0;
             int frame_num = 0;
-            seeder::json::object_safe_get_to(param, "sec_num", sec_num);
-            seeder::json::object_safe_get_to(param, "frame_num", frame_num);
+            seeder::json::object_safe_get_to(delay_duration, "sec_num", sec_num);
+            seeder::json::object_safe_get_to(delay_duration, "frame_num", frame_num);
             int max_frame_num = slice_service->get_max_read_slice_count() * delay_stream->fps;
             int new_frame_num = sec_num * delay_stream->fps + frame_num;
             int old_frame_num = delay_stream->config.delay_duration_sec * delay_stream->fps + delay_stream->config.delay_duration_frames;
