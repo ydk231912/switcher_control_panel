@@ -391,10 +391,11 @@ public:
                 // video only
                 ec = slice_manager->write_slice_block(asio::buffer(in_buffer.get_data(), video_frame_size));
             }
-            video_frame_write_count++;
             if (ec) {
                 slice_errors->record(ec);
                 TracyMessageL("write_slice_block failed");
+            } else {
+                video_frame_write_count++;
             }
         }
         return true;
@@ -453,7 +454,7 @@ private:
     std::vector<uint8_t> muxer_audio_buffer;
     std::vector<asio::const_buffer> buffers;
     std::shared_ptr<ErrorCodeCollector> slice_errors;
-    uint32_t video_frame_write_count = 0;
+    uint64_t video_frame_write_count = 0; // 成功写入的视频帧数量
 };
 
 class SliceReaderHolder {
@@ -953,6 +954,7 @@ public:
             result["max_delay_duration"] = nlohmann::json({
                 {"sec_num", slice_service->get_max_read_slice_count()}
             });
+            result["is_bypass"] = delay_stream->is_bypass_enable;
         }
 
         return result;
@@ -995,12 +997,15 @@ public:
     }
 
     void update_delay_config(nlohmann::json &param) {
-        if (param.contains("delay_duration") && delay_stream) {
-            auto &delay_duration = param["delay_duration"];
+        if (!delay_stream) {
+            return;
+        }
+        auto &j_delay_duration = param["delay_duration"];
+        if (!j_delay_duration.is_null()) {
             int sec_num = 0;
             int frame_num = 0;
-            seeder::json::object_safe_get_to(delay_duration, "sec_num", sec_num);
-            seeder::json::object_safe_get_to(delay_duration, "frame_num", frame_num);
+            seeder::json::object_safe_get_to(j_delay_duration, "sec_num", sec_num);
+            seeder::json::object_safe_get_to(j_delay_duration, "frame_num", frame_num);
             int max_frame_num = slice_service->get_max_read_slice_count() * delay_stream->fps;
             int new_frame_num = sec_num * delay_stream->fps + frame_num;
             int old_frame_num = delay_stream->config.delay_duration_sec * delay_stream->fps + delay_stream->config.delay_duration_frames;
@@ -1010,6 +1015,10 @@ public:
                 delay_stream_config_proxy.update(delay_stream->config);
                 delay_stream->st2110_output->set_read_cursor(new_frame_num);
             }
+        }
+        auto &j_is_bypass = param["is_bypass"];
+        if (!j_is_bypass.is_null()) {
+            delay_stream->set_bypass(j_is_bypass.get<bool>());
         }
     }
 
@@ -1095,7 +1104,7 @@ std::future<void> DelayControlService::update_device_config_async(const nlohmann
     http_service->add_route_with_ctx(HttpMethod::method, path, [this] (const HttpRequest &req, HttpResponse &resp) handler, io_ctx)
 
 void DelayControlService::Impl::setup_http() {
-    HTTP_ROUTE(Get, "/api/delay/delay_status", {
+    HTTP_ROUTE(Get, "/api/delay/delay_config", {
         resp.json_ok(this->get_delay_stream_config());
     });
 

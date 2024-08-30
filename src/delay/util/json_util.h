@@ -117,6 +117,18 @@ inline bool visit(const nlohmann::json &j, const S &key, F &&f) {
     return false;
 }
 
+template<class S>
+inline bool is_not_null(const nlohmann::json &j, const S &key) {
+    if (j.is_object()) {
+        return false;
+    }
+    auto iter = j.find(key);
+    if (iter == j.end()) {
+        return false;
+    }
+    return !iter->is_null();
+}
+
 } // namespace seeder::json
 
 } // namespace seeder
