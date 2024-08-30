@@ -1,8 +1,10 @@
 #include "slice_manager.h"
 
+#include <array>
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
@@ -14,6 +16,7 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/uio.h>
 
 #include <boost/assert.hpp>
 #include <boost/align/align_up.hpp> 
@@ -69,11 +72,31 @@ namespace {
 std::shared_ptr<spdlog::logger> logger = seeder::core::get_logger("slice");
 
 struct FileCloseGuard {
+    explicit FileCloseGuard() {}
     explicit FileCloseGuard(int in_fd): fd(in_fd) {}
 
+    FileCloseGuard(const FileCloseGuard &) = delete;
+    FileCloseGuard & operator=(const FileCloseGuard &) = delete;
+
+    FileCloseGuard(FileCloseGuard &&other) {
+        release();
+        std::swap(fd, other.fd);
+    }
+
+    FileCloseGuard & operator=(FileCloseGuard &&other) {
+        release();
+        std::swap(fd, other.fd);
+        return *this;
+    }
+
     ~FileCloseGuard() {
+        release();
+    }
+
+    void release() {
         if (fd != -1) {
             close(fd);
+            fd = -1;
         }
     }
 
@@ -102,6 +125,23 @@ struct UnmapGuard {
     size_t length = 0;
 };
 
+enum class SliceFileMode {
+    System,
+    Direct,
+    Mmap,
+};
+
+std::optional<SliceFileMode> parse_slice_file_mode(const std::string &s) {
+    if (s == "system") {
+        return SliceFileMode::System;
+    } else if (s == "direct") {
+        return SliceFileMode::Direct;
+    } else if (s == "mmap") {
+        return SliceFileMode::Mmap;
+    }
+    return std::nullopt;
+}
+
 struct SliceFile {
 
     void open(size_t in_file_size, bool truncate) {
@@ -113,19 +153,23 @@ struct SliceFile {
 
         file_size = in_file_size;
 
+        int open_flags = O_RDWR | O_CREAT;
+        if (file_mode == SliceFileMode::Direct) {
+            open_flags |= O_DIRECT;
+        }
         int fd = ::open(file_path.c_str(), O_RDWR | O_CREAT, 0644);
         if (fd == -1) {
             logger->error("open {} error: {}", file_path, SYS_ERR_MSG(errno));
             throw std::runtime_error("open");
         }
-        FileCloseGuard fd_guard(fd);
+        fd_guard = FileCloseGuard(fd);
         if (is_first_open && truncate) {
             if (ftruncate(fd, file_size) == -1) {
                 logger->error("ftruncate error: {}", SYS_ERR_MSG(errno));
                 throw std::runtime_error("ftruncate");
             }
         }
-        {
+        if (file_mode == SliceFileMode::Mmap) {
             ZoneScopedN("mmap");
             int prot = PROT_READ | PROT_WRITE;
             int flags = MAP_SHARED | MAP_LOCKED | MAP_POPULATE;
@@ -136,12 +180,23 @@ struct SliceFile {
             }
             unmap_guard.addr = map_base;
             unmap_guard.length = file_size;
+            fd_guard.release();
+        } else if (file_mode == SliceFileMode::Direct) {
+            direct_buffer.reset(new uint8_t[file_size]);
+            if (!truncate) {
+                ssize_t r = ::pread(fd, direct_buffer.get(), file_size, 0);
+                if (r == -1) {
+                    logger->error("pread error: {}", SYS_ERR_MSG(errno));
+                    throw std::runtime_error("pread");
+                }
+            }
         }
         is_opened = true;
         is_first_open = false;
         if (truncate) {
             writer_index = 0;
         }
+        has_write = false;
     }
 
     void close() {
@@ -152,13 +207,86 @@ struct SliceFile {
         }
         is_opened = false;
         unmap_guard.release();
+        if (file_mode == SliceFileMode::Direct && has_write) {
+            ssize_t r = ::pwrite(fd_guard.fd, direct_buffer.get(), file_size, 0);
+            if (r == -1) {
+                logger->error("pwrite error: {}", SYS_ERR_MSG(errno));
+            }
+        }
+        direct_buffer.reset();
+        fd_guard.release();
     }
 
-    void *data() {
-        if (unmap_guard.addr != MAP_FAILED) {
-            return unmap_guard.addr;
+    template<class ConstBufferSeq>
+    std::error_code write(const ConstBufferSeq &buffers, size_t file_offset) {
+        if (file_mode == SliceFileMode::Mmap) {
+            uint8_t *dst = (uint8_t *)unmap_guard.addr + file_offset;
+            size_t dst_len = unmap_guard.length - file_offset;
+            asio::buffer_copy(asio::buffer(dst, dst_len), buffers);
+        } else if (file_mode == SliceFileMode::Direct) {
+            uint8_t *dst = direct_buffer.get() + file_offset;
+            size_t dst_len = file_size - file_offset;
+            asio::buffer_copy(asio::buffer(dst, dst_len), buffers);
+            has_write = true;
+        } else if (file_mode == SliceFileMode::System) {
+            return bulk_system_io(buffers, file_offset, [this] (const struct iovec *iov, int iovcnt, size_t offset) -> ssize_t {
+                ZoneScopedN("pwritev");
+                return ::pwritev(fd_guard.fd, iov, iovcnt, offset);
+            });
         }
-        return NULL;
+        return std::error_code();
+    }
+
+    template<class MutableBufferSeq>
+    std::error_code read(const MutableBufferSeq &buffers, size_t file_offset) {
+        if (file_mode == SliceFileMode::Mmap) {
+            uint8_t *dst = (uint8_t *)unmap_guard.addr + file_offset;
+            size_t dst_len = unmap_guard.length - file_offset;
+            asio::buffer_copy(buffers, asio::buffer(dst, dst_len));
+        } else if (file_mode == SliceFileMode::Direct) {
+            uint8_t *dst = direct_buffer.get() + file_offset;
+            size_t dst_len = file_size - file_offset;
+            asio::buffer_copy(buffers, asio::buffer(dst, dst_len));
+        } else if (file_mode == SliceFileMode::System) {
+            return bulk_system_io(buffers, file_offset, [this] (const struct iovec *iov, int iovcnt, size_t offset) -> ssize_t {
+                ZoneScopedN("preadv");
+                return ::preadv(fd_guard.fd, iov, iovcnt, offset);
+            });
+        }
+        return std::error_code();
+    }
+
+    template<class BufferSeq, class F>
+    std::error_code bulk_system_io(const BufferSeq &buffers, size_t file_offset, const F &io_func) {
+        std::array<struct iovec, 4> vecs;
+        size_t vec_count = 0;
+        auto iter = asio::buffer_sequence_begin(buffers);
+        auto buffers_end = asio::buffer_sequence_end(buffers);
+        size_t buffers_len = 0;
+        while (iter != buffers_end) {
+            auto &v = vecs[vec_count];
+            v.iov_base = (void *)iter->data();
+            v.iov_len = iter->size();
+            buffers_len += iter->size();
+            vec_count++;
+            if (vec_count == vecs.size()) {
+                ssize_t r = io_func(vecs.data(), vec_count, file_offset);
+                if (r == -1) {
+                    return std::error_code(errno, std::system_category());
+                }
+                file_offset += buffers_len;
+                buffers_len = 0;
+                vec_count = 0;
+            }
+            ++iter;
+        }
+        if (vec_count) {
+            size_t r = io_func(vecs.data(), vec_count, file_offset);
+            if (r == -1) {
+                return std::error_code(errno, std::system_category());
+            }
+        }
+        return std::error_code();
     }
 
     std::unique_lock<std::shared_mutex> acquire_lock() {
@@ -169,10 +297,14 @@ struct SliceFile {
         return std::shared_lock<std::shared_mutex>(mutex);
     }
 
+    SliceFileMode file_mode = SliceFileMode::System;
+    FileCloseGuard fd_guard;
+    std::unique_ptr<uint8_t[]> direct_buffer;
     std::shared_mutex mutex;
     std::atomic<bool> is_opened = false;
     bool is_first_open = true;
     bool is_writing = false;
+    bool has_write = false;
     uint32_t writer_index = 0;
     std::string file_name;
     fs::path file_path;
@@ -198,8 +330,8 @@ public:
         slice_first_block_offset(config.slice_first_block_offset),
         slice_block_size(config.slice_block_size),
         slice_block_max_count(config.slice_block_max_count),
-        // FIXME 这里用多线程反而会导致 write_slice_block 的 memcpy 变慢...
-        thread_pool(1)
+        // FIXME 使用mmap时 这里用多线程反而会导致 write_slice_block 的 memcpy 变慢...
+        thread_pool(config.io_threads)
     {
         if (max_read_slice_count == 0) {
             throw std::invalid_argument("max_slice_count");
@@ -207,12 +339,16 @@ public:
     }
 
     void init() {
+        auto file_mode_opt = parse_slice_file_mode(config.file_mode);
         for (int i = 0; i < max_slice_count; ++i) {
             std::string file_name = (boost::format("%s-%d") % config.slice_file_prefix % i).str();
             fs::path file_path = fs::path(config.data_dir).append(file_name);
             std::shared_ptr<SliceFile> slice(new SliceFile);
             slice->file_path = file_path;
             slice->file_name = file_path.filename().string();
+            if (file_mode_opt.has_value()) {
+                slice->file_mode = file_mode_opt.value();
+            }
             free_slices.push_back(slice);
         }
         do_prepare_write_slice_async();
@@ -242,10 +378,10 @@ public:
         lock.unlock();
 
         {
-            ZoneScopedN("write_slice_block.mempcy");
+            ZoneScopedN("write_slice_block.slice.write");
             // 由SliceManager确保opened_write_slice有效，所以不需要再给SliceFile加锁
-            uint8_t* dst = slice_block_begin(opened_write_slice, opened_write_slice->writer_index) + block_offset;
-            asio::buffer_copy(asio::buffer(dst, slice_block_size - block_offset), buffers);
+            size_t file_offset = slice_block_begin(opened_write_slice->writer_index) + block_offset;
+            opened_write_slice->write(buffers, file_offset);
         }
         
         lock.lock();
@@ -316,14 +452,14 @@ public:
         lock.unlock();
 
         {
-            ZoneScopedN("read_slice_block.memcpy");
+            ZoneScopedN("read_slice_block.slice.read");
             // 为了防止读取时，其他线程写入数据后使slice被close或者free掉，需要对slice加锁
             auto slice_lock = slice->acquire_shared_lock();
             if (!slice->is_opened) {
                 return SliceError::NotOpened;
             }
-            const uint8_t * src_data = slice_block_begin(slice, block_index) + block_offset;
-            asio::buffer_copy(dst_buffers, asio::buffer(src_data, slice_block_size - block_offset));
+            size_t file_offset = slice_block_begin(block_index) + block_offset;
+            slice->read(dst_buffers, file_offset);
         }
 
         lock.lock();
@@ -480,8 +616,8 @@ private:
         });
     }
 
-    uint8_t * slice_block_begin(const std::shared_ptr<SliceFile> &slice, uint32_t block_index) const noexcept {
-        return (uint8_t *)slice->data() + slice_first_block_offset + slice_block_size * block_index;
+    size_t slice_block_begin(uint32_t block_index) const noexcept {
+        return slice_first_block_offset + slice_block_size * block_index;
     }
 
     const size_t slice_file_size() const noexcept {

@@ -27,7 +27,9 @@ struct SliceConfig : SliceManager::Config {
         data_dir,
         max_read_slice_count,
         preopen_read_slice_count,
-        preopen_write_slice_count
+        preopen_write_slice_count,
+        file_mode,
+        io_threads
     )
 };
 

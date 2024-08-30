@@ -45,6 +45,8 @@ public:
         size_t slice_block_max_count = 0;
         uint32_t preopen_write_slice_count = 3;
         uint32_t preopen_read_slice_count = 3;
+        std::string file_mode;
+        int io_threads = 1;
     };
 
     explicit SliceManager(const Config &in_config);
