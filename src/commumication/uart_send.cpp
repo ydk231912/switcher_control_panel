@@ -86,7 +86,7 @@ void UART::configure()
 std::vector<std::vector<std::vector<std::string>>> DataFrame::readHexData(const std::string& filename) {
     std::ifstream ifs(filename, std::ios::in);  // 打开文件进行读取
     // 初始化 2x3x40 的三维数组
-    std::vector<std::vector<std::vector<std::string>>> data(2, std::vector<std::vector<std::string>>(3, std::vector<std::string>(40, ""))); 
+    std::vector<std::vector<std::vector<std::string>>> data(NUM_SLAVES, std::vector<std::vector<std::string>>(NUM_SCREENS, std::vector<std::string>(SCREEN_DATA_SIZE, ""))); 
     std::string line;                // 存储每行读取的数据
     int layerIndex = 0;              // 当前站索引
     int rowIndex = 0;                // 当前屏幕索引
@@ -106,15 +106,15 @@ std::vector<std::vector<std::vector<std::string>>> DataFrame::readHexData(const 
             // 确保十六进制字符串正确，包含 "0x" 前缀
             if (hexStr.length() > 2 && hexStr.substr(0, 2) == "0x") {
                 // 将十六进制字符串直接存储到数组中
-                if (layerIndex < 2 && rowIndex < 3 && colIndex < 40) {
+                if (layerIndex < NUM_SLAVES && rowIndex < NUM_SCREENS && colIndex < SCREEN_DATA_SIZE) {
                     data[layerIndex][rowIndex][colIndex] = hexStr;
                     colIndex++;
                     // 当一列填满后，移动到下一行
-                    if (colIndex >= 40) {
+                    if (colIndex >= SCREEN_DATA_SIZE) {
                         colIndex = 0;
                         rowIndex++;
                         // 当一行填满后，移动到下一层
-                        if (rowIndex >= 3) {
+                        if (rowIndex >= NUM_SCREENS) {
                             rowIndex = 0;
                             layerIndex++;
                         }
@@ -123,7 +123,7 @@ std::vector<std::vector<std::vector<std::string>>> DataFrame::readHexData(const 
             }
         }
         // 如果已填满整个三维数组，则退出循环
-        if (layerIndex >= 2) {
+        if (layerIndex >= NUM_SLAVES) {
             break;
         }
     }
@@ -141,9 +141,9 @@ void DataFrame::writeHexData(const std::string& filename, const std::vector<std:
     }
 
     // 将三维数组中的数据写回到文件
-    for (int layer = 0; layer < 2; ++layer) {
-        for (int row = 0; row < 3; ++row) {
-            for (int col = 0; col < 40; ++col) {
+    for (int layer = 0; layer < NUM_SLAVES; ++layer) {
+        for (int row = 0; row < NUM_SCREENS; ++row) {
+            for (int col = 0; col < SCREEN_DATA_SIZE; ++col) {
                 ofs << data[layer][row][col] << ' ';
             }
             ofs << std::endl;  // 每行数据后换行
@@ -189,9 +189,9 @@ std::vector<unsigned char> DataFrame::construct_frame1(unsigned char frame_heade
     frame.push_back(frame_header);// 帧头
     frame.push_back(device_id);// 设备ID
     // 将三维数组的数据转换为 unsigned char 并存储到 vector 中
-    for (int i = 0; i < 2; ++i) {
-        for (int j = 0; j < 3; ++j) {
-            for (int k = 0; k < 40; ++k) {
+    for (int i = 0; i < NUM_SLAVES; ++i) {
+        for (int j = 0; j < NUM_SCREENS; ++j) {
+            for (int k = 0; k < SCREEN_DATA_SIZE; ++k) {
                 frame.push_back(std::stoi(data[i][j][k], nullptr, 16));
             }
         }
