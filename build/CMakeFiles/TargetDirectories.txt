@@ -1,0 +1,5 @@
+/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/CMakeFiles/edit_cache.dir
+/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/CMakeFiles/rebuild_cache.dir
+/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src/CMakeFiles/switcher_keyboard.dir
+/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src/CMakeFiles/edit_cache.dir
+/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src/CMakeFiles/rebuild_cache.dir

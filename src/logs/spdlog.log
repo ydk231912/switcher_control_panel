@@ -1,0 +1,4 @@
+[multi_sink_logger][2024-09-03 11:31:07.050] [info] [229923]  程序开始运行
+[multi_sink_logger][2024-09-03 11:31:07.052] [info] [229923]  HttpClient host : http://192.168.123.54
+[multi_sink_logger][2024-09-03 11:31:12.054] [info] [229923]  Initializing UART on port: /dev/ttyS1
+[multi_sink_logger][2024-09-03 11:31:12.054] [error] [229923]  Unable to open UART port: /dev/ttyS1

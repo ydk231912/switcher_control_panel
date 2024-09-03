@@ -1,0 +1,11 @@
+{
+    "switcher": {
+        "http_url": "http://192.168.123.54",
+        "ws_url": "ws://192.168.123.54/ws/panel_status",
+        "auto_transition_frame_num": 20,
+        "auto_transition_sec_num": 0,
+        "http_connection_timeout": 500,
+        "http_read_timeout": 500,
+        "http_write_timeout": 500
+    }
+}

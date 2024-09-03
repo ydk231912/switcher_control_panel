@@ -1,0 +1,38 @@
+[
+{
+  "directory": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/../lib -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/can_receive.cpp.o -c /home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication/can_receive.cpp",
+  "file": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication/can_receive.cpp",
+  "output": "src/CMakeFiles/switcher_keyboard.dir/commumication/can_receive.cpp.o"
+},
+{
+  "directory": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/../lib -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/uart_send.cpp.o -c /home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication/uart_send.cpp",
+  "file": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication/uart_send.cpp",
+  "output": "src/CMakeFiles/switcher_keyboard.dir/commumication/uart_send.cpp.o"
+},
+{
+  "directory": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/../lib -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/main.cpp.o -c /home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/main.cpp",
+  "file": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/main.cpp",
+  "output": "src/CMakeFiles/switcher_keyboard.dir/main.cpp.o"
+},
+{
+  "directory": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/../lib -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/http_client.cpp.o -c /home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication/http_client.cpp",
+  "file": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication/http_client.cpp",
+  "output": "src/CMakeFiles/switcher_keyboard.dir/commumication/http_client.cpp.o"
+},
+{
+  "directory": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/../lib -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/websocket_client.cpp.o -c /home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication/websocket_client.cpp",
+  "file": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication/websocket_client.cpp",
+  "output": "src/CMakeFiles/switcher_keyboard.dir/commumication/websocket_client.cpp.o"
+},
+{
+  "directory": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/../lib -I/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/switcher.cpp.o -c /home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/switcher.cpp",
+  "file": "/home/seeder/dev/switcher_control_Panel/dev/switcher_keyboard_demmo/src/switcher.cpp",
+  "output": "src/CMakeFiles/switcher_keyboard.dir/switcher.cpp.o"
+}
+]
