@@ -138,6 +138,34 @@ std::string parse_audio_ptime(const seeder::config::ST2110AudioConfig &audio) {
     }
 }
 
+#define PARSE_AUDIO_CHANNEL(value) \
+    parse_value_from_desc_name_or_throw( \
+        audio_channel_desc_list, \
+        (value).empty() ? "ST": (value), \
+        "audio_channel" \
+    )
+
+#define PARSE_AUDIO_FORMAT(value) \
+    parse_value_from_desc_name_or_throw( \
+        st30_fmt_desc_list, \
+        (value).empty() ? "PCM24" : (value), \
+        "audio_format" \
+    )
+
+#define PARSE_AUDIO_SAMPLING(value) \
+    parse_value_from_desc_name_or_throw( \
+        st30_sampling_desc_list, \
+        (value).empty() ? "48kHz" : (value), \
+        "audio_sampling" \
+    )
+
+#define PARSE_AUDIO_PTIME(value) \
+    parse_value_from_desc_name_or_throw( \
+        st30_ptime_desc_list, \
+        (value), \
+        "audio_ptime" \
+    )
+
 const st_video_fmt_desc * get_video_fmt_from_core_fmt(seeder::core::video_fmt core_fmt) {
     for (auto &desc : st_video_fmt_descs) {
         if (desc.core_fmt == core_fmt) {
@@ -585,26 +613,12 @@ public:
         }
 
         ops.type = ST30_TYPE_FRAME_LEVEL;
-        ops.fmt = parse_value_from_desc_name_or_throw(
-            st30_fmt_desc_list, 
-            input_config.audio.audio_format, 
-            "audio_format");
+        ops.fmt = PARSE_AUDIO_FORMAT(input_config.audio.audio_format);
         ops.payload_type = input_config.audio.payload_type;
-        ops.channel = parse_value_from_desc_name_or_throw(
-            audio_channel_desc_list,
-            input_config.audio.audio_channel,
-            "audio_channel"
-        );
-        ops.sampling = parse_value_from_desc_name_or_throw(
-            st30_sampling_desc_list,
-            input_config.audio.audio_sampling,
-            "audio_sampling"
-        );
-        ops.ptime = parse_value_from_desc_name_or_throw(
-            st30_ptime_desc_list,
-            parse_audio_ptime(input_config.audio),
-            "audio_ptime"
-        );
+        ops.channel = PARSE_AUDIO_CHANNEL(input_config.audio.audio_channel);
+        ops.sampling = PARSE_AUDIO_SAMPLING(input_config.audio.audio_sampling);
+        std::string ptime_str = parse_audio_ptime(input_config.audio);
+        ops.ptime = PARSE_AUDIO_PTIME(ptime_str);
         // ops.sample_size = st30_get_sample_size(ops.fmt);
         // ops.sample_num = st30_get_sample_num(ops.ptime, ops.sampling);
         ops.framebuff_size = calc_st30_frame_size(ops.fmt, ops.ptime, ops.sampling, ops.channel);
@@ -883,26 +897,12 @@ public:
             ops.udp_port[MTL_PORT_R] = output_config.audio.redundant->port;
         }
         ops.type = ST30_TYPE_FRAME_LEVEL;
-        ops.fmt = parse_value_from_desc_name_or_throw(
-            st30_fmt_desc_list, 
-            output_config.audio.audio_format, 
-            "audio_format");
+        ops.fmt = PARSE_AUDIO_FORMAT(output_config.audio.audio_format);
         ops.payload_type = output_config.audio.payload_type;
-        ops.channel = parse_value_from_desc_name_or_throw(
-            audio_channel_desc_list,
-            output_config.audio.audio_channel,
-            "audio_channel"
-        );
-        ops.sampling = parse_value_from_desc_name_or_throw(
-            st30_sampling_desc_list,
-            output_config.audio.audio_sampling,
-            "audio_sampling"
-        );
-        ops.ptime = parse_value_from_desc_name_or_throw(
-            st30_ptime_desc_list,
-            parse_audio_ptime(output_config.audio),
-            "audio_ptime"
-        );
+        ops.channel = PARSE_AUDIO_CHANNEL(output_config.audio.audio_channel);
+        ops.sampling = PARSE_AUDIO_SAMPLING(output_config.audio.audio_sampling);
+        std::string ptime_str = parse_audio_ptime(output_config.audio);
+        ops.ptime = PARSE_AUDIO_PTIME(ptime_str);
         // ops.sample_size = st30_get_sample_size(ops.fmt);
         // ops.sample_num = st30_get_sample_num(ops.ptime, ops.sampling);
         ops.framebuff_size = calc_st30_frame_size(ops.fmt, ops.ptime, ops.sampling, ops.channel);
@@ -1379,26 +1379,12 @@ void setup_st2110_audio_format(
     const seeder::config::ST2110AudioConfig &audio_config
 ) {
     
-    enum st30_fmt audio_format = parse_value_from_desc_name_or_throw(
-        st30_fmt_desc_list, 
-        audio_config.audio_format.empty() ? "PCM24" : audio_config.audio_format, 
-        "audio_format");
-    int audio_channel = parse_value_from_desc_name_or_throw(
-        audio_channel_desc_list,
-        audio_config.audio_channel.empty() ? "ST": audio_config.audio_channel,
-        "audio_channel"
-    );
-    enum st30_sampling audio_sampling = parse_value_from_desc_name_or_throw(
-        st30_sampling_desc_list,
-        audio_config.audio_sampling.empty() ? "48kHz" : audio_config.audio_sampling,
-        "audio_sampling"
-    );
+    enum st30_fmt audio_format = PARSE_AUDIO_FORMAT(audio_config.audio_format);
+    int audio_channel = PARSE_AUDIO_CHANNEL(audio_config.audio_channel);
+    enum st30_sampling audio_sampling = PARSE_AUDIO_SAMPLING(audio_config.audio_sampling);
+
     std::string ptime_str = parse_audio_ptime(audio_config);
-    enum st30_ptime audio_ptime = parse_value_from_desc_name_or_throw(
-        st30_ptime_desc_list,
-        ptime_str,
-        "audio_ptime"
-    );
+    enum st30_ptime audio_ptime = PARSE_AUDIO_PTIME(ptime_str);
     format_desc.st30_ptime = boost::lexical_cast<double>(ptime_str);
     int sample_size = st30_get_sample_size(audio_format);
     format_desc.audio_channels = audio_channel;
