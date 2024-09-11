@@ -43,6 +43,32 @@ std::error_code read_file(const std::string &file_path, std::shared_ptr<seeder::
     return {};
 }
 
+std::error_code read_file(const std::string &file_path, std::string &out_string) {
+    std::unique_ptr<FILE, FileDeleter> file(fopen(file_path.c_str(), "rb"));
+    if (!file) {
+        return std::make_error_code(std::errc(errno));
+    }
+    if (fseek(file.get(), 0, SEEK_END)) {
+        return std::make_error_code(std::errc(ferror(file.get())));
+    }
+    size_t file_size = ftell(file.get());
+    if (fseek(file.get(), 0, SEEK_SET)) {
+        return std::make_error_code(std::errc(ferror(file.get())));
+    }
+    out_string.resize(file_size);
+    size_t offset = 0;
+    while (offset < file_size) {
+        offset += fread(out_string.data() + offset, 1, file_size - offset, file.get());
+        if (feof(file.get())) {
+            break;
+        } else if (ferror(file.get())) {
+            return std::make_error_code(std::errc(ferror(file.get())));
+            break;
+        }
+    }
+    return {};
+}
+
 std::error_code write_file(const std::string &file_path, const uint8_t *data, std::size_t size) {
     std::unique_ptr<FILE, FileDeleter> file(fopen(file_path.c_str(), "wb"));
     if (!file) {

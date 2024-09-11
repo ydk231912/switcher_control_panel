@@ -17,6 +17,7 @@
 #include "util/io.h"
 #include "util/json_util.h"
 #include "app_build_config.h"
+#include "util/program_var.h"
 
 namespace asio = boost::asio;
 
@@ -168,6 +169,8 @@ ConfigService::~ConfigService() {}
 void ConfigService::setup(ServiceSetupCtx &ctx) {
     auto cli = ctx.get_service<CommandLineService>();
     cli->add_option("config_file", p_impl->config_file_path);
+    ProgramVarRegistry::get_instance().load_from_envfile("SEEDER_PROG_VAR_FILE");
+    ProgramVarRegistry::get_instance().load_from_file("program_var.json");
 }
 
 void ConfigService::start() {

@@ -6,6 +6,21 @@ target_link_libraries(
     nlohmann_json::nlohmann_json
 )
 
+# ffmpeg
+find_package(FFmpeg REQUIRED)
+
+add_library(ffmpeg_deps INTERFACE)
+target_link_directories(ffmpeg_deps INTERFACE ${FFMPEG_LIBRARY_DIRS})
+target_link_libraries(ffmpeg_deps INTERFACE ${FFMPEG_LIBRARIES})
+target_include_directories(ffmpeg_deps INTERFACE ${FFMPEG_INCLUDE_DIRS})
+if(${FFMPEG_DEFINITIONS})
+    target_compile_options(
+        ffmpeg_deps
+        INTERFACE
+        ${FFMPEG_DEFINITIONS}
+    )
+endif()
+
 # libhv
 # https://github.com/ithewei/libhv
 find_package(libhv REQUIRED)
@@ -33,10 +48,13 @@ add_executable(
     server/delay_control_service.cpp
     server/delay_http_service.cpp
 
+    media/ffmpeg_util.cpp
+
     util/os_util.cpp
     util/io.cpp
     util/uri.cpp
     util/fs.cpp
+    util/program_var.cpp
 )
 
 target_include_directories(
@@ -54,6 +72,7 @@ target_link_libraries(
     json_deps
     mtl_deps
     boost_deps
+    ffmpeg_deps
     hv_static
     TracyClient
 )

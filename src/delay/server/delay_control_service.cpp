@@ -15,6 +15,7 @@
 #include "util/io.h"
 #include "util/json_util.h"
 #include "util/stat_recorder.h"
+#include "util/program_var.h"
 #include "server/config_service.h"
 #include "st2110/st2110_service.h"
 #include "st2110/st2110_config.h"
@@ -24,6 +25,7 @@
 #include "st2110/st2110_output.h"
 #include "slice_service.h"
 #include "slice_manager.h"
+#include "media/ffmpeg_util.h"
 
 
 using seeder::core::logger;
@@ -424,6 +426,7 @@ public:
     ) {
         std::unique_lock<std::mutex> video_lock(video_mutex);
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
+        video_frame_write_count = 0;
         slice_manager = in_slice_manager;
         video_frame_size = in_video_frame_size;
         audio_frame_size = in_audio_frame_size;
@@ -442,6 +445,9 @@ public:
         slice_manager = nullptr;
     }
 
+public:
+    std::atomic<uint64_t> video_frame_write_count = 0; // 成功写入的视频帧数量
+
 private:
     size_t video_frame_size = 0;
     size_t audio_frame_size = 0;
@@ -454,7 +460,6 @@ private:
     std::vector<uint8_t> muxer_audio_buffer;
     std::vector<asio::const_buffer> buffers;
     std::shared_ptr<ErrorCodeCollector> slice_errors;
-    uint64_t video_frame_write_count = 0; // 成功写入的视频帧数量
 };
 
 class SliceReaderHolder {
@@ -522,10 +527,11 @@ public:
         }
         if (audio_frame_size) {
             demuxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
-            buffers = {
-                asio::buffer(dst, video_frame_size),
-                asio::buffer(demuxer_audio_buffer)
-            };
+            buffers.clear();
+            buffers.push_back(asio::buffer(dst, video_frame_size));
+            if (!is_mute) {
+                buffers.push_back(asio::buffer(demuxer_audio_buffer));
+            }
             ec = slice_manager->read_slice_block(reader, buffers);
             {
                 std::unique_lock<std::mutex> audio_lock(audio_mutex);
@@ -600,6 +606,12 @@ public:
         is_bypass_enable = in_bypass_enable;
     }
 
+    void set_mute(bool in_mute) {
+        std::unique_lock<std::mutex> video_lock(video_mutex);
+        std::unique_lock<std::mutex> audio_lock(audio_mutex);
+        is_mute = in_mute;
+    }
+
     void set_read_cursor(int read_cursor) {
         std::unique_lock<std::mutex> video_lock(video_mutex);
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
@@ -618,6 +630,7 @@ private:
     SliceReaderHolder delay_slice;
     SliceReaderHolder bypass_slice;
     bool is_bypass_enable = false;
+    bool is_mute = false;
     std::vector<uint8_t> audio_data;
     std::deque<uint8_t *> audio_packets;
     std::vector<uint8_t> demuxer_audio_buffer;
@@ -660,9 +673,22 @@ public:
         }
     }
 
+    void set_mute(bool in_mute) {
+        is_mute = in_mute;
+        if (st2110_output) {
+            st2110_output->set_mute(in_mute);
+        }
+    }
+
+    int get_delay_frame_count() const {
+        return config.delay_duration_sec * fps + config.delay_duration_frames;
+    }
+
     DelayStreamConfig config;
+    seeder::core::video_format_desc format_desc;
     double fps = 0;
     bool is_bypass_enable = false;
+    bool is_mute = false;
     std::shared_ptr<SliceManager> slice_manager;
     std::shared_ptr<St2110SourceImpl> st2110_source;
     std::shared_ptr<St2110OutputImpl> st2110_output;
@@ -800,6 +826,7 @@ public:
             delay_stream.reset(new DelayStream);
             delay_stream->config = delay_stream_config;
             delay_stream->fps = format_desc.fps;
+            delay_stream->format_desc = format_desc;
             delay_stream->slice_manager = slice_service->create_slice_manager(slice_block_size, slice_block_count);
             delay_stream->st2110_output = st2110_output;
             delay_stream->st2110_source = st2110_source;
@@ -935,7 +962,6 @@ public:
             if (st2110_output_ctx) {
                 auto &output_config = st2110_output_ctx->get_device_config();
                 auto &j_output = j_stream["main_output"];
-                j_output["device_id"] = output_config.device_id;
                 j_output = output_config;
             }
         }
@@ -955,6 +981,8 @@ public:
                 {"sec_num", slice_service->get_max_read_slice_count()}
             });
             result["is_bypass"] = delay_stream->is_bypass_enable;
+            result["is_mute"] = delay_stream->is_mute;
+            result["fps"] = delay_stream->fps;
         }
 
         return result;
@@ -981,12 +1009,14 @@ public:
         auto &j_input = j_stream["main_input"];
         if (j_input.is_object()) {
             seeder::config::ST2110InputConfig new_input_config = j_input;
+            new_input_config.id = delay_stream_config.main_input_id;
             update_input(new_input_config);
             should_reset_stream = true;
         }
         auto &j_output = j_stream["main_output"];
         if (j_output.is_object()) {
             seeder::config::ST2110OutputConfig new_output_config = j_output;
+            new_output_config.id = delay_stream_config.main_output_id;
             update_output(new_output_config);
             should_reset_stream = true;
         }
@@ -1018,8 +1048,29 @@ public:
         }
         auto &j_is_bypass = param["is_bypass"];
         if (!j_is_bypass.is_null()) {
-            delay_stream->set_bypass(j_is_bypass.get<bool>());
+            delay_stream->set_bypass(j_is_bypass);
         }
+
+        auto &j_is_mute = param["is_mute"];
+        if (!j_is_mute.is_null()) {
+            delay_stream->set_mute(j_is_mute);
+        }
+    }
+
+    nlohmann::json get_delay_frame_status() {
+        nlohmann::json r;
+        if (delay_stream) {
+            if (delay_stream->st2110_source) {
+                auto video_frame_write_count = delay_stream->st2110_source->video_frame_write_count.load();
+                r["bypass_frame_num"] = video_frame_write_count;
+                auto delay_frame_count = delay_stream->get_delay_frame_count();
+                r["bypass_frame_timecode"] = seeder::ffmpeg::make_time_code(delay_stream->format_desc.framerate, video_frame_write_count);
+                int64_t delay_frame_num = video_frame_write_count < delay_frame_count ? 0 : video_frame_write_count - delay_frame_count;
+                r["delay_frame_num"] = delay_frame_num;
+                r["delay_frame_timecode"] = seeder::ffmpeg::make_time_code(delay_stream->format_desc.framerate, delay_frame_num);
+            }
+        }
+        return r;
     }
 
     void start() {
@@ -1051,6 +1102,8 @@ public:
     std::shared_ptr<DelayStream> delay_stream;
 
     boost::signals2::signal<void(DeviceEventType, const std::any &)> on_device_event;
+
+    std::shared_ptr<WebSocketChannelGroup> frame_update_ws_group;
 
     JoinHandle join_handle;
     std::shared_ptr<asio::io_context> io_ctx;
@@ -1113,6 +1166,18 @@ void DelayControlService::Impl::setup_http() {
         this->update_delay_config(j);
         resp.json_ok();
     });
+
+    frame_update_ws_group = http_service->add_ws_group_with_interval(
+        "/ws/delay/frame_update", 
+        std::chrono::milliseconds((std::chrono::milliseconds::rep)get_program_var("delay.ws.frame_update_interval", 1.0) * 1000), 
+        [this] (WebSocketChannelGroup &) {
+            asio::post(*io_ctx, [this] {
+                auto j = get_delay_frame_status();
+                j["type"] = "delay_frame_status";
+                frame_update_ws_group->send_message(j);
+            });
+        }
+    );
 }
 
 
