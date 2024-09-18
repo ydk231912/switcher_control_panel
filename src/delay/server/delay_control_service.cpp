@@ -364,11 +364,16 @@ public:
 };
 
 class St2110SourceImpl : public St2110BaseSource {
+    friend class DelayStream;
 public:
+    explicit St2110SourceImpl() {
+        is_pause = get_program_var("St2110SourceImpl.is_pause", false);
+    }
+
     bool push_video_frame(seeder::core::AbstractBuffer &in_buffer) override {
         ZoneScopedN("push_video_frame");
         std::unique_lock<std::mutex> video_lock(video_mutex);
-        if (slice_manager) {
+        if (slice_manager && !is_pause) {
             std::error_code ec;
             if (audio_frame_size) {
                 muxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
@@ -405,7 +410,7 @@ public:
 
     void push_audio_frame(seeder::core::AbstractBuffer &in_buffer) override {
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
-        if (audio_frame_size) {
+        if (audio_frame_size && !is_pause) {
             if (audio_data.size() < audio_frame_size * (audio_frame_count + extra_audio_frame_count)) {
                 const uint8_t *src_data = (uint8_t *)in_buffer.get_data();
                 size_t len = std::min(audio_frame_size * (audio_frame_count + extra_audio_frame_count) - audio_data.size(), in_buffer.get_size());
@@ -445,6 +450,12 @@ public:
         slice_manager = nullptr;
     }
 
+    void set_pause(bool in_pause) {
+        std::unique_lock<std::mutex> video_lock(video_mutex);
+        std::unique_lock<std::mutex> audio_lock(audio_mutex);
+        is_pause = in_pause;
+    }
+
 public:
     std::atomic<uint64_t> video_frame_write_count = 0; // 成功写入的视频帧数量
 
@@ -460,6 +471,7 @@ private:
     std::vector<uint8_t> muxer_audio_buffer;
     std::vector<asio::const_buffer> buffers;
     std::shared_ptr<ErrorCodeCollector> slice_errors;
+    bool is_pause;
 };
 
 class SliceReaderHolder {
@@ -511,6 +523,7 @@ private:
 };
 
 class St2110OutputImpl : public St2110BaseOutput {
+    friend class DelayStream;
 public:
     bool wait_get_video_frame(void *dst) override {
         std::unique_lock<std::mutex> video_lock(video_mutex);
@@ -667,17 +680,27 @@ public:
     }
 
     void set_bypass(bool in_bypass_enable) {
-        is_bypass_enable = in_bypass_enable;
-        if (st2110_output) {
-            st2110_output->set_bypass(in_bypass_enable);
-        }
+        st2110_output->set_bypass(in_bypass_enable);
+    }
+
+    bool get_bypass() {
+        return st2110_output->is_bypass_enable;
     }
 
     void set_mute(bool in_mute) {
-        is_mute = in_mute;
-        if (st2110_output) {
-            st2110_output->set_mute(in_mute);
-        }
+        st2110_output->set_mute(in_mute);
+    }
+
+    bool get_mute() {
+        return st2110_output->is_mute;
+    }
+
+    void set_pause(bool in_pause) {
+        st2110_source->set_pause(in_pause);
+    }
+
+    bool get_pause() {
+        return st2110_source->is_pause;
     }
 
     int get_delay_frame_count() const {
@@ -687,8 +710,6 @@ public:
     DelayStreamConfig config;
     seeder::core::video_format_desc format_desc;
     double fps = 0;
-    bool is_bypass_enable = false;
-    bool is_mute = false;
     std::shared_ptr<SliceManager> slice_manager;
     std::shared_ptr<St2110SourceImpl> st2110_source;
     std::shared_ptr<St2110OutputImpl> st2110_output;
@@ -980,9 +1001,10 @@ public:
             result["max_delay_duration"] = nlohmann::json({
                 {"sec_num", slice_service->get_max_read_slice_count()}
             });
-            result["is_bypass"] = delay_stream->is_bypass_enable;
-            result["is_mute"] = delay_stream->is_mute;
+            result["is_bypass"] = delay_stream->get_bypass();
+            result["is_mute"] = delay_stream->get_mute();
             result["fps"] = delay_stream->fps;
+            result["is_pause"] = delay_stream->get_pause();
         }
 
         return result;
@@ -1054,6 +1076,10 @@ public:
         auto &j_is_mute = param["is_mute"];
         if (!j_is_mute.is_null()) {
             delay_stream->set_mute(j_is_mute);
+        }
+        auto &j_is_pause = param["is_pause"];
+        if (!j_is_pause.is_null()) {
+            delay_stream->set_pause(j_is_pause);
         }
     }
 

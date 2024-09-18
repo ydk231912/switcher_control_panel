@@ -111,8 +111,8 @@ public:
             if (!device.sip.empty()) {
                 inf_name.append(" (").append(device.sip).append(")");
             }
-            root["st2110_input.interface"].push_back(make_fmt_item(inf_name, device.id));
-            root["st2110_output.interface"].push_back(make_fmt_item(inf_name, device.id));
+            root["st2110_input.device_id"].push_back(make_fmt_item(inf_name, device.id));
+            root["st2110_output.device_id"].push_back(make_fmt_item(inf_name, device.id));
         }
 
         struct FmtGroup {
