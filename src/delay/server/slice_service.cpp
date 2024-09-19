@@ -7,6 +7,7 @@
 #include "core/util/logger.h"
 #include "slice_manager.h"
 #include "server/config_service.h"
+#include "util/program_var.h"
 
 
 namespace fs = boost::filesystem;
@@ -25,11 +26,7 @@ struct SliceConfig : SliceManager::Config {
     NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(
         SliceConfig,
         data_dir,
-        max_read_slice_count,
-        preopen_read_slice_count,
-        preopen_write_slice_count,
-        file_mode,
-        io_threads
+        max_read_slice_count
     )
 };
 
@@ -67,6 +64,10 @@ std::shared_ptr<SliceManager> SliceService::create_slice_manager(
     config.slice_first_block_offset = 0;
     config.slice_block_size = in_slice_block_size;
     config.slice_block_max_count = in_slice_block_max_count;
+    config.preopen_read_slice_count = get_program_var("slice.preopen_read_slice_count", 3);
+    config.preopen_write_slice_count = get_program_var("slice.preopen_write_slice_count", 3);
+    config.file_mode = get_program_var<std::string>("slice.file_mode", "system");
+    config.io_threads = get_program_var("slice.io_threads", 4);
     std::shared_ptr<SliceManager> slice_manager(new SliceManager(config));
     slice_manager->init();
     return slice_manager;

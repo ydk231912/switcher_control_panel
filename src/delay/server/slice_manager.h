@@ -34,6 +34,17 @@ std::error_code make_error_code(SliceError e);
 
 class SliceReader;
 
+struct SliceReaderOption {
+    bool follow_write = false;
+    bool always_reset_cursor = false;
+};
+
+struct SliceReadOption {
+    size_t block_offset = 0;
+    bool advance_cursor = true;
+    bool fallback_last_block = false;
+};
+
 class SliceManager {
 public:
     struct Config {
@@ -58,12 +69,25 @@ public:
     std::error_code write_slice_block(const boost::asio::const_buffer &buffer, size_t block_offset = 0);
     std::error_code write_slice_block(const std::vector<boost::asio::const_buffer> &buffers, size_t block_offset = 0);
 
-    std::error_code read_slice_block(SliceReader *in_reader, const boost::asio::mutable_buffer &dst_buffer, size_t block_offset = 0);
-    std::error_code read_slice_block(SliceReader *in_reader, const std::vector<boost::asio::mutable_buffer> &dst_buffers, size_t block_offset = 0);
+    std::error_code read_slice_block(SliceReader *in_reader, const boost::asio::mutable_buffer &dst_buffer) {
+        SliceReadOption options;
+        return this->read_slice_block(in_reader, dst_buffer, options);
+    }
 
-    SliceReader * add_read_cursor(uint32_t read_cursor);
+    std::error_code read_slice_block(SliceReader *in_reader, const boost::asio::mutable_buffer &dst_buffer, const SliceReadOption &options);
+
+    std::error_code read_slice_block(SliceReader *in_reader, const std::vector<boost::asio::mutable_buffer> &dst_buffers) {
+        SliceReadOption options;
+        return this->read_slice_block(in_reader, dst_buffers, options);
+    }
+
+    std::error_code read_slice_block(SliceReader *in_reader, const std::vector<boost::asio::mutable_buffer> &dst_buffers, const SliceReadOption &options);
+
+    SliceReader * add_read_cursor(uint32_t read_cursor, const SliceReaderOption &option);
 
     bool remove_read_cursor(SliceReader *in_reader);
+
+    void set_slice_option(SliceReader *in_reader, const SliceReaderOption &option);
 
 private:
     class Impl;

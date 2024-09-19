@@ -11,6 +11,7 @@
 #include <hv/hlog.h>
 
 #include <boost/asio.hpp>
+#include <boost/assert.hpp>
 
 #include "core/util/logger.h"
 #include "server/config_service.h"
@@ -377,6 +378,7 @@ std::shared_ptr<WebSocketChannelGroup> HttpService::add_ws_group_with_interval(
     std::chrono::milliseconds interval,
     std::function<void(WebSocketChannelGroup &)> handler
 ) {
+    BOOST_ASSERT(interval.count() > 0);
     return p_impl->ws_impl.add_path_group_with_interval(path, interval, handler);
 }
 

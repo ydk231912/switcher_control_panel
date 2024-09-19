@@ -366,10 +366,6 @@ public:
 class St2110SourceImpl : public St2110BaseSource {
     friend class DelayStream;
 public:
-    explicit St2110SourceImpl() {
-        is_pause = get_program_var("St2110SourceImpl.is_pause", false);
-    }
-
     bool push_video_frame(seeder::core::AbstractBuffer &in_buffer) override {
         ZoneScopedN("push_video_frame");
         std::unique_lock<std::mutex> video_lock(video_mutex);
@@ -471,7 +467,7 @@ private:
     std::vector<uint8_t> muxer_audio_buffer;
     std::vector<asio::const_buffer> buffers;
     std::shared_ptr<ErrorCodeCollector> slice_errors;
-    bool is_pause;
+    bool is_pause = false;
 };
 
 class SliceReaderHolder {
@@ -538,14 +534,19 @@ public:
         if (!reader) {
             return true;
         }
+        SliceReadOption read_options;
+        if (is_pause) {
+            read_options.advance_cursor = false;
+            read_options.fallback_last_block = true;
+        }
+        buffers.clear();
+        buffers.push_back(asio::buffer(dst, video_frame_size));
         if (audio_frame_size) {
             demuxer_audio_buffer.resize(audio_frame_size * audio_frame_count, 0);
-            buffers.clear();
-            buffers.push_back(asio::buffer(dst, video_frame_size));
-            if (!is_mute) {
+            if (!is_mute && !is_pause) {
                 buffers.push_back(asio::buffer(demuxer_audio_buffer));
             }
-            ec = slice_manager->read_slice_block(reader, buffers);
+            ec = slice_manager->read_slice_block(reader, buffers, read_options);
             {
                 std::unique_lock<std::mutex> audio_lock(audio_mutex);
                 std::swap(demuxer_audio_buffer, audio_data);
@@ -556,7 +557,7 @@ public:
             }
         } else {
             // video only
-            ec = slice_manager->read_slice_block(reader, asio::buffer(dst, video_frame_size));
+            ec = slice_manager->read_slice_block(reader, buffers, read_options);
         }
         if (ec) {
             slice_errors->record(ec);
@@ -590,7 +591,7 @@ public:
         std::unique_lock<std::mutex> video_lock(video_mutex);
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
         slice_manager = in_slice_manager;
-        bypass_slice = SliceReaderHolder(slice_manager.get(), slice_manager->add_read_cursor(1));
+        bypass_slice = SliceReaderHolder(slice_manager.get(), slice_manager->add_read_cursor(1, get_bypass_reader_option()));
         video_frame_size = in_video_frame_size;
         audio_frame_size = in_audio_frame_size;
         audio_frame_count = in_audio_frame_count;
@@ -617,6 +618,12 @@ public:
         std::unique_lock<std::mutex> video_lock(video_mutex);
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
         is_bypass_enable = in_bypass_enable;
+        if (delay_slice.get() && slice_manager) {
+            slice_manager->set_slice_option(delay_slice.get(), get_reader_option());
+        }
+        if (bypass_slice.get() && slice_manager) {
+            slice_manager->set_slice_option(bypass_slice.get(), get_bypass_reader_option());
+        }
     }
 
     void set_mute(bool in_mute) {
@@ -628,7 +635,26 @@ public:
     void set_read_cursor(int read_cursor) {
         std::unique_lock<std::mutex> video_lock(video_mutex);
         std::unique_lock<std::mutex> audio_lock(audio_mutex);
-        delay_slice = SliceReaderHolder(slice_manager.get(), slice_manager->add_read_cursor(read_cursor));
+        delay_slice = SliceReaderHolder(slice_manager.get(), slice_manager->add_read_cursor(read_cursor, get_reader_option()));
+    }
+
+    void set_pause(bool in_pause) {
+        std::unique_lock<std::mutex> video_lock(video_mutex);
+        std::unique_lock<std::mutex> audio_lock(audio_mutex);
+        is_pause = in_pause;
+    }
+
+private:
+    SliceReaderOption get_reader_option() const {
+        SliceReaderOption option;
+        option.always_reset_cursor = is_bypass_enable;
+        return option;
+    }
+
+    SliceReaderOption get_bypass_reader_option() const {
+        SliceReaderOption option;
+        option.follow_write = true;
+        return option;
     }
 
 private:
@@ -644,6 +670,7 @@ private:
     SliceReaderHolder bypass_slice;
     bool is_bypass_enable = false;
     bool is_mute = false;
+    bool is_pause = false;
     std::vector<uint8_t> audio_data;
     std::deque<uint8_t *> audio_packets;
     std::vector<uint8_t> demuxer_audio_buffer;
@@ -696,11 +723,13 @@ public:
     }
 
     void set_pause(bool in_pause) {
+        is_pause = in_pause;
         st2110_source->set_pause(in_pause);
+        st2110_output->set_pause(in_pause);
     }
 
-    bool get_pause() {
-        return st2110_source->is_pause;
+    bool get_pause() const {
+        return is_pause;
     }
 
     int get_delay_frame_count() const {
@@ -710,6 +739,7 @@ public:
     DelayStreamConfig config;
     seeder::core::video_format_desc format_desc;
     double fps = 0;
+    bool is_pause = false;
     std::shared_ptr<SliceManager> slice_manager;
     std::shared_ptr<St2110SourceImpl> st2110_source;
     std::shared_ptr<St2110OutputImpl> st2110_output;
@@ -1195,7 +1225,7 @@ void DelayControlService::Impl::setup_http() {
 
     frame_update_ws_group = http_service->add_ws_group_with_interval(
         "/ws/delay/frame_update", 
-        std::chrono::milliseconds((std::chrono::milliseconds::rep)get_program_var("delay.ws.frame_update_interval", 1.0) * 1000), 
+        std::chrono::milliseconds((std::chrono::milliseconds::rep)(get_program_var("delay.ws.frame_update_interval", 1.0) * 1000)), 
         [this] (WebSocketChannelGroup &) {
             asio::post(*io_ctx, [this] {
                 auto j = get_delay_frame_status();

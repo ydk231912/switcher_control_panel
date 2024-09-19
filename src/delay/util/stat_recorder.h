@@ -74,7 +74,7 @@ public:
                 recorder->reset();
                 ++iter;
             } else {
-                recorder_list.erase(iter);
+                iter = recorder_list.erase(iter);
             }
         }
     }

@@ -8,6 +8,7 @@
 #include "server/http_service.h"
 #include "st2110/st2110_config.h"
 #include "st2110/st2110_service.h"
+#include "util/os_util.h"
 
 
 namespace seeder {
@@ -31,6 +32,10 @@ public:
 
         HTTP_ROUTE(Get, "/api/delay/get_fmt", {
             get_legacy_fmts(req, resp);
+        });
+
+        HTTP_ROUTE(Post, "/api/poweroff", {
+            seeder::util::poweroff();
         });
     }
 
@@ -59,11 +64,11 @@ public:
         auto device_info = delay_control_service->get_device_info_async().get();
         auto &j_stream = device_info["delay_stream"];
         seeder::config::ST2110InputConfig old_input_config = j_stream["main_input"];
-        seeder::config::ST2110InputConfig new_input_config = param["main_input"];
+        seeder::config::ST2110InputConfig new_input_config = param["delay_stream"]["main_input"];
         new_input_config.enable = true;
         new_input_config.video.enable = true;
         seeder::config::ST2110OutputConfig old_output_config = j_stream["main_output"];
-        seeder::config::ST2110OutputConfig new_output_config = param["main_output"];
+        seeder::config::ST2110OutputConfig new_output_config = param["delay_stream"]["main_output"];
         // output的部分参数必须和input保持一致
         new_output_config.enable = true;
         new_output_config.video.enable = true;
@@ -79,12 +84,12 @@ public:
         auto input_compare_result = seeder::config::compare_input(old_input_config, new_input_config);
         bool has_change = false;
         if (input_compare_result.has_any_changed()) {
-            r["main_input"] = new_input_config;
+            r["delay_stream"]["main_input"] = new_input_config;
             has_change = true;
         }
         auto output_compare_result = seeder::config::compare_output(old_output_config, new_output_config);
         if (output_compare_result.has_any_changed()) {
-            r["main_output"] = new_output_config;
+            r["delay_stream"]["main_output"] = new_output_config;
             has_change = true;
         }
         if (has_change) {

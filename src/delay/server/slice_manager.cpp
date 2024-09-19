@@ -22,9 +22,9 @@
 #include <boost/align/align_up.hpp> 
 #include <boost/asio.hpp>
 #include <boost/asio/thread_pool.hpp>
-#include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
+#include <fmt/ostream.h>
 
 #include <tracy/Tracy.hpp>
 
@@ -143,6 +143,9 @@ std::optional<SliceFileMode> parse_slice_file_mode(const std::string &s) {
 }
 
 struct SliceFile {
+    ~SliceFile() {
+        this->close();
+    }
 
     void open(size_t in_file_size, bool truncate) {
         ZoneScopedN("open");
@@ -159,7 +162,7 @@ struct SliceFile {
         }
         int fd = ::open(file_path.c_str(), O_RDWR | O_CREAT, 0644);
         if (fd == -1) {
-            logger->error("open {} error: {}", file_path, SYS_ERR_MSG(errno));
+            logger->error("open {} error: {}", fmt::streamed(file_path), SYS_ERR_MSG(errno));
             throw std::runtime_error("open");
         }
         fd_guard = FileCloseGuard(fd);
@@ -199,7 +202,7 @@ struct SliceFile {
         has_write = false;
     }
 
-    void close() {
+    void close(bool flush = false) {
         ZoneScopedN("close");
         auto lock = acquire_lock();
         if (!is_opened) {
@@ -207,7 +210,7 @@ struct SliceFile {
         }
         is_opened = false;
         unmap_guard.release();
-        if (file_mode == SliceFileMode::Direct && has_write) {
+        if (file_mode == SliceFileMode::Direct && has_write && flush) {
             ssize_t r = ::pwrite(fd_guard.fd, direct_buffer.get(), file_size, 0);
             if (r == -1) {
                 logger->error("pwrite error: {}", SYS_ERR_MSG(errno));
@@ -319,13 +322,13 @@ public:
     std::shared_ptr<SliceFile> slice;
     uint32_t read_cursor = 0;
     uint32_t read_index = 0; // block index in slice
+    SliceReaderOption option;
 };
 
 class SliceManager::Impl {
 public:
     explicit Impl(const Config &in_config):
         config(in_config),
-        max_slice_count(config.max_read_slice_count + config.preopen_write_slice_count + 1),
         max_read_slice_count(config.max_read_slice_count),
         slice_first_block_offset(config.slice_first_block_offset),
         slice_block_size(config.slice_block_size),
@@ -333,6 +336,7 @@ public:
         // FIXME 使用mmap时 这里用多线程反而会导致 write_slice_block 的 memcpy 变慢...
         thread_pool(config.io_threads)
     {
+        max_slice_count = get_reserved_read_slice_count() + config.preopen_write_slice_count + 1;
         if (max_read_slice_count == 0) {
             throw std::invalid_argument("max_slice_count");
         }
@@ -399,16 +403,17 @@ public:
         return SliceError::Success;
     }
 
-    SliceReader * add_read_cursor(uint32_t read_cursor) {
+    SliceReader * add_read_cursor(uint32_t read_cursor, const SliceReaderOption &option) {
         if (read_cursor == 0) {
             return nullptr;
         }
-        if (read_cursor >= slice_block_max_count * max_read_slice_count) {
+        if (read_cursor > slice_block_max_count * max_read_slice_count) {
             return nullptr;
         }
         auto lock = acquire_lock();
         std::shared_ptr<SliceReader> reader(new SliceReader);
         reader->read_cursor = read_cursor;
+        reader->option = option;
         readers[reader.get()] = reader;
         update_read_slices();
         logger->debug("add_read_cursor {} {}", read_cursor, (size_t)reader.get());
@@ -428,10 +433,20 @@ public:
         return false;
     }
 
+    void set_slice_option(SliceReader *in_reader, const SliceReaderOption &option) {
+        auto lock = acquire_lock();
+        auto iter = readers.find(in_reader);
+        if (iter == readers.end()) {
+            return;
+        }
+        auto &reader = iter->second;
+        reader->option = option;
+    }
+
     template<class MutableBufferSeq>
-    std::error_code read_slice_block(SliceReader *in_reader, const MutableBufferSeq &dst_buffers, size_t block_offset) {
+    std::error_code read_slice_block(SliceReader *in_reader, const MutableBufferSeq &dst_buffers, const SliceReadOption &options) {
         ZoneScopedN("read_slice_block");
-        if (block_offset + asio::buffer_size(dst_buffers) > slice_block_size) {
+        if (options.block_offset + asio::buffer_size(dst_buffers) > slice_block_size) {
             return SliceError::InvalidArgument;
         }
         auto lock = acquire_lock();
@@ -448,6 +463,9 @@ public:
         if (!slice->is_opened) {
             return SliceError::NotOpened;
         }
+        if (options.fallback_last_block && block_index && block_index == slice->writer_index) {
+            block_index = block_index - 1;
+        }
         BOOST_ASSERT(block_index < slice->writer_index);
         lock.unlock();
 
@@ -458,14 +476,16 @@ public:
             if (!slice->is_opened) {
                 return SliceError::NotOpened;
             }
-            size_t file_offset = slice_block_begin(block_index) + block_offset;
+            size_t file_offset = slice_block_begin(block_index) + options.block_offset;
             slice->read(dst_buffers, file_offset);
         }
 
         lock.lock();
-        reader->read_index = block_index + 1;
-        if (reader->read_index >= slice->writer_index) {
-            update_read_slices();
+        if (options.advance_cursor) {
+            reader->read_index = reader->read_index + 1;
+            if (reader->read_index >= slice->writer_index) {
+                update_read_slices();
+            }
         }
 
         return SliceError::Success;
@@ -519,20 +539,36 @@ private:
 
     void update_read_slices() {
         ZoneScopedN("update_read_slices");
-        for (size_t i = 0; read_slices.size() > max_read_slice_count && i < read_slices.size() - max_read_slice_count; ++i) {
+        for (size_t i = 0; read_slices.size() > get_reserved_read_slice_count() && i < read_slices.size() - get_reserved_read_slice_count(); ++i) {
             auto &slice = read_slices[i];
             for (auto &p : readers) {
                 auto &reader = p.second;
                 if (reader->slice == slice) {
+                    // 落后于最大可读取的范围，重新设置slice和read_index
                     reader->slice = nullptr;
+                    logger->debug("Reader read_cursor={} out of read range, reset", reader->read_cursor);
                 }
             }
         }
         for (auto &p : readers) {
             auto &reader = p.second;
             auto read_cursor = reader->read_cursor;
-            if (reader->slice && reader->read_index >= reader->slice->writer_index) {
+            if (reader->option.always_reset_cursor) {
                 reader->slice = nullptr;
+            } else if (reader->slice && reader->read_index >= reader->slice->writer_index) {
+                if (reader->option.follow_write) {
+                    reader->slice = nullptr;
+                } else {
+                    std::shared_ptr<SliceFile> next_slice;
+                    for (size_t i = 0; i < read_slices.size(); ++i) {
+                        if (reader->slice == read_slices[i] && (i + 1) < read_slices.size()) {
+                            next_slice = read_slices[i + 1];
+                            break;
+                        }
+                    }
+                    reader->slice = next_slice;
+                    reader->read_index = 0;
+                }
             }
             if (!reader->slice) {
                 BOOST_ASSERT(read_cursor > 0);
@@ -586,7 +622,7 @@ private:
                         } else {
                             ZoneScopedN("async_close");
                             logger->debug("slice close {}", slice->file_name);
-                            slice->close();
+                            slice->close(true);
                         }
                         if (should_free) {
                             logger->debug("slice free {}", slice->file_name);
@@ -620,17 +656,22 @@ private:
         return slice_first_block_offset + slice_block_size * block_index;
     }
 
-    const size_t slice_file_size() const noexcept {
+    size_t slice_file_size() const noexcept {
         return slice_first_block_offset + slice_block_size * slice_block_max_count;
     }
 
+    // 多保留一个可读取的slice，防止读取和写入不同步导致的读取超出范围的问题
+    size_t get_reserved_read_slice_count() const noexcept {
+        return max_read_slice_count + 1;
+    }
+
 private:
-    const Config config;
-    const size_t max_slice_count;
-    const size_t max_read_slice_count;
-    const size_t slice_first_block_offset;
-    const size_t slice_block_size;
-    const size_t slice_block_max_count;
+    Config config;
+    size_t max_slice_count = 0;
+    size_t max_read_slice_count = 0;
+    size_t slice_first_block_offset = 0;
+    size_t slice_block_size = 0;
+    size_t slice_block_max_count = 0;
 
     std::mutex mutex;
     std::deque<std::shared_ptr<SliceFile>> free_slices;
@@ -660,21 +701,26 @@ std::error_code SliceManager::write_slice_block(const std::vector<boost::asio::c
     return p_impl->write_slice_block(buffers, block_offset);
 }
 
-std::error_code SliceManager::read_slice_block(SliceReader *in_reader, const boost::asio::mutable_buffer &dst_buffer, size_t block_offset) {
-    return p_impl->read_slice_block(in_reader, dst_buffer, block_offset);
+std::error_code SliceManager::read_slice_block(SliceReader *in_reader, const boost::asio::mutable_buffer &dst_buffer, const SliceReadOption &options) {
+    return p_impl->read_slice_block(in_reader, dst_buffer, options);
 }
 
-std::error_code SliceManager::read_slice_block(SliceReader *in_reader, const std::vector<boost::asio::mutable_buffer> &dst_buffers, size_t block_offset) {
-    return p_impl->read_slice_block(in_reader, dst_buffers, block_offset);
+std::error_code SliceManager::read_slice_block(SliceReader *in_reader, const std::vector<boost::asio::mutable_buffer> &dst_buffers, const SliceReadOption &options) {
+    return p_impl->read_slice_block(in_reader, dst_buffers, options);
 }
 
 
-SliceReader * SliceManager::add_read_cursor(uint32_t read_cursor) {
-    return p_impl->add_read_cursor(read_cursor);
+SliceReader * SliceManager::add_read_cursor(uint32_t read_cursor, const SliceReaderOption &option) {
+    return p_impl->add_read_cursor(read_cursor, option);
 }
 
 bool SliceManager::remove_read_cursor(SliceReader *in_reader) {
     return p_impl->remove_read_cursor(in_reader);
 }
+
+void SliceManager::set_slice_option(SliceReader *in_reader, const SliceReaderOption &option) {
+    p_impl->set_slice_option(in_reader, option);
+}
+
 
 } // namespace seeder
