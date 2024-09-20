@@ -83,7 +83,7 @@ public:
             try {
                 category->from_json(category_json);
             } catch (std::exception &e) {
-                logger->error("ConfigService load_config category {} from_json error: {}", name, e.what());
+                logger->warn("ConfigService load_config category {} from_json error: {}", name, e.what());
             }
         }
     }

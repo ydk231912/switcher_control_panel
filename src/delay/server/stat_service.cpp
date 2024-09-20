@@ -4,6 +4,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "core/util/logger.h"
 #include "server/config_service.h"
 #include "server/http_service.h"
 #include "app_build_config.h"
@@ -11,6 +12,8 @@
 #include "util/stat_recorder.h"
 
 namespace asio = boost::asio;
+
+using seeder::core::logger;
 
 namespace seeder {
 
@@ -82,6 +85,7 @@ public:
         io_ctx = join_handle.get_io_ctx();
         StatRecorderConfig config;
         stat_config_proxy.try_get_to(config);
+        logger->debug("stat interval={}", config.dump_interval_sec);
         if (config.enable) {
             dumper.reset(new StatRecordDumper(*io_ctx, config));
             dumper->start();

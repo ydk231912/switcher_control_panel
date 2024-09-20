@@ -96,9 +96,10 @@ public:
     }
 
     void try_get_to(T &out_value) {
-        try {
-            out_value = this->get();
-        } catch (std::bad_any_cast &) {}
+        auto value = this->try_get();
+        if (value.has_value()) {
+            out_value = value.value();
+        }
     }
 
     std::optional<T> try_get() {

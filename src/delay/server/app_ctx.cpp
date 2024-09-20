@@ -34,8 +34,8 @@ public:
         service_manager.add_service<ConfigService>();
         
         service_manager.add_service<HttpService>();
-        service_manager.add_service<St2110Service>();
         service_manager.add_service<StatService>();
+        service_manager.add_service<St2110Service>();
         service_manager.add_service<SliceService>();
         service_manager.add_service<DelayControlService>();
         service_manager.add_service<DelayHttpService>();
