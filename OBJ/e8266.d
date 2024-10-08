@@ -1,0 +1,16 @@
+..\OBJ\e8266.o: ..\SYSTEM\usart\E8266.c
+..\OBJ\e8266.o: ..\SYSTEM\usart\e8266.h
+..\OBJ\e8266.o: C:\Keil\ARM\ARMCC\bin\..\include\stdio.h
+..\OBJ\e8266.o: ..\USER\stm32f10x.h
+..\OBJ\e8266.o: ..\CORE\core_cm3.h
+..\OBJ\e8266.o: C:\Keil\ARM\ARMCC\bin\..\include\stdint.h
+..\OBJ\e8266.o: ..\USER\system_stm32f10x.h
+..\OBJ\e8266.o: ..\USER\stm32f10x_conf.h
+..\OBJ\e8266.o: ..\STM32F10x_FWLib\inc\stm32f10x_dma.h
+..\OBJ\e8266.o: ..\USER\stm32f10x.h
+..\OBJ\e8266.o: ..\STM32F10x_FWLib\inc\stm32f10x_fsmc.h
+..\OBJ\e8266.o: ..\STM32F10x_FWLib\inc\stm32f10x_gpio.h
+..\OBJ\e8266.o: ..\STM32F10x_FWLib\inc\stm32f10x_rcc.h
+..\OBJ\e8266.o: ..\STM32F10x_FWLib\inc\stm32f10x_tim.h
+..\OBJ\e8266.o: ..\STM32F10x_FWLib\inc\stm32f10x_usart.h
+..\OBJ\e8266.o: ..\STM32F10x_FWLib\inc\misc.h
