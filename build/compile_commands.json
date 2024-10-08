@@ -1,0 +1,37 @@
+[
+{
+  "directory": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_CHRONO_DYN_LINK -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_LOG_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_REGEX_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -DFMT_LOCALE -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/../lib -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/can_receive.cpp.o -c /root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/can_receive.cpp",
+  "file": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/can_receive.cpp"
+},
+{
+  "directory": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_CHRONO_DYN_LINK -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_LOG_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_REGEX_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -DFMT_LOCALE -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/../lib -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/uart_send.cpp.o -c /root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/uart_send.cpp",
+  "file": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/uart_send.cpp"
+},
+{
+  "directory": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_CHRONO_DYN_LINK -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_LOG_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_REGEX_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -DFMT_LOCALE -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/../lib -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/main.cpp.o -c /root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/main.cpp",
+  "file": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/main.cpp"
+},
+{
+  "directory": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_CHRONO_DYN_LINK -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_LOG_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_REGEX_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -DFMT_LOCALE -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/../lib -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/http_client.cpp.o -c /root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/http_client.cpp",
+  "file": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/http_client.cpp"
+},
+{
+  "directory": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_CHRONO_DYN_LINK -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_LOG_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_REGEX_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -DFMT_LOCALE -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/../lib -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/websocket_client.cpp.o -c /root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/websocket_client.cpp",
+  "file": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/websocket_client.cpp"
+},
+{
+  "directory": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_CHRONO_DYN_LINK -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_LOG_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_REGEX_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -DFMT_LOCALE -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/../lib -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/commumication/ascll_convert_16_demo.cpp.o -c /root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/ascll_convert_16_demo.cpp",
+  "file": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication/ascll_convert_16_demo.cpp"
+},
+{
+  "directory": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src",
+  "command": "/usr/bin/c++ -DBOOST_ALL_NO_LIB -DBOOST_ATOMIC_DYN_LINK -DBOOST_CHRONO_DYN_LINK -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_LOG_DYN_LINK -DBOOST_PROGRAM_OPTIONS_DYN_LINK -DBOOST_REGEX_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DBOOST_THREAD_DYN_LINK -DFMT_LOCALE -DFMT_SHARED -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_SHARED_LIB -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/../lib -I/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/commumication -g -std=gnu++17 -o CMakeFiles/switcher_keyboard.dir/switcher.cpp.o -c /root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/switcher.cpp",
+  "file": "/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/src/switcher.cpp"
+}
+]

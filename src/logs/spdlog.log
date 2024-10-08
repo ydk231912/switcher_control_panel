@@ -1,0 +1,160 @@
+[multi_sink_logger][2024-09-14 13:39:32.808] [info] [5335]  程序开始运行
+[multi_sink_logger][2024-09-14 13:39:32.813] [info] [5335]  HttpClient host : http://192.168.123.53
+[multi_sink_logger][2024-09-14 13:46:20.234] [info] [7257]  程序开始运行
+[multi_sink_logger][2024-09-14 13:46:20.238] [info] [7257]  HttpClient host : http://192.168.123.53
+[multi_sink_logger][2024-09-14 13:48:19.856] [info] [8339]  程序开始运行
+[multi_sink_logger][2024-09-14 13:48:19.860] [info] [8339]  HttpClient host : http://192.168.123.53
+[multi_sink_logger][2024-09-14 13:49:58.479] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:49:58.486] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:21.460] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:21.464] [info] [8408]  receive can pvw : 13
+[multi_sink_logger][2024-09-14 13:50:23.008] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:23.012] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:50:24.270] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:24.274] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:25.651] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:25.655] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:50:26.682] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:26.686] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:27.596] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:27.600] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:50:28.611] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:28.614] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:29.148] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:29.152] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:50:29.558] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:29.563] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:29.925] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:29.929] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:50:30.547] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:30.551] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:30.994] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:30.998] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:50:31.507] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:31.510] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:41.303] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:41.307] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:50:42.119] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:42.122] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:42.942] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:42.945] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:50:43.806] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:43.810] [info] [8408]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:50:44.621] [info] [8408]  pvw : %i
+[multi_sink_logger][2024-09-14 13:50:44.625] [info] [8408]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:52:07.009] [info] [10167]  程序开始运行
+[multi_sink_logger][2024-09-14 13:52:07.012] [info] [10167]  HttpClient host : http://192.168.123.53
+[multi_sink_logger][2024-09-14 13:52:17.991] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:17.995] [info] [10219]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:52:18.948] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:18.951] [info] [10219]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:52:19.395] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:19.398] [info] [10219]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:52:19.757] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:19.760] [info] [10219]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:52:20.084] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:20.088] [info] [10219]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:52:20.434] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:20.437] [info] [10219]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:52:20.762] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:20.765] [info] [10219]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:52:21.111] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:21.115] [info] [10219]  receive can pvw : 14
+[multi_sink_logger][2024-09-14 13:52:21.459] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:21.463] [info] [10219]  receive can pvw : 15
+[multi_sink_logger][2024-09-14 13:52:22.811] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:22.814] [info] [10219]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:52:23.510] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:23.515] [info] [10219]  receive can pvw : 13
+[multi_sink_logger][2024-09-14 13:52:24.411] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:24.414] [info] [10219]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:52:25.104] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:25.107] [info] [10219]  receive can pvw : 13
+[multi_sink_logger][2024-09-14 13:52:25.745] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:25.749] [info] [10219]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:52:26.454] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:26.458] [info] [10219]  receive can pvw : 13
+[multi_sink_logger][2024-09-14 13:52:26.973] [info] [10219]  pvw : %i
+[multi_sink_logger][2024-09-14 13:52:26.977] [info] [10219]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:14.113] [info] [11594]  程序开始运行
+[multi_sink_logger][2024-09-14 13:55:14.117] [info] [11594]  HttpClient host : http://192.168.123.53
+[multi_sink_logger][2024-09-14 13:55:25.983] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:25.987] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:26.433] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:26.436] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:26.812] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:26.815] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:27.178] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:27.182] [info] [11660]  receive can pvw : 18
+[multi_sink_logger][2024-09-14 13:55:27.662] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:27.666] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:28.622] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:28.626] [info] [11660]  receive can pvw : 13
+[multi_sink_logger][2024-09-14 13:55:29.270] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:29.274] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:29.970] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:29.974] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:30.325] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:30.329] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:30.584] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:30.588] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:30.846] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:30.850] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:31.122] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:31.125] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:31.383] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:31.387] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:31.653] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:31.657] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:31.914] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:31.917] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:32.185] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:32.189] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:32.422] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:32.426] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:32.677] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:32.680] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:32.894] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:32.898] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:33.104] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:33.108] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:33.318] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:33.322] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:33.528] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:33.531] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:33.738] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:33.741] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:33.943] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:33.948] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:34.388] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:34.392] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:34.947] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:34.951] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:35.185] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:35.189] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:35.645] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:35.649] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:35.895] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:35.899] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:36.422] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:36.426] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:36.660] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:36.664] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:37.731] [info] [11660]  pgm : %i
+[multi_sink_logger][2024-09-14 13:55:37.734] [info] [11660]  receive can pgm : 7
+[multi_sink_logger][2024-09-14 13:55:38.492] [info] [11660]  pgm : %i
+[multi_sink_logger][2024-09-14 13:55:38.495] [info] [11660]  receive can pgm : 1
+[multi_sink_logger][2024-09-14 13:55:40.747] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:40.751] [info] [11660]  receive can pvw : 22
+[multi_sink_logger][2024-09-14 13:55:41.773] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:41.778] [info] [11660]  receive can pvw : 21
+[multi_sink_logger][2024-09-14 13:55:42.916] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:42.920] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:43.456] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:43.460] [info] [11660]  receive can pvw : 19
+[multi_sink_logger][2024-09-14 13:55:43.957] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:43.961] [info] [11660]  receive can pvw : 20
+[multi_sink_logger][2024-09-14 13:55:44.982] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:44.985] [info] [11660]  receive can pvw : 13
+[multi_sink_logger][2024-09-14 13:55:45.501] [info] [11660]  pvw : %i
+[multi_sink_logger][2024-09-14 13:55:45.504] [info] [11660]  receive can pvw : 19

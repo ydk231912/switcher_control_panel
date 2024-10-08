@@ -1,0 +1,175 @@
+{
+    "switcher": {
+        "http_url": "http://192.168.123.206",
+        "ws_url": "ws://192.168.123.206/ws/panel_status",
+        "screen_path": "/api/panel/config",
+        "auto_transition_frame_num": 20,
+        "auto_transition_sec_num": 0,
+        "http_connection_timeout": 500000,
+        "http_read_timeout": 500000,
+        "http_write_timeout": 500000
+    },
+    "uart_config" :{
+        "uart_port": {
+            "port1": "/dev/ttyS1",
+            "port2": "/dev/ttyS3"
+        },
+        "uart_baudrate":115200
+    },
+    "can_config" :{
+        "can_port": "can0",
+        "can_baudrate": 1000000,
+        "fader_board_can_frame_id": 602,
+        "one_display_board_can_frame_id": 604,
+        "two_display_board_can_frame_id": 606
+    },
+    "fader_board_key_config": {
+        "KET_name_to_key_index": {  
+            "KEY1": "",
+            "KEY2": "",
+            "KEY3": "",
+            "KEY4": "",
+            "KEY5": "",
+            "KEY6": "",
+            "KEY7": "",
+            "KEY8": ""
+        },
+        "BKGD_name_to_key_index": {
+            "BKGD": ""
+        },
+        "PREVTRANS_name_to_key_index": {
+            "PREVTRANS": ""
+        },
+        "MIX_name_to_key_index": {
+            "MIX": ""
+        },
+        "DIP_name_to_key_index": {
+            "DIP": ""
+        },
+        "WIPE_name_to_key_index": {
+
+        },
+        "STINGER_name_to_key_index": {
+            "STINGER": ""
+        },
+        "DVE_name_to_key_index": {
+            "DVE": ""
+        },
+        "AUTO_name_to_key_index": {
+            "AUTO": ""
+        },
+        "CUT_name_to_key_index": {
+
+        },
+        "KEYTRANS_name_to_key_index": {
+            "KEY1TRANS": "",
+            "KEY2TRANS": "",
+            "KEY3TRANS": "",
+            "KEY4TRANS": "",
+            "KEY5TRANS": "",
+            "KEY6TRANS": "",
+            "KEY7TRANS": "",
+            "KEY8TRANS": ""
+        }
+    },
+    "one_display_board_key_config": {
+        "MIX_name_to_key_index": {
+            "MIX": ""
+        },
+        "SHIFT_name_to_key_index": {
+            "SHIFT": ""
+        },
+        "PROXY_type_name_to_key_index": {
+            "KEY": {
+                "KEY_type": {
+                    "KEY1": "",
+                    "KEY2": "",
+                    "KEY3": "",
+                    "KEY4": "",
+                    "KEY5": "",
+                    "KEY6": "",
+                    "KEY7": "",
+                    "KEY8": ""
+                },
+                "KEY_source": {
+                    "CAM1": "",
+                    "CAM2": "",
+                    "CAM3": "",
+                    "V1": "",
+                    "V2": "",
+                    "KEY": "",
+                    "FILL": "",
+                    "AR": "",
+                    "IP9": "",
+                    "IP10": "",
+                    "IP11": ""
+                }
+            },
+            "AUX": {
+                "AUX_type": {
+                
+                },
+                "AUX_source": {
+                    "CAM1": "",
+                    "CAM2": "",
+                    "CAM3": "",
+                    "V1": "",
+                    "V2": "",
+                    "KEY": "",
+                    "FILL": "",
+                    "AR": "",
+                    "IP9": "",
+                    "IP10": "",
+                    "IP11": ""
+                }
+            },
+            "MCRO": {
+                "AUX_source":{
+                    "MCR1": "",
+                    "MCR2": "",
+                    "MCR3": "",
+                    "MCR4": "",
+                    "MCR5": "",
+                    "MCR6": "",
+                    "MCR7": "",
+                    "MCR8": "",
+                    "MCR9": "",
+                    "MCR10": "",
+                    "MCR11": "",
+                    "MCR12": ""
+                }
+                
+            },
+            "SNAPSHOT": {
+                "SNAPSHOT_source": {
+                    "SNAPSHOT1": "",
+                    "SNAPSHOT2": "",
+                    "SNAPSHOT3": "",
+                    "SNAPSHOT4": "",
+                    "SNAPSHOT5": "",
+                    "SNAPSHOT6": "",
+                    "SNAPSHOT7": "",
+                    "SNAPSHOT8": "",
+                    "SNAPSHOT9": "",
+                    "SNAPSHOT10": "",
+                    "SNAPSHOT11": "",
+                    "SNAPSHOT12": ""
+                }
+            },
+            "M/E": {
+                "M/E_source": {
+                    "M/E1": "",
+                    "M/E2": ""
+                }
+            }
+        } 
+    },
+    "two_display_board_key_config": {
+        "PGM_SHIFT_name_to_key_index": {
+            "PGM_SHIFT": ""
+        },
+        "PVW_SHIFT_name_to_key_index": {
+            "PVW_SHIFT": ""
+        }
+    }
+}

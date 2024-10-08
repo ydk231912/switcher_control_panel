@@ -1,0 +1,5 @@
+/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/CMakeFiles/edit_cache.dir
+/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/CMakeFiles/rebuild_cache.dir
+/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src/CMakeFiles/switcher_keyboard.dir
+/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src/CMakeFiles/edit_cache.dir
+/root/dev_2u_new/switcher_keyboard_demmo_2u_cc_new/build/src/CMakeFiles/rebuild_cache.dir
