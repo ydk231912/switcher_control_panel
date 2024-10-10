@@ -2,6 +2,7 @@
 #include "led.h"
 #include "usart.h"
 #include "rgbw.h"
+#include "fun.h"
 
 volatile u8  ucByteBufRX1[DMARX1];    //串口1通讯数组
 volatile u8  ucByteBufTX1[DMATX1];

@@ -21,3 +21,4 @@
 ..\obj\dma.o: ..\SYSTEM\usart\usart.h
 ..\obj\dma.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 ..\obj\dma.o: ..\SYSTEM\rgbw\rgbw.h
+..\obj\dma.o: ..\SYSTEM\fun\fun.h

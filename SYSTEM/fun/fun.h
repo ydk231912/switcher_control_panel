@@ -42,7 +42,7 @@ extern u16 SPIRXcnt,SPITXcnt;
 extern u8 SPIon;
 extern u8 oledon;  //¿ªÆôOLEDÆÁ
 
-#define oledlen   40
+#define oledlen   46
 extern u8 oled1[oledlen];
 extern u8 oled2[oledlen];
 extern u8 oled3[oledlen];

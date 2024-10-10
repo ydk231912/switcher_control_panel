@@ -486,7 +486,7 @@
                       <MiscControls></MiscControls>
                       <Define></Define>
                       <Undefine></Undefine>
-                      <IncludePath>..\SYSTEM\tim;..\SYSTEM\SPI;..\SYSTEM\oled;..\SYSTEM\can</IncludePath>
+                      <IncludePath>..\SYSTEM\tim;..\SYSTEM\SPI;..\SYSTEM\oled;..\SYSTEM\can;..\SYSTEM\rgbw</IncludePath>
                     </VariousControls>
                   </Cads>
                 </FileArmAds>

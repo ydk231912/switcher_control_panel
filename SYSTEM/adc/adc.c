@@ -16,15 +16,15 @@ float adctemp1=0,adctemp2=0;
 
 	//先初始化IO口  /ADC12_IN5 6 7 8 9
 	
- 	RCC->APB2ENR|=1<<4;    //使能PORTC口时钟 
-	GPIOC->CRL&=0XFFFFFFF0;//PC1 anolog输入  PC0
+ 	RCC->APB2ENR|=1<<4;    //使能PORTB口时钟 
+	GPIOC->CRL&=0XFFFFFFF0;  
 	 
 	RCC->APB2ENR|=1<<9;    //ADC1时钟使能	  
 	RCC->APB2RSTR|=1<<9;   //ADC1复位
 	RCC->APB2RSTR&=~(1<<9);//复位结束	    
 	RCC->CFGR&=~(3<<14);   //分频因子清零	
 
-	RCC->CFGR|=2<<14;      //选择 PLL 作为系统时钟源
+	RCC->CFGR|=2<<14;      	 
 	ADC1->CR1&=0XF0FFFF;   //工作模式清零
 	ADC1->CR1|=0<<16;      //独立工作模式  
 	ADC1->CR1&=~(1<<8);    //非扫描模式	
@@ -102,17 +102,13 @@ void Get_Adc_Average1(u16 times)
  }
 //=======================================================6
 
-   if((ADC_Ch_cnt>=2))	 //判断计数器在范围内  0.2139   0.2248
+   if((ADC_Ch_cnt>=2))
 	 ADC_Ch_cnt=0; 
 
-	//reference_V=reference_Vtemp=ADC_out5*1000*2/805;//计算当前电压  	  3347
-	 	 
-	  
+
 
 //================================================================	
 
-//	  ADC2_A=ADC_out3*12930/10000;  //零点值，也可手动	
-//	  ADC2_B=ADC_out4*12930/10000;
 		  
 
 }
@@ -132,9 +128,7 @@ void Get_Adc_Average1(u16 times)
 /*
 //4.557  0.66
 
-3000/4095=0.732
 
-电位器最大值与满载值4095的差，除以电位器最大值，
 
 
 

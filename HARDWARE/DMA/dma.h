@@ -2,26 +2,34 @@
 #define	__DMA_H	   
 #include "sys.h"
 
+#define U1orU2  1
+#if U1orU2
 
-#define 	  DMATX1			300			 //DMA传输发送字节数
+#define		  DMARX1C     724
+#define		  DMARX2C			173 
+#define     cantimset   7 
+#else
+
+#define		  DMARX1C     244
+#define		  DMARX2C			76
+#define     cantimset   5
+#endif
+
+
+
+
+
+#define		  DMARX2			180
 #define		  DMARX1			750
 
-#define 	  DMATX2			150			 //DMA传输发送字节数
-#define		  DMARX2			180
-
-
-#define 	  DMATX3			120			 //DMA传输发送字节数
-#define		  DMARX3			120	
-
-
-#define       DMATX1C     		300
-#define		  DMARX1C     		724
-
-#define 	  DMATX2C			75			 //DMA传输发送字节数
-#define		  DMARX2C			173
-
-#define 	  DMATX3C			120			 //DMA传输发送字节数
-#define		  DMARX3C			120
+#define 	  DMATX1			30			 //DMA传输发送字节数
+#define 	  DMATX2			10			 //DMA传输发送字节数
+#define 	  DMATX3			12		   //DMA传输发送字节数
+#define		  DMARX3			12	
+#define     DMATX1C     30
+#define 	  DMATX2C			15			 //DMA传输发送字节数
+#define 	  DMATX3C			10			 //DMA传输发送字节数
+#define		  DMARX3C			10
 
 extern volatile u8  ucByteBufRX1[DMARX1];
 extern volatile u8  ucByteBufTX1[DMATX1];

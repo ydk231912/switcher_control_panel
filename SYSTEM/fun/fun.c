@@ -11,12 +11,14 @@
 #include "rgbw.h"
 #include "rgbw.h"
 
+#define U1orU2  1
+
 u8 Tx1Buf[DMATX1];  //´®¿ÚÍ¨Ñ¶
-u8 Rx1Buf[DMATX1];
+u8 Rx1Buf[DMARX1];
 u8 Tx2Buf[DMATX2];
-u8 Rx2Buf[DMATX2];
+u8 Rx2Buf[DMARX2];
 u8 Tx3Buf[DMATX3];
-u8 Rx3Buf[DMATX3];
+u8 Rx3Buf[DMARX3];
 
 u8 Spi1TxBuf[SPI1FH1len];     //SPIÍ¨Ñ¶
 u8 Spi1RxBuf[SPI1FH1len];
@@ -35,76 +37,156 @@ u8 oled6[oledlen]={0};
 
 u16 SPIRXcnt=0,SPITXcnt=0;
 u8  SPIon=0;
-u8  candata[8];
-u8 USART1summRXold=0,USART1summRXniu;
-u8 USART2summRXold=0,USART2summRXniu;
-u8 oledon=0;  //¿ªÆôOLEDÆÁË¢ÐÂÊý¾Ý
-u8 RGBWon=0;  //RGBW¿ª¹ØË¢ÐÂÊý¾Ý
-u8 OLEDorderonly=0;  //OLEDÏÔÊ¾Ë³Ðò£¬Ò²ÊÇ
+
+u8  USART1summRXold=0,USART1summRXniu;
+u8  USART2summRXold=0,USART2summRXniu;
+u8  oledon=0;         //¿ªÆôOLEDÆÁË¢ÐÂÊý¾Ý
+u8  oledonDelay=0;    //OLEDÑÓÊ±¶Ï¿ª 
+u8  OLEDorderonly=0;  //OLEDÏÔÊ¾Ë³Ðò£¬Ò²ÊÇ
 u16 OLEDmultiple=0;   //±¾»úOLEDÏÔÊ¾Ë³Ðò±¶Êý
-u16 CANaddr=0;
+
+u8  RGBWDelay=0;      //RGBWÑÓÊ±¶Ï¿ª
 u8  RGBWmultiple=0;   //RGBW½ØÈ¡Ë³Ðò
-u16 canytim=0;         //canÑÓÊ±
-u16 canno=0;
+u8  RGBWon=0;         //RGBW¿ª¹ØË¢ÐÂÊý¾Ý
 
 signed char keytim[24]={0};  //°´¼üÑÓÊ±
 signed char ktim[4]={0};  //°´¼üÑÓÊ±
 
+u8  candata[8];
 u8  KeyBYTE[8]={0};
+u16 canno=0;          //ÑÓÊ±Æô¶¯CAN
+u16 CANaddr=0;
+u8  CANkey=0;           //CAN¿ª¹Ø
+u8  CAN1_SendC=0;      //·¢ËÍÊ§°Ü¼ÆÊý
+u8  CAN1_keycount=0;   //°´¼ü·¢ËÍ³É¹¦ºóÑÓÊ±¶Ï¿ª
+u8  CAN1_sw=0;        //can¿ª¹Ø
+u16 temp1;
 
-u16  temp1;
+
 
 void fun(void)
 {	
-	
-//	OLEDorderonly=1;
- canytim++;
-	
-//rgbw2814[1]=1;  rgbw2814[2]=2;
-	if((rgbwtim>=20)&&(1))  //·¢ËÍRGBWµÆ¹â
+//==========================================================
+	//½ØÈ¡RGBWÏÔÊ¾Êý¾Ý//×¢Òâ½ØÈ¡Ê±´ÓÊý×éµÚÒ»Î»¿ªÊ¼£¬Êý×éÒÑ¾­ÕûºÏÊý¾Ý£
+	if((rgbwtim>=35)&&(1))  //·¢ËÍRGBWµÆ¹â
 	{ 
+		OLEDtinct(Rx2Buf,rgbw2814,RGBWmultiple,24);
 		rgbwtim=0;
+		WS2812B_Task(); 
 		if(RGBWon==59)
+		{ 
+			RGBWDelay++; 
+		//WS2812B_Task();  //RGBW°´¼ü CANaddr	
+			if(RGBWDelay>=3)  //·¢ËÍ3´Îºó¶Ï¿ªRGBWÊý¾Ý
+			{
+			 RGBWon=0;
+		   rgbwtim=0;   	
+			}
+		}
+	}
+	//=================================================
+	IWDG_Feed();    //=======================
+	
+	key();  //°´¼ü
+	
+//=======================CANÍ¨ÐÅÊý¾Ý================================================
+	candata[0]=KeyBYTE[0];candata[1]=KeyBYTE[1];candata[2]=KeyBYTE[2];
+	
+	if(cantim>200)cantim=210;
+	
+ #if U1orU2
+	
+ if(((CANkey>0)&&(CANkey<=24)))  //°´¼ü·¢ËÍCANÃüÁî
+ {
+	 CAN1_sw=1;
+	 CAN1_keycount=0;
+	 CANkey=0;
+ }
+	else if(CAN1_keycount>=30) //·¢ËÍ50Ö¡Êý¾Ý
+	{
+		CANkey=0;
+		CAN1_sw=0;
+		CAN1_keycount=0;
+  }
+	else;
+	
+	if(CAN1_keycount>150)CAN1_keycount=200;
+	
+ #else
+	if(cantim>cantimset)
+	CAN1_sw=1;
+	else CAN1_sw=0;
+	
+ #endif	
+	
+	
+	if((CAN1_sw)&&(cantim>=2))
+	{
+		CAN1_keycount++;
+		cantim=0;
+		if(CAN1_Send_Num(CANaddr,candata))  //ÅÐ¶Ï·¢ËÍÊÇ·ñÕýÈ·
 		{
-			RGBWon=0;
-		  rgbwtim=0;
-		  WS2812B_Task();  //RGBW°´¼ü
+			CAN1_SendC++;                   //Èç¹û·¢ËÍ´íÎó³¬¹ýÁ½´Î£¬³õÊ¼»¯CAN£
+		}	
+		else 
+		 { 	 
+			CAN1_SendC=0;       //ÇåÁãCAN·¢ËÍ´íÎó¼ÆÊý		
+		 }
+		 
+		if((CAN1_SendC>5)||(EPV_F>=1)||(BOF_F>=1)) //
+		{
+			CAN1_SendC=0;
+		  CAN1_Mode_Init(1,3,2,6,0); //CAN³õÊ¼»¯
 		}
 	}
 	
- //	SPI3_WriteByte(Tx1Buf,100);//Ð´OLEDÆÁ
-//=======================CANÍ¨ÐÅÊý¾Ý================================================
- if((cantim>=5)&&(canytim>canno))
-	{
-		cantim=0;
-	  CAN1_Send_Num(CANaddr,candata); //CAN·¢ËÍÊý¾Ý
-	}
-	 candata[0]=KeyBYTE[0];candata[1]=KeyBYTE[1];candata[2]=KeyBYTE[2];
-	
+//===============================================
 	 USART1_RD();
    USART2_RD(); 
-// SPI1_RD();	
-	 key();
-
-	
+//=============================================================
 	//OLEDÏÔÊ¾Êý¾Ý
-	oleddata(Rx1Buf,oled1, OLEDmultiple+0);
-	oleddata(Rx1Buf,oled2, OLEDmultiple+20);
 	
-	oleddata(Rx1Buf,oled3, OLEDmultiple+40);
-	oleddata(Rx1Buf,oled4, OLEDmultiple+60);
-	
-	oleddata(Rx1Buf,oled5, OLEDmultiple+80);
-	oleddata(Rx1Buf,oled6, OLEDmultiple+100);
-	
-	//×¢Òâ½ØÈ¡Ê±´ÓÊý×éµÚÒ»Î»¿ªÊ¼£¬Êý×éÒÑ¾­ÕûºÏÊý¾Ý£¬
-	OLEDtinct(Rx2Buf,rgbw2814,RGBWmultiple,24); //½ØÈ¡RGBWÏÔÊ¾Êý¾Ý
-	
+	if(oledon==37)
+	{			
+		oleddata(Rx1Buf,oled1, OLEDmultiple+0);
+		oleddata(Rx1Buf,oled2, OLEDmultiple+20);
+		
+		oleddata(Rx1Buf,oled3, OLEDmultiple+40);
+		oleddata(Rx1Buf,oled4, OLEDmultiple+60);
+		
+		oleddata(Rx1Buf,oled5, OLEDmultiple+80);
+		oleddata(Rx1Buf,oled6, OLEDmultiple+100);
+		CSse=0;
+    OLED_ShowString(12,10,oled1,16,0);
+		OLED_ShowString(12,32,oled2,16,0);
+		CSse=1;
+    OLED_ShowString(12,10,oled3,16,0);
+		OLED_ShowString(12,32,oled4,16,0);
+		CSse=2;
+    OLED_ShowString(12,10,oled5,16,0);
+		OLED_ShowString(12,32,oled6,16,0);
+		
+		oledonDelay++;
+		
+    if(oledonDelay>3) //ÏÔÊ¾ÆÁË¢ÐÂ3´Îºó¶Ï¿ª
+		{
+			oledon=0;
+			oledonDelay=0;
+		//	OLEDmultiple=0;
+    }
+	  IWDG_Feed();//===========
+	}
+
+//===========================================================
 	temp1++;
-	if(temp1>=500){LED2=!LED2;temp1=0;	}	//ÔËÐÐÖ¸Ê¾
+	if(temp1>=1000){LED2=!LED2;temp1=0;	}	//ÔËÐÐÖ¸Ê¾
 }
 
 //============================================================
+
+
+
+//===============================================================
 //²¦Âë¿ª¹ØµØÖ·Ñ¡Ôñ
 void address_selection(void)
 {
@@ -134,19 +216,6 @@ void address_selection(void)
 	
 	else { OLEDmultiple=0;  CANaddr=0x500;RGBWmultiple=1;}
 	
-	
-	
-// 	if(k1==0){ if(ktim[0]<kcon) ktim[0]++;  else   OLEDorderonly&=~(1<<0);} //1
-//       else { if(ktim[0]>kcon)ktim[0]--;  else   OLEDorderonly|=0x01; } 
-
-// 	if(k2==0){ if(ktim[1]<kcon) ktim[1]++;  else   OLEDorderonly&=~(1<<1);} //1
-//       else { if(ktim[1]>kcon)ktim[1]--;  else   OLEDorderonly|=0x02; } 
-
-// 	if(k3==0){ if(ktim[2]<kcon) ktim[2]++;  else   OLEDorderonly&=~(1<<2);} //1
-//       else { if(ktim[2]>kcon)ktim[2]--;  else   OLEDorderonly|=0x04; } 
-
-//   if(k4==0){ if(ktim[3]<kcon) ktim[3]++;  else   OLEDorderonly&=~(1<<3);} //1
-//       else { if(ktim[3]>kcon)ktim[3]--;  else   OLEDorderonly|=0x08; }
 }
 
 //============================================================
@@ -187,9 +256,8 @@ void oleddata(u8*Rx1Beye,u8*oledbeye, u16 addr)
 //½ÓÊÕÖ÷Õ¾·¢ËÍOLEDÊý¾ÝUSART1summRXold=0,USART2summRXold,USART1summRXniu,USART2summRXniu;
 void USART1_RD(void)
 {
-	
 	R485_2=0;
-
+	
 	//ÅÐ¶ÏÒ»Ö¡Êý¾ÝCRCÐ£Ñé½á¹û£¬Èç¹û½á¹ûÏàÍ¬²»Ë¢ÐÂOLED£¬Èç¹û²»ÏàÍ¬Ë¢ÐÂOLED
   if(USART1_RxOV>=1)
 	{
@@ -230,7 +298,7 @@ void USART2_RD(void)
 			 Rx_summ(Rx2Buf, ucByteBufRX2,DMARX2C-1);	//Ð£ÑéÕýÈ·¸³Öµ¸øÊý×é
 			 if(USART2summRXniu!=USART2summRXold)  //ÅÐ¶ÏÀÛ¼ÓºÍÊÇ·ñÏàÍ¬£¬¿ªÆôOLEDÏÔÊ¾
 			 {
-				RGBWon=59;	LED2=!LED2;//¿ªÆôRGBW
+				RGBWon=59;	//¿ªÆôRGBW
        }
 			  USART2summRXold=USART2summRXniu;  //¸³Öµ¸ø¾ÉÖµ
 			  ucByteBufRX2[DMARX2C-1]=0;
@@ -317,82 +385,87 @@ void interrupt(u8 bit)  //¹Ø±Õ´®¿ÚÖÐ¶Ï
 }	
 	
 //===========================keytim	
+
+
+
+
+
 void key(void)
 {
 	
 	if(key1){ if(keytim[0]<keycon) keytim[0]++;  else   KeyBYTE[0]&=~(1<<0);} //1
-      else { if(keytim[0]>keycon)keytim[0]--;  else   KeyBYTE[0]|=0x01; } 
+      else { if(keytim[0]>keycon)keytim[0]--;  else   KeyBYTE[0]|=0x01;CANkey=1; } 
 	
 	if(key2){ if(keytim[1]<keycon) keytim[1]++;  else   KeyBYTE[0]&=~(1<<1);} //2
-      else { if(keytim[1]>keycon)keytim[1]--;  else   KeyBYTE[0]|=0x02;} 
+      else { if(keytim[1]>keycon)keytim[1]--;  else   KeyBYTE[0]|=0x02;CANkey=2;} 
 	
 	if(key3){ if(keytim[2]<keycon) keytim[2]++;  else   KeyBYTE[0]&=~(1<<2);} //3
-      else { if(keytim[2]>keycon)keytim[2]--;  else   KeyBYTE[0]|=0x04;} 
+      else { if(keytim[2]>keycon)keytim[2]--;  else   KeyBYTE[0]|=0x04;CANkey=3;} 
 	
 	if(key4){ if(keytim[3]<keycon) keytim[3]++;  else   KeyBYTE[0]&=~(1<<3);} //4
-      else { if(keytim[3]>keycon)keytim[3]--;  else   KeyBYTE[0]|=0x08;} 
+      else { if(keytim[3]>keycon)keytim[3]--;  else   KeyBYTE[0]|=0x08;CANkey=4;} 
 	
 	if(key5){ if(keytim[4]<keycon) keytim[4]++;  else   KeyBYTE[0]&=~(1<<4);} //5
-      else { if(keytim[4]>keycon)keytim[4]--;  else   KeyBYTE[0]|=0x10;} 
+      else { if(keytim[4]>keycon)keytim[4]--;  else   KeyBYTE[0]|=0x10;CANkey=5;} 
 	
 	if(key6){ if(keytim[5]<keycon) keytim[5]++;  else   KeyBYTE[0]&=~(1<<5);}  //6 
-      else { if(keytim[5]>keycon)keytim[5]--;  else   KeyBYTE[0]|=0x20;} 
+      else { if(keytim[5]>keycon)keytim[5]--;  else   KeyBYTE[0]|=0x20;CANkey=6;} 
 	
 	if(key7){ if(keytim[6]<keycon) keytim[6]++;  else   KeyBYTE[0]&=~(1<<6);} //7
-      else { if(keytim[6]>keycon)keytim[6]--;  else   KeyBYTE[0]|=0x40;} 		
+      else { if(keytim[6]>keycon)keytim[6]--;  else   KeyBYTE[0]|=0x40;CANkey=7;} 		
 					
 	if(key8){ if(keytim[7]<keycon) keytim[7]++;  else   KeyBYTE[0]&=~(1<<7);} //8
-      else { if(keytim[7]>keycon)keytim[7]--;  else   KeyBYTE[0]|=0x80;} 		
+      else { if(keytim[7]>keycon)keytim[7]--;  else   KeyBYTE[0]|=0x80;CANkey=8;} 		
 			
 	//===		
 	if(key9){ if(keytim[8]<keycon) keytim[8]++;  else   KeyBYTE[1]&=~(1<<0);} //9
-      else { if(keytim[8]>keycon)keytim[8]--;  else   KeyBYTE[1]|=0x01; }		
+      else { if(keytim[8]>keycon)keytim[8]--;  else   KeyBYTE[1]|=0x01; CANkey=9;}		
 			
 	if(key10){ if(keytim[9]<keycon) keytim[9]++; else    KeyBYTE[1]&=~(1<<1);} //10
-      else { if(keytim[9]>keycon)keytim[9]--;  else    KeyBYTE[1]|=0x02;} 		
+      else { if(keytim[9]>keycon)keytim[9]--;  else    KeyBYTE[1]|=0x02;CANkey=10;} 		
 			
 	if(key11){ if(keytim[10]<keycon) keytim[10]++; else    KeyBYTE[1]&=~(1<<2);} //3
-      else { if(keytim[10]>keycon)keytim[10]--;  else    KeyBYTE[1]|=0x04;} 		
+      else { if(keytim[10]>keycon)keytim[10]--;  else    KeyBYTE[1]|=0x04;CANkey=11;} 		
 		
   if(key12){ if(keytim[11]<keycon) keytim[11]++; else    KeyBYTE[1]&=~(1<<3);} //4
-      else { if(keytim[11]>keycon)keytim[11]--;  else    KeyBYTE[1]|=0x08;}
+      else { if(keytim[11]>keycon)keytim[11]--;  else    KeyBYTE[1]|=0x08;CANkey=12;}
 
 	if(key13){ if(keytim[12]<keycon) keytim[12]++;  else   KeyBYTE[1]&=~(1<<4);} //4
-      else { if(keytim[12]>keycon)keytim[12]--;   else   KeyBYTE[1]|=0x10;}		
+      else { if(keytim[12]>keycon)keytim[12]--;   else   KeyBYTE[1]|=0x10;CANkey=13;}		
 		
   if(key14){ if(keytim[13]<keycon) keytim[13]++;  else   KeyBYTE[1]&=~(1<<5);}  //6 
-      else { if(keytim[13]>keycon)keytim[13]--;   else   KeyBYTE[1]|=0x20;} 
+      else { if(keytim[13]>keycon)keytim[13]--;   else   KeyBYTE[1]|=0x20;CANkey=14;} 
 	
 	if(key15){ if(keytim[14]<keycon) keytim[14]++;  else   KeyBYTE[1]&=~(1<<6);} //7
-      else { if(keytim[14]>keycon)keytim[14]--;   else   KeyBYTE[1]|=0x40;} 		
+      else { if(keytim[14]>keycon)keytim[14]--;   else   KeyBYTE[1]|=0x40;CANkey=15;} 		
 					
 	if(key16){ if(keytim[15]<keycon) keytim[15]++;  else   KeyBYTE[1]&=~(1<<7);} //8
-      else { if(keytim[15]>keycon)keytim[15]--;   else   KeyBYTE[1]|=0x80;} 		
+      else { if(keytim[15]>keycon)keytim[15]--;   else   KeyBYTE[1]|=0x80;CANkey=16;} 		
 			
 			
 	if(key17){ if(keytim[16]<keycon) keytim[16]++;  else   KeyBYTE[2]&=~(1<<0);} //9
-      else { if(keytim[16]>keycon)keytim[16]--;  else   KeyBYTE[2]|=0x01; }		
+      else { if(keytim[16]>keycon)keytim[16]--;  else   KeyBYTE[2]|=0x01;CANkey=17; }		
 			
 	if(key18){ if(keytim[17]<keycon) keytim[17]++; else    KeyBYTE[2]&=~(1<<1);} //10
-      else { if(keytim[17]>keycon)keytim[17]--;  else    KeyBYTE[2]|=0x02;} 		
+      else { if(keytim[17]>keycon)keytim[17]--;  else    KeyBYTE[2]|=0x02;CANkey=18;} 		
 			
 	if(key19){ if(keytim[18]<keycon) keytim[18]++; else    KeyBYTE[2]&=~(1<<2);} //3
-      else { if(keytim[18]>keycon)keytim[18]--;  else    KeyBYTE[2]|=0x04;} 		
+      else { if(keytim[18]>keycon)keytim[18]--;  else    KeyBYTE[2]|=0x04;CANkey=19;} 		
 		
   if(key20){ if(keytim[19]<keycon) keytim[19]++; else    KeyBYTE[2]&=~(1<<3);} //4
-      else { if(keytim[19]>keycon)keytim[19]--;  else    KeyBYTE[2]|=0x08;}
+      else { if(keytim[19]>keycon)keytim[19]--;  else    KeyBYTE[2]|=0x08;CANkey=20;}
 
 	if(key21){ if(keytim[20]<keycon) keytim[20]++;  else   KeyBYTE[2]&=~(1<<4);} //4
-      else { if(keytim[20]>keycon)keytim[20]--;   else   KeyBYTE[2]|=0x10;}		
+      else { if(keytim[20]>keycon)keytim[20]--;   else   KeyBYTE[2]|=0x10;CANkey=21;}		
 		
   if(key22){ if(keytim[21]<keycon) keytim[21]++;  else   KeyBYTE[2]&=~(1<<5);}  //6 
-      else { if(keytim[21]>keycon)keytim[21]--;   else   KeyBYTE[2]|=0x20;} 
+      else { if(keytim[21]>keycon)keytim[21]--;   else   KeyBYTE[2]|=0x20;CANkey=22;} 
 	
 	if(key23){ if(keytim[22]<keycon) keytim[22]++;  else   KeyBYTE[2]&=~(1<<6);} //7
-      else { if(keytim[22]>keycon)keytim[22]--;   else   KeyBYTE[2]|=0x40;} 		
+      else { if(keytim[22]>keycon)keytim[22]--;   else   KeyBYTE[2]|=0x40;CANkey=23;} 		
 					
 	if(key24){ if(keytim[23]<keycon) keytim[23]++;  else   KeyBYTE[2]&=~(1<<7);} //8
-      else { if(keytim[23]>keycon)keytim[23]--;   else   KeyBYTE[2]|=0x80;} 				
+      else { if(keytim[23]>keycon)keytim[23]--;   else   KeyBYTE[2]|=0x80;CANkey=24;} 				
 					
 }
 	

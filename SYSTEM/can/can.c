@@ -12,6 +12,8 @@
 波特率=Fpclk/（（tbs1+tbs2+1）*brp），Fpclk为36MHz
       =36/（（3+2+1）*6）=1MHz
 *************************************************************/
+u8 cantxerr=0,BOF_F=0,EPV_F=0,EWG_F=0;
+
 u8 CAN1_Mode_Init(u8 tsjw,u8 tbs2,u8 tbs1,u16 brp,u8 mode)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -44,10 +46,12 @@ u8 CAN1_Mode_Init(u8 tsjw,u8 tbs2,u8 tbs1,u16 brp,u8 mode)
 		if(i>100) return 2;//进入初始化模式失败
 	}
 	CAN1->MCR|=0<<7;//非时间触发通信模式
-	CAN1->MCR|=0<<6;//软件自动离线管理
-	CAN1->MCR|=1<<4;//进制报文自动发送
+	CAN1->MCR|=1<<6;//软件自动离线管理
+//CAN1->MCR|=1<<4;//进制报文自动发送
+	CAN1->MCR|=1<<5;  //睡眠通过报文唤醒
 	CAN1->MCR|=0<<3;//报文不锁定，新的覆盖就的
 	CAN1->MCR|=0<<2;//优先级由报文标识符决定
+	CAN1->MCR&=~(1<<1);//软件唤醒
 	CAN1->BTR =0x00000000;//清除原来的设置
 	CAN1->BTR|=mode<<30;//设置模式，0为普通模式，1为回环模式
 	CAN1->BTR|=tsjw<<24;//重新同步跳跃宽度为tsjw+1个单位时间
@@ -359,6 +363,19 @@ u8 CAN1_Send_Num(u32 id,u8* msg)
 }
 
 
+void CAN1_err(void)
+{
+  u32 temp;
+	temp=(CAN1->ESR)>>=16;
+	cantxerr=temp&0x00ff;
+  BOF_F=(CAN1->ESR>>2)&0x01;  //CAN离线状态
+	EPV_F=(CAN1->ESR>>1)&0x01; //出错次数达到错误被动阈值
+	EWG_F=(CAN1->ESR>>0)&0x01; //出错次数达到警告值
+	
+	CAN1->MCR&=~(1<<1);//软件唤醒睡眠
+	
+	
+}
 
 
 /*

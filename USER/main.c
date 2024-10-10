@@ -8,7 +8,6 @@
 #include "spi.h"
 #include "oled.h"
 #include "can.h"
-
 u8 dat=0;
 
  int main(void)
@@ -21,15 +20,15 @@ u8 dat=0;
 	 
 	uart1_init(72,115200);	 	//串口初始化为9600
 	uart2_init(36,115200);
-	uart3_init(36,500000);  
+	uart3_init(36,115200);  
  	LED_Init();			     //LED端口初始化
 	TIM3_Int_Init(20,7199);     //定时器2
   TIM2_Int_Init(100,7199);
 	
-	//SPI1_Init();
+//SPI1_Init();
 	SPI2_Init();
-//	SPI3_Init();
-//  FLASH_IO_Init();
+//SPI3_Init();
+
 	     
   DMA_USART1_Tx_Config(DMA1_Channel4,(u32)&(USART1->DR),(u32)&ucByteBufTX1,DMATX1); 
 	DMA_USART1_Rx_Config(DMA1_Channel5,(u32)&(USART1->DR),(u32)&ucByteBufRX1,DMARX1);
@@ -43,8 +42,7 @@ u8 dat=0;
 	 
 //	DMA_SPI2_Tx_Config();
 
-	   CAN1_Mode_Init(1,3,2,6,0); 
-	 
+	   CAN1_Mode_Init(1,3,2,6,0); 	 
 	   OLED_Init();
 		 
 		 CSse=0;
@@ -63,25 +61,15 @@ u8 dat=0;
 	   address_selection();
 		 
 		 delay_ms(100);
-		 
+	   IWDG_Init(16,3700);
+	
+	
 	while(1)
 	{	    
 	
      fun();	
 	 // OLED_Fill(0,0,256,128,0x00);
-	if(oledon==37)
-	{		
-		oledon=0;
-		CSse=0;
-    OLED_ShowString(12,10,oled1,16,0);
-		OLED_ShowString(12,32,oled2,16,0);
-		CSse=1;
-    OLED_ShowString(12,10,oled3,16,0);
-		OLED_ShowString(12,32,oled4,16,0);
-		CSse=2;
-    OLED_ShowString(12,10,oled5,16,0);
-		OLED_ShowString(12,32,oled6,16,0);
-	}
+	
 		    }			    
 
 		}

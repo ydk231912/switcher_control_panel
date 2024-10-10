@@ -25,24 +25,28 @@ void WS2812b_Set(u16 Ws2b812b_NUM, u8 rgbw,u8 r, u8 g, u8 b,u8 w ,u8 temp)
 	//组成，每8个位组成灯珠颜色字节的一个位，需要控制SPI通讯速率
 	for(i = 0; i < 8; i++) 
 	{
-		if((rgbw==1)&&(i<w)) *pW = CODE_1;    //白 判断灯珠位开关，赋值给映射的一个字节
+		if((rgbw==1)&&(w&0x80)) *pW = CODE_1;    //白 判断灯珠位开关，赋值给映射的一个字节
           
 		else *pW = CODE_0; 
 			
-		if((rgbw==2)&&(i<r)) *pR = CODE_1;    //红 判断灯珠位开关，赋值给映射的一个字节
+		if((rgbw==2)&&(r&0x80)) *pR = CODE_1;    //红 判断灯珠位开关，赋值给映射的一个字节
           
 		else *pR = CODE_0; 
 		
 		
-		if((rgbw==3)&&(i<g)) *pG = CODE_1;    // 判断灯珠位开关，赋值给映射的一个字节
+		if((rgbw==3)&&(g&0x80)) *pG = CODE_1;    // 判断灯珠位开关，赋值给映射的一个字节
           
 		else *pG = CODE_0; 
 		
 		
-		if((rgbw==4)&&(i<b)) *pB = CODE_1;    // 判断灯珠位开关，赋值给映射的一个字节
+		if((rgbw==4)&&(b&0x80)) *pB = CODE_1;    // 判断灯珠位开关，赋值给映射的一个字节
           
-		else *pB = CODE_0; 
-				
+		else *pB = CODE_0;
+		
+			r<<= 1;    //移位判断每个颜色的位状态
+		  g<<= 1;
+	  	b<<= 1;
+			w<<= 1;		
 		  pR++;      //指针增加，增加每字节对应一个位。
 		  pG++;
 		  pB++;
@@ -63,7 +67,7 @@ void WS2812B_Task(void)
 	for( iLED = 0; iLED < WS2812B_AMOUNT; iLED++) //
 	{
 		rgbwtemp=rgbw2814[iLED]&0x0f;
-		WS2812b_Set(iLED,rgbwtemp ,1,1,1,1,0);   //把灯珠颜色状态写入到gWs2812bDat_SPI发送数组
+		WS2812b_Set(iLED,rgbwtemp ,Rbrigh,Gbrigh,Bbrigh,Wbrigh,0);   //把灯珠颜色状态写入到gWs2812bDat_SPI发送数组
 	}
 	
 	 SPI2_WriteByte(gWs2812bDat_SPI,len);
@@ -165,6 +169,7 @@ void WS2812B_Task(void)
 	for( iLED = 0; iLED < WS2812B_AMOUNT; iLED++) //
 	{
 		//把灯珠颜色状态写入到gWs2812bDat_SPI发送数组
+		
 		WS2812b_Set(iLED, gWs2812bDat[iLED].R, gWs2812bDat[iLED].G, gWs2812bDat[iLED].B,gWs2812bDat[iLED].W);
 	}
 	//总线输出数据

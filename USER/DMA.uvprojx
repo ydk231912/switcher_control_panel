@@ -134,11 +134,11 @@
             <RunIndependent>0</RunIndependent>
             <UpdateFlashBeforeDebugging>1</UpdateFlashBeforeDebugging>
             <Capability>1</Capability>
-            <DriverSelection>4099</DriverSelection>
+            <DriverSelection>4105</DriverSelection>
           </Flash1>
           <bUseTDR>1</bUseTDR>
           <Flash2>BIN\CMSIS_AGDI.dll</Flash2>
-          <Flash3>"" ()</Flash3>
+          <Flash3></Flash3>
           <Flash4></Flash4>
           <pFcarmOut></pFcarmOut>
           <pFcarmGrp></pFcarmGrp>
@@ -159,7 +159,7 @@
             <ldmm>1</ldmm>
             <ldXref>1</ldXref>
             <BigEnd>0</BigEnd>
-            <AdsALst>0</AdsALst>
+            <AdsALst>1</AdsALst>
             <AdsACrf>1</AdsACrf>
             <AdsANop>0</AdsANop>
             <AdsANot>0</AdsANot>
@@ -188,7 +188,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>1</useUlib>
+            <useUlib>0</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <nSecure>0</nSecure>
@@ -338,7 +338,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\HARDWARE;..\STM32F10x_FWLib;..\SYSTEM;..\OBJ;..\USER;..\USMART;..\HARDWARE\DMA;..\HARDWARE\KEY;..\HARDWARE\LCD;..\HARDWARE\LED;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\adc;..\SYSTEM\can;..\SYSTEM\delay;..\SYSTEM\fun;..\SYSTEM\oled;..\SYSTEM\rgbw;..\SYSTEM\SPI;..\SYSTEM\sys;..\SYSTEM\tim;..\SYSTEM\usart;.\RTE</IncludePath>
+              <IncludePath>..\HARDWARE\LED;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\USER;..\STM32F10x_FWLib\inc;..\CORE;..\HARDWARE\KEY;..\HARDWARE\LCD;..\HARDWARE\RTC;..\HARDWARE\RTC;..\HARDWARE\WKUP;..\HARDWARE\ADC;..\HARDWARE\DAC;..\HARDWARE\DMA</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -577,7 +577,7 @@
                       <MiscControls></MiscControls>
                       <Define></Define>
                       <Undefine></Undefine>
-                      <IncludePath>..\SYSTEM\rgbw</IncludePath>
+                      <IncludePath>..\SYSTEM\rgbw;..\SYSTEM\fun</IncludePath>
                     </VariousControls>
                   </Cads>
                 </FileArmAds>
