@@ -9,16 +9,13 @@
 
 #define LED2 PBout(9)
 
-
 void KEY_Init(void);//IO初始化
 u8 KEY_Scan(u8);  	//按键扫描函数
 void LED_Init(void);//初始化
 
-
 //#define LED1 PAout(1)// PB5
 
-
-#define key1    PEin(14) //
+#define key1    PEin(14) 
 #define key2    PEin(12)
 #define key3    PEin(10)
 #define key4    PEin(7)

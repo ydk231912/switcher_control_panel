@@ -19,7 +19,4 @@ u8 CAN1_Send_MsgTEST(u8* msg,u8 len);
 u8 CAN1_Send_Num(u32 id,u8* msg);
 
 void can_data_transition(void);
-
-extern u8 cantxerr,BOF_F,EPV_F,EWG_F;
-
 #endif

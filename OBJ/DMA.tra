@@ -36,7 +36,7 @@
 ### ADS-LD Output File: '..\OBJ\DMA.axf'
 ### ADS-LD Command File: '..\OBJ\DMA.lnp'
 ### Checking for dirty Components...
-### Creating CmdFile '..\OBJ\DMA.lnp', Handle=0x000007DC
+### Creating CmdFile '..\OBJ\DMA.lnp', Handle=0x0000094C
 ### Writing '.lnp' file
 ### ADS-LD Command file '..\OBJ\DMA.lnp' is ready.
 ### ADS-LD: About to start ADS-LD Thread.

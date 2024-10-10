@@ -9,11 +9,6 @@
 #define CODE_1		0xF8
 
 #define WS2812B_AMOUNT		24   //灯数量
-#define  Rbrigh       25   //RGBW亮度显示
-#define  Gbrigh       25   //RGBW亮度显示
-#define  Bbrigh       25   //RGBW亮度显示
-#define  Wbrigh       25   //RGBW亮度显示
-
 
 typedef struct
 {

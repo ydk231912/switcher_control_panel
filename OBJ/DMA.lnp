@@ -25,7 +25,7 @@
 "..\obj\stm32f10x_tim.o"
 "..\obj\stm32f10x_spi.o"
 "..\obj\stm32f10x_can.o"
---strict --scatter "..\OBJ\DMA.sct"
+--library_type=microlib --strict --scatter "..\OBJ\DMA.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list ".\DMA.map" -o ..\OBJ\DMA.axf

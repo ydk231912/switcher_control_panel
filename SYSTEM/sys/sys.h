@@ -53,8 +53,7 @@
 
 
 void NVIC_Configuration(void);
-void IWDG_Init(u8 prer,u16 rlr) ;
-void IWDG_Feed(void);
+
 
 
 
