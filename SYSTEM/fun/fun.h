@@ -18,8 +18,8 @@ u16 cumulative_sum(volatile u8 *Buf,u8 len);
 #define SPI1FH1     0x3b
 #define SPI1FH1len  10
 #define SPI3FH1len  10
-#define keycon    	 2    //按键延时
-#define kcon      	 2    //按键延时
+#define  keycon    2    //按键延时
+#define  kcon      2    //按键延时
 
 
 void  interrupt(u8 bit);
@@ -30,17 +30,17 @@ void  USART1_RD(void);
 void USART2_RD(void);
 void key(void);
 void address_selection(void);
-u16 Rx_summ(volatile u8 *Buf1, volatile u8 *Buf2,u16 len); 
-u16 sumc(volatile u8 *Buf1, u16 len); 
+u16 Rx_summ(volatile u8 *Buf1, volatile u8 *Buf2,u16 len); //ÀÛ¼ÓºÍÐ£Ñé
+u16 sumc(volatile u8 *Buf1, u16 len); //ÀÛ¼ÓºÍÐ£Ñé
 void OLEDtinct(u8 *USART,u8 *oled,u8 addr,u8 len); //截取OLED数据
-//void memst(volatile u8 *Buf1, u16 len); 
+//void memst(volatile u8 *Buf1, u16 len); //
 unsigned int crc16(volatile unsigned char * puchMsg, unsigned int usDataLen);
 extern u8  Spi1TxBuf[SPI1FH1len];     //SPI
 extern u8  Spi1RxBuf[SPI1FH1len];
 extern u8  Spi1tempRxBuf[SPI1FH1len];
 extern u16 SPIRXcnt,SPITXcnt;
 extern u8 SPIon;
-extern u8 oledon;  
+extern u8 oledon;  //¿ªÆôOLEDÆÁ
 
 #define oledlen   40
 extern u8 oled1[oledlen];
