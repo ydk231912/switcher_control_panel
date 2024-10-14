@@ -889,7 +889,7 @@ public:
         ops.num_port = 1;
         strncpy(ops.port[MTL_PORT_P], main_ctx->get_port(output_config.device_id).c_str(), MTL_PORT_MAX_LEN);
         inet_pton(AF_INET, output_config.audio.ip.c_str(), ops.dip_addr[MTL_PORT_P]);
-        ops.udp_port[MTL_PORT_P] = output_config.video.port;
+        ops.udp_port[MTL_PORT_P] = output_config.audio.port;
         if (output_config.audio.redundant.has_value() && output_config.audio.redundant->enable) {
             ops.num_port = 2;
             strncpy(ops.port[MTL_PORT_R], main_ctx->get_port(output_config.audio.redundant->device_id).c_str(), MTL_PORT_MAX_LEN);
