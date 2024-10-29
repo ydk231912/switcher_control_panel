@@ -14,6 +14,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <json-c/json.h>
 #include <json/value.h>
 #include <json/writer.h>
 #include <malloc.h>
@@ -35,7 +36,7 @@
 #include "rx_video.h"
 #include "tx_audio.h"
 #include "tx_video.h"
-#include <mtl/mtl_seeder_api.h>
+// #include <mtl/mtl_seeder_api.h>
 
 // #include "player.h"
 #include "node.h"
@@ -195,13 +196,14 @@ public:
   void operator()(json_object *o) { json_object_put(o); }
 };
 
-std::unique_ptr<json_object, JsonObjectDeleter>
+/* std::unique_ptr<json_object, JsonObjectDeleter>
 convert_json_object(const Json::Value &v) {
   Json::FastWriter writer;
   auto s = writer.write(v);
   return std::unique_ptr<json_object, JsonObjectDeleter>(
       json_tokener_parse(s.c_str()));
 }
+*/
 
 } // namespace
 
@@ -231,7 +233,7 @@ int st_app_args_check(struct st_app_context *ctx) {
     ctx->para.nb_rx_hdr_split_queues = ctx->rx_video_sessions.size();
   }
 
-  auto &ptp_config = ctx->json_ctx->json_root["ptp_config"];
+  /* auto &ptp_config = ctx->json_ctx->json_root["ptp_config"];
   if (ptp_config.isObject()) {
     auto ptp_config_obj = convert_json_object(ptp_config);
     if (ptp_config_obj && mtl_seeder_set_ptp_params(ptp_config_obj.get())) {
@@ -239,6 +241,7 @@ int st_app_args_check(struct st_app_context *ctx) {
       return -1;
     }
   }
+  */
 
   return 0;
 }

@@ -6,7 +6,7 @@
 #include "core/util/logger.h"
 #include "core/util/thread.h"
 #include "httplib.h"
-#include "mtl/mtl_seeder_api.h"
+// #include "mtl/mtl_seeder_api.h"
 #include "node.h"
 #include "parse_json.h"
 #include <boost/filesystem.hpp>
@@ -445,12 +445,12 @@ private:
     json_ok(res, status);
   }
 
-  void get_ptp_dev_info(const Request &req, Response &res) {
+  /* void get_ptp_dev_info(const Request &req, Response &res) {
     json_object *tmp_json = nullptr;
     mtl_seeder_get_ptp_dev_info(app_ctx->st, &tmp_json);
     std::unique_ptr<json_object, JsonObjectDeleter> ptp_info(tmp_json);
     json_ok(res, json_object_to_json_string(ptp_info.get()));
-  }
+  } */
 
   void save_config_file() {
     try {
@@ -638,9 +638,10 @@ void st_http_server::start() {
     p.get_status(req, res);
   });
 
-  server.Get("/api/ptp_dev_info", [&p](const Request &req, Response &res) {
+  /* server.Get("/api/ptp_dev_info", [&p](const Request &req, Response &res) {
     p.get_ptp_dev_info(req, res);
   });
+  */
 
   server.Get("/api/device_info", [&p](const Request &req, Response &res) {
     p.get_device_info(req, res);
