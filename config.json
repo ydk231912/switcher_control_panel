@@ -1,0 +1,154 @@
+{
+    "url_config": {
+        "http_url": "http://192.168.123.206",
+        "ws_url_panel_status": "ws://192.168.123.206/ws/panel_status",
+        "ws_url_config_update": "ws://192.168.123.206/ws/config_update_notify",
+        "screen_path": "/api/panel/config"
+    },
+    "auto_config": {
+        "auto_transition_frame_num": 20,
+        "auto_transition_sec_num": 0
+    },
+    "http_timeout": {
+        "http_connection_timeout": 500000,
+        "http_read_timeout": 500000,
+        "http_write_timeout": 500000
+    },
+    "switcher_keyboard_type": {
+        "switcher_keyboard_id" : 1,
+        "switcher_keyboard_config" :{
+            "screen_data_size": 40,
+            "num_screen": 3,
+            "num_slave": 2,
+            "oled_frame_size": 244,
+            "main_ctrl_keys_size": 25,
+            "slave_keys_size": 24,
+            "key_frame_size": 76,
+            "slave_key_each_row_num": 12,
+            "key_each_row_num": 12,
+            "key_difference_value": 12,
+            "max_source_num": 4
+        },
+        "uart_config" :{
+            "uart_port": {
+                "port1": "/dev/ttyS1",
+                "port2": "/dev/ttyS3"
+            },
+            "uart_baudrate":115200
+        },
+        "can_config" :{
+            "can_port": "can0",
+            "fader_board_can_frame_id": 1538,
+            "one_display_board_can_frame_id": 1540,
+            "two_display_board_can_frame_id": 1542
+        }
+    },
+    "keys_position": {
+        "main_keys": [
+            {"name": "key1", "position": 1},
+            {"name": "key2", "position": 2},
+            {"name": "key3", "position": 3},
+            {"name": "key4", "position": 4},
+            {"name": "key5", "position": 5},
+            {"name": "key6", "position": 6},
+            {"name": "key7", "position": 7},
+            {"name": "bkgd", "position": 8},
+            {"name": "key8", "position": 9},
+            {"name": "prvtrans", "position": 10},
+            {"name": "mix", "position": 11},
+            {"name": "dip", "position": 12},
+            {"name": "wipe", "position": 13},
+            {"name": "stinger", "position": 14},
+            {"name": "dve", "position": 15},
+            {"name": "quto", "position": 16},
+            {"name": "cut", "position": 17},
+            {"name": "key1_trans", "position": 18},
+            {"name": "key2_trans", "position": 19},
+            {"name": "key3_trans", "position": 20},
+            {"name": "key4_trans", "position": 21},
+            {"name": "key5_trans", "position": 22},
+            {"name": "key6_trans", "position": 23},
+            {"name": "key7_trans", "position": 24},
+            {"name": "key8_trans", "position": 25}
+        ],
+        "slaves_keys": {
+            "slave1": {
+                "mode": 12,
+                "proxies": {
+                    "types": [
+                        {"name": "key_proxy", "position": 1},
+                        {"name": "aux_proxy", "position": 2},
+                        {"name": "mcro_proxy", "position": 3},
+                        {"name": "snapshot_proxy", "position": 4},
+                        {"name": "m_e_proxy", "position": 5}
+                    ],
+                    "types_sources": [
+                        {"name": "type_source1", "position": 1},
+                        {"name": "type_source2", "position": 2},
+                        {"name": "type_source3", "position": 3},
+                        {"name": "type_source4", "position": 4},
+                        {"name": "type_source5", "position": 5},
+                        {"name": "type_source6", "position": 6},
+                        {"name": "type_source7", "position": 7},
+                        {"name": "type_source8", "position": 8},
+                        {"name": "type_source9", "position": 9},
+                        {"name": "type_source10", "position": 10},
+                        {"name": "type_source11", "position": 11}
+                    ],
+                    "sources": [
+                        {"name": "proxy_source1", "position": 13},
+                        {"name": "proxy_source2", "position": 14},
+                        {"name": "proxy_source3", "position": 15},
+                        {"name": "proxy_source4", "position": 16},
+                        {"name": "proxy_source5", "position": 17},
+                        {"name": "proxy_source6", "position": 18},
+                        {"name": "proxy_source7", "position": 19},
+                        {"name": "proxy_source8", "position": 20},
+                        {"name": "proxy_source9", "position": 21},
+                        {"name": "proxy_source10", "position": 22},
+                        {"name": "proxy_source11", "position": 23}
+                    ]
+                },
+                "proxy_source_shift": 24
+            },
+            "slave2": {
+                "pgm": [
+                    {"name": "pgm1", "position": 1},
+                    {"name": "pgm2", "position": 2},
+                    {"name": "pgm3", "position": 3},
+                    {"name": "pgm4", "position": 4},
+                    {"name": "pgm5", "position": 5},
+                    {"name": "pgm6", "position": 6},
+                    {"name": "pgm7", "position": 7},
+                    {"name": "pgm8", "position": 8},
+                    {"name": "pgm9", "position": 9},
+                    {"name": "pgm10", "position": 10},
+                    {"name": "pgm11", "position": 11}
+                ],
+                "pgm_shift": 12,
+                "pvw": [
+                    {"name": "pvw1", "position": 13},
+                    {"name": "pvw2", "position": 14},
+                    {"name": "pvw3", "position": 15},
+                    {"name": "pvw4", "position": 16},
+                    {"name": "pvw5", "position": 17},
+                    {"name": "pvw6", "position": 18},
+                    {"name": "pvw7", "position": 19},
+                    {"name": "pvw8", "position": 20},
+                    {"name": "pvw9", "position": 21},
+                    {"name": "pvw10", "position": 22},
+                    {"name": "pvw11", "position": 23}
+                ],
+                "pvw_shift": 24
+            }
+        }
+    }
+}
+    
+
+
+
+
+
+    
+    

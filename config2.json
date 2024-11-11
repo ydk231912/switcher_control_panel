@@ -1,0 +1,211 @@
+{
+    "url_config": {
+        "http_url": "http://192.168.123.212:12003",
+        "ws_url_panel_status": "ws://192.168.123.212:12003/ws/panel_status",
+        "ws_url_config_update": "ws://192.168.123.212:12003/ws/config_update_notify",
+        "screen_path": "/api/panel/config"
+    },
+    "auto_config": {
+        "auto_transition_frame_num": 20,
+        "auto_transition_sec_num": 0
+    },
+    "http_timeout": {
+        "http_connection_timeout": 500000,
+        "http_read_timeout": 500000,
+        "http_write_timeout": 500000
+    },
+    "switcher_keyboard_type" : {
+        "switcher_keyboard_id" : 2,
+        "switcher_keyboard_config" :{
+            "screen_data_size": 40,
+            "num_screen": 3,
+            "num_slave": 6,
+            "oled_frame_size": 724,
+            "main_ctrl_keys_size": 25,
+            "slave_keys_size": 24,
+            "key_frame_size": 173,
+            "slave_key_each_row_num": 12,
+            "key_each_row_num": 36,
+            "key_difference_value": 12,
+            "max_source_num": 4
+        },
+        "uart_config" :{
+            "uart_port": {
+                "port1": "/dev/ttyS1",
+                "port2": "/dev/ttyS3"
+            },
+            "uart_baudrate":115200
+        },
+        "can_config" :{
+            "can_port": "can0",
+            "fader_board_can_frame_id": 1538,
+            "one_display_board_can_frame_id": 1540,
+            "two_display_board_can_frame_id": 1542,
+            "three_display_board_can_frame_id": 1544,
+            "four_display_board_can_frame_id": 1546,
+            "five_display_board_can_frame_id": 1548,
+            "six_display_board_can_frame_id": 1550
+        }
+    },
+    "key_status": {
+        "key_key" :{
+            "KEY1": "",
+            "KEY2": "",
+            "KEY3": "",
+            "KEY4": "",
+            "KEY5": "",
+            "KEY6": "",
+            "KEY7": "",
+            "KEY8": ""
+        },
+        "bkgd_key" :{
+            "BKGD": ""
+        },
+        "PRVTRANS": "",
+        "toggle_effect_key" :{
+            "MIX": "",
+            "DIP": "",
+            "WIPE": "",
+            "STINGER": "",
+            "DVE": ""
+        },
+        "AUTO": "",
+        "CUT": "",
+        "key_trans": {
+            "KEY1_TRANS": "",
+            "KEY2_TRANS": "",
+            "KEY3_TRANS": "",
+            "KEY4_TRANS": "",
+            "KEY5_TRANS": "",
+            "KEY6_TRANS": "",
+            "KEY7_TRANS": "",
+            "KEY8_TRANS": ""
+        },
+        "mode_key" :{
+            "MODE": ""
+        },
+        "surrogate_key" :{
+            "KEY": "",
+            "AUX": "",
+            "MCRO": "",
+            "SNAPSHOT": "",
+            "M/E": ""
+        },
+        "surrogate_key_type" :{
+            "KEY_source": {
+                "CAM1": "",
+                "CAM2": "",
+                "CAM3": "",
+                "V1": "",
+                "V2": "",
+                "KEY": "",
+                "FILL": "",
+                "AR": "",
+                "IP9": "",
+                "IP10": "",
+                "IP11": ""
+            },
+            "AUX_source": {
+                "CAM1": "",
+                "CAM2": "",
+                "CAM3": "",
+                "V1": "",
+                "V2": "",
+                "KEY": "",
+                "FILL": "",
+                "AR": "",
+                "IP9": "",
+                "IP10": "",
+                "IP11": ""
+            },
+            "MCRO_source":{
+                "MCR1": "",
+                "MCR2": "",
+                "MCR3": "",
+                "MCR4": "",
+                "MCR5": "",
+                "MCR6": "",
+                "MCR7": "",
+                "MCR8": "",
+                "MCR9": "",
+                "MCR10": "",
+                "MCR11": "",
+                "MCR12": ""
+            },
+            "SNAPSHOT_source": {
+                "SNAPSHOT1": "",
+                "SNAPSHOT2": "",
+                "SNAPSHOT3": "",
+                "SNAPSHOT4": "",
+                "SNAPSHOT5": "",
+                "SNAPSHOT6": "",
+                "SNAPSHOT7": "",
+                "SNAPSHOT8": "",
+                "SNAPSHOT9": "",
+                "SNAPSHOT10": "",
+                "SNAPSHOT11": "",
+                "SNAPSHOT12": ""
+            },
+            "M/E_source": {
+                "M/E1": "",
+                "M/E2": ""
+            }
+        },
+        "video_source" :{
+            "video1": "",
+            "video2": "",
+            "video3": "",
+            "video4": "",
+            "video5": "",
+            "video6": "",
+            "video7": "",
+            "video8": "",
+            "video9": "",
+            "video10": "",
+            "video11": ""
+        },
+        "video_source_shift" :{
+            "video_shift": ""
+        },
+        "pgm_source" :{
+            "pgm1": "",
+            "pgm2": "",
+            "pgm3": "",
+            "pgm4": "",
+            "pgm5": "",
+            "pgm6": "",
+            "pgm7": "",
+            "pgm8": "",
+            "pgm9": "",
+            "pgm10": "",
+            "pgm11": ""
+        },
+        "pgm_source_shift" :{
+            "pgm_shift": ""
+        },
+        "pvw_source" :{
+            "pvw1": "",
+            "pvw2": "",
+            "pvw3": "",
+            "pvw4": "",
+            "pvw5": "",
+            "pvw6": "",
+            "pvw7": "",
+            "pvw8": "",
+            "pvw9": "",
+            "pvw10": "",
+            "pvw11": ""
+        },
+        "pvw_source_shift" :{
+            "pvw_shift": ""
+        }
+    }
+}
+    
+
+
+
+
+
+    
+    
