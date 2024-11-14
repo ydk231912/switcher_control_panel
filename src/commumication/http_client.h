@@ -21,7 +21,7 @@ public:
   std::string Put(const std::string &path, const std::string &body);
   std::string Delete(const std::string &path);
   std::string Patch(const std::string &path, const std::string &body);
-std::shared_ptr<httplib::Client> cli_;
+  std::shared_ptr<httplib::Client> cli_;
 private:
   std::string host_;
   

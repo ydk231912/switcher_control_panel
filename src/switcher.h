@@ -108,17 +108,16 @@ public:
   nlohmann::json pgm_commands;
   nlohmann::json pvw_commands;
   nlohmann::json key_commands;
-  nlohmann::json fill_commands;
-  nlohmann::json key_fill_commands;
+  nlohmann::json key_sources_commands;
   
   int pgm_source_sum = 0;
   int pvw_source_sum = 0;
-  int key_type_sum = 0;
-  int key_name_sum = 0;
-  int fill_name_sum = 0;
+  int key_sum = 0;
+  int key_sources_sum = 0;
 
   int pgm_shift_status = 0;
   int pvw_shift_status = 0;
+  int key_source_shift_status = 0;
   
   std::vector<int> sw_pgm_pvw_shift_status = {0,0};
 

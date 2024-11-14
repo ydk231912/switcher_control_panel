@@ -116,6 +116,7 @@ static void take_source_xpt_commands(const nlohmann::json &sources,nlohmann::jso
     out_commands.push_back(command);
   }
 }
+
 static void take_source_on_air_tie_commands(const nlohmann::json &sources,nlohmann::json &out_commands) {
   out_commands = nlohmann::json::array();
   if (!sources.is_array()) {return;}
@@ -137,23 +138,21 @@ static void take_source_on_air_tie_commands(const nlohmann::json &sources,nlohma
 void Switcher::store_screens_config(
   std::vector<std::vector<std::vector<std::string>>> &screen_data,
   nlohmann::json &pgm_commands, nlohmann::json &pvw_commands
-  /*nlohmann::json &key_commands, nlohmann::json &fill_commands*/
+  nlohmann::json &key_commands, nlohmann::json &fill_commands
 ) {
   nlohmann::json config_screen = get_screens_config(control_panel_config->url_config.screen_path);
   auto &panel_config = control_panel_config->panel_config;
   auto &pgm_name = control_panel_config->screen_config.pgm_name;
   auto &pvw_name = control_panel_config->screen_config.pvw_name;
-  // auto &key_type_name = control_panel_config->screen_config.key_type_name;
-  // auto &key_name = control_panel_config->screen_config.key_name;
-  // auto &fill_name = control_panel_config->screen_config.fill_name;
+  auto &key_name = control_panel_config->screen_config.key_name;
+  auto &key_sources_name = control_panel_config->screen_config.key_sources_name;
   auto &key_each_row_num = panel_config.key_each_row_num;
   int panel_config_num = key_each_row_num - 1;
 
   pgm_name.clear();
   pvw_name.clear();
-  // key_type_name.clear();
-  // key_name.clear();
-  // fill_name.clear();
+  key_name.clear();
+  key_sources_name.clear();
   
   for(auto &source : config_screen["pgm"]["sources"]){
     pgm_name.push_back(source["name"]);
@@ -161,15 +160,14 @@ void Switcher::store_screens_config(
   for(auto &source : config_screen["pvw"]["sources"]){
     pvw_name.push_back(source["name"]);
   }
-  // for(auto &source : config_screen["downstream_keys"]){
-  //   key_type_name.push_back(source["name"]);
-  // }
-  // for(auto &source : config_screen["downstream_keys"]["key_source_config"]){
-  //   key_name.push_back(source["name"]);
-  // }
-  // for(auto &source : config_screen["downstream_keys"]["fill_source_config"]){
-  //   fill_name.push_back(source["name"]);
-  // }
+  //代理键第一行 key name
+  for(auto &source : config_screen["downstream_keys"]){
+    key_name.push_back(source["name"]);
+  }
+  //代理键第二行 key sources name 
+  for(auto &source : config_screen["delegate_key_sources"]){
+    key_sources_name.push_back(source["name"]);
+  }
 
   std::vector<std::vector<std::vector<std::string>>> hexVector(
       4, std::vector<std::vector<std::string>>(key_each_row_num, std::vector<std::string>(5)));
@@ -185,24 +183,20 @@ void Switcher::store_screens_config(
   } else {
     logger->warn("pvw input source received null");
   }
-  // if(!key_type_name.empty()) {
-  //   this->key_type_sum = key_type_name.size();
-  //   get_hex_vector(key_type_name, hexVector[2],-1, panel_config_num);//代理键
-  // } else {
-  //     logger->warn("key type input source received null");
-  // }
-  // if(!key_name.empty()) {
-  //   this->key_name_sum = key_name.size();
-  //   get_hex_vector(key_name, hexVector[3],-1, panel_config_num);//代理键
-  // } else {
-  //     logger->warn("key input source received null");
-  // }
-  // if(!fill_name.empty()) {
-  //   this->fill_name_sum = fill_name.size();
-  //   get_hex_vector(fill_name, hexVector[3],-1, panel_config_num);//代理源
-  // } else {
-  //   logger->warn("fill input source received null");
-  // }
+  //代理键第一行 key name
+  if(!key_name.empty()) {
+    this->key_sum = key_name.size();
+    get_hex_vector(key_name, hexVector[2],-1, panel_config_num);//代理键
+  } else {
+    logger->warn("key type input source received null");
+  }
+  //代理键第二行 key sources name 
+  if(!key_sources_name.empty()) {
+    this->key_sources_sum = key_sources_name.size();
+    get_hex_vector(key_sources_name, hexVector[3], this->key_source_shift_status, panel_config_num);//代理键
+  } else {
+      logger->warn("key input source received null");
+  }
 
   std::vector<std::vector<std::vector<std::string>>> data(
       panel_config.num_slave, std::vector<std::vector<std::string>>(panel_config.num_screen, std::vector<std::string>(panel_config.screen_data_size, "")));
@@ -212,12 +206,12 @@ void Switcher::store_screens_config(
 
   auto &pgm_sources = config_screen["pgm"]["sources"];
   auto &pvw_sources = config_screen["pvw"]["sources"];
-  // auto &key_sources = config_screen["downstream_keys"];
-  // auto &fill_sources = config_screen["downstream_keys"];
+  auto &key_sources = config_screen["downstream_keys"];
+  auto &key_sourcess = config_screen["delegate_key_sources"];
   take_source_xpt_commands(pgm_sources, pgm_commands);
   take_source_xpt_commands(pvw_sources, pvw_commands);
-  // take_source_on_air_tie_commands(key_sources, key_commands);
-  // take_source_on_air_tie_commands(fill_sources, fill_commands);
+  take_source_on_air_tie_commands(key_sources, key_commands);
+  take_source_on_air_tie_commands(key_sourcess, key_sources_commands);
 }
 
 void Switcher::get_hex_vector(
@@ -225,20 +219,21 @@ void Switcher::get_hex_vector(
   std::vector<std::vector<std::string>>& hexVector, 
   int shift_status, int panel_config_num
 ) {
-  // if (shift_status < 0) {
-  //   int surrogate_key_type = ((-1)*shift_status)-1;
-  //   for (int i = 0; i < panel_config_num && i < names.size(); ++i) {
-  //     hexVector[i] = ascll_convert_16->asciiToHex(names[i]);
-  //   }
-  //   hexVector[panel_config_num] = ascll_convert_16->asciiToHex(key_type_name[surrogate_key_type]);
-  // } 
-  // else {
+  if (shift_status < 0) {
+    int surrogate_key_type = ((-1)*shift_status)-1;
+    for (int i = 0; i < panel_config_num && i < names.size(); ++i) {
+      hexVector[i] = ascll_convert_16->asciiToHex(names[i]);
+    }
+    hexVector[panel_config_num] = ascll_convert_16->asciiToHex(surrogate_key_type_name[surrogate_key_type]);
+  }
+  if (shift_status >= 0) {
     int source_offset = shift_status * panel_config_num;
     for (int i = 0; i < panel_config_num && i + source_offset < names.size(); ++i) {
       hexVector[i] = ascll_convert_16->asciiToHex(names[i + source_offset]);
     }
     hexVector[panel_config_num] = ascll_convert_16->asciiToHex(shift_name[shift_status]);
-  // }
+  }
+    
 }
 
 void Switcher::update_oled_display(
@@ -256,13 +251,13 @@ void Switcher::update_oled_display(
           size_t displayCol = section * BUTTONS_PER_ROW + col;
           // 根据键盘 ID 更新数据
           if (switcher_keyboard_id == 1) {
-              // data[0][section][dataIndex] = hexVector[row+2][displayCol][depthIdx];
-              data[0][section][dataIndex] = hexVector[row][displayCol][depthIdx];
+              data[0][section][dataIndex] = hexVector[row+2][displayCol][depthIdx];
+              // data[0][section][dataIndex] = hexVector[row][displayCol][depthIdx];
               data[1][section][dataIndex] = hexVector[row][displayCol][depthIdx];
           } else if (switcher_keyboard_id == 2) {
             for (int i = 0; i < 3; ++i) {
-              // data[i][section][dataIndex] = hexVector[row+2][displayCol + i * slave_key_each_row_num][depthIdx];
-              data[i][section][dataIndex] = hexVector[row][displayCol + i * slave_key_each_row_num][depthIdx];
+              data[i][section][dataIndex] = hexVector[row+2][displayCol + i * slave_key_each_row_num][depthIdx];
+              // data[i][section][dataIndex] = hexVector[row][displayCol + i * slave_key_each_row_num][depthIdx];
               data[i+3][section][dataIndex] = hexVector[row][displayCol + i * slave_key_each_row_num][depthIdx];
             }
           }

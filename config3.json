@@ -1,0 +1,253 @@
+{
+    "downstream_keys": [
+        {
+            "commands": [
+                {
+                    "id": "on_air",
+                    "key_index": 0,
+                    "property": "OnAir",
+                    "target": "DSK",
+                    "type_name": "KeyToggle"
+                },
+                {
+                    "id": "tie",
+                    "key_index": 0,
+                    "property": "Tie",
+                    "target": "DSK",
+                    "type_name": "KeyToggle"
+                }
+            ],
+            "fill_source_config": {
+                "name": "ys4"
+            },
+            "fill_source_index": null,
+            "fill_source_name": "Input:13",
+            "id": "1",
+            "key_source_config": {
+                "name": "ys3"
+            },
+            "key_source_index": null,
+            "key_source_name": "Input:12",
+            "name": "KEY1",
+            "transform": {
+                "position": [
+                    0,
+                    0
+                ],
+                "rotate": 0,
+                "scale": [
+                    1,
+                    1
+                ]
+            }
+        },
+        {
+            "commands": [
+                {
+                    "id": "on_air",
+                    "key_index": 1,
+                    "property": "OnAir",
+                    "target": "DSK",
+                    "type_name": "KeyToggle"
+                },
+                {
+                    "id": "tie",
+                    "key_index": 1,
+                    "property": "Tie",
+                    "target": "DSK",
+                    "type_name": "KeyToggle"
+                }
+            ],
+            "fill_source_config": {
+                "name": "ys2"
+            },
+            "fill_source_index": null,
+            "fill_source_name": "Input:11",
+            "id": "2",
+            "key_source_config": {
+                "name": "ys3"
+            },
+            "key_source_index": null,
+            "key_source_name": "Input:12",
+            "name": "KEY2",
+            "transform": {
+                "position": [
+                    0,
+                    0
+                ],
+                "rotate": 0,
+                "scale": [
+                    1,
+                    1
+                ]
+            }
+        }
+    ],
+    "frame_rate_num": 50,
+    "delegate_key_sources": [
+        {
+            "name": "ys2",
+            "set_source_command_arg": {
+                "type_name": "SetDelegateKeySource",
+                "fill_source": "Input:11",
+                "key_source": "",
+                "mode": "Auto"
+            },
+            "source_index": 0
+        },
+        {
+            "name": "ys3",
+            "set_source_command_arg": {
+                "type_name": "SetDelegateKeySource",
+                "fill_source": "Input:12",
+                "key_source": "Input:11",
+                "mode": "Auto"
+            },
+            "source_index": 1
+        }
+    ],
+    "pgm": {
+        "sources": [
+            {
+                "commands": [
+                    {
+                        "id": "xpt",
+                        "source": "Input:11",
+                        "target": {
+                            "target": "PGM",
+                            "type": "BackgroundBusName"
+                        },
+                        "type_name": "XPTWrite2"
+                    }
+                ],
+                "name": "ys2",
+                "source_index": 0,
+                "source_name": "Input:11",
+                "source_type": "Input"
+            },
+            {
+                "commands": [
+                    {
+                        "id": "xpt",
+                        "source": "Input:12",
+                        "target": {
+                            "target": "PGM",
+                            "type": "BackgroundBusName"
+                        },
+                        "type_name": "XPTWrite2"
+                    }
+                ],
+                "name": "ys3",
+                "source_index": 1,
+                "source_name": "Input:12",
+                "source_type": "Input"
+            },
+            {
+                "commands": [
+                    {
+                        "id": "xpt",
+                        "source": "Input:13",
+                        "target": {
+                            "target": "PGM",
+                            "type": "BackgroundBusName"
+                        },
+                        "type_name": "XPTWrite2"
+                    }
+                ],
+                "name": "ys4",
+                "source_index": 2,
+                "source_name": "Input:13",
+                "source_type": "Input"
+            },
+            {
+                "commands": [
+                    {
+                        "id": "xpt",
+                        "source": "Input:14",
+                        "target": {
+                            "target": "PGM",
+                            "type": "BackgroundBusName"
+                        },
+                        "type_name": "XPTWrite2"
+                    }
+                ],
+                "name": "ys1",
+                "source_index": 3,
+                "source_name": "Input:14",
+                "source_type": "Input"
+            }
+        ]
+    },
+    "pvw": {
+        "sources": [
+            {
+                "commands": [
+                    {
+                        "id": "xpt",
+                        "source": "Input:11",
+                        "target": {
+                            "target": "PVW",
+                            "type": "BackgroundBusName"
+                        },
+                        "type_name": "XPTWrite2"
+                    }
+                ],
+                "name": "ys2",
+                "source_index": 0,
+                "source_name": "Input:11",
+                "source_type": "Input"
+            },
+            {
+                "commands": [
+                    {
+                        "id": "xpt",
+                        "source": "Input:12",
+                        "target": {
+                            "target": "PVW",
+                            "type": "BackgroundBusName"
+                        },
+                        "type_name": "XPTWrite2"
+                    }
+                ],
+                "name": "ys3",
+                "source_index": 1,
+                "source_name": "Input:12",
+                "source_type": "Input"
+            },
+            {
+                "commands": [
+                    {
+                        "id": "xpt",
+                        "source": "Input:13",
+                        "target": {
+                            "target": "PVW",
+                            "type": "BackgroundBusName"
+                        },
+                        "type_name": "XPTWrite2"
+                    }
+                ],
+                "name": "ys4",
+                "source_index": 2,
+                "source_name": "Input:13",
+                "source_type": "Input"
+            },
+            {
+                "commands": [
+                    {
+                        "id": "xpt",
+                        "source": "Input:14",
+                        "target": {
+                            "target": "PVW",
+                            "type": "BackgroundBusName"
+                        },
+                        "type_name": "XPTWrite2"
+                    }
+                ],
+                "name": "ys1",
+                "source_index": 3,
+                "source_name": "Input:14",
+                "source_type": "Input"
+            }
+        ]
+    }
+}

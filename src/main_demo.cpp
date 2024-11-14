@@ -20,7 +20,7 @@ void init_logger(){
     std::cout << "Log initialization failed: " << ex.what() << std::endl;
   }
 }
-}
+} // namespace seeder
 
 namespace{
 
