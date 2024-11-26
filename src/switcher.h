@@ -9,6 +9,7 @@
 #include <json.hpp>
 #include <vector>
 #include "http_client.h"
+#include "http_server.h"
 #include "websocket_client.h"
 #include "commumication/config.h"
 
@@ -24,13 +25,13 @@ public:
   ~Switcher();
 
   bool init();
+  void stop();
   void loadConfig(nlohmann::json &config);
 
   nlohmann::json get_screens_config(const std::string &screen_path);
   void store_screens_config(
     std::vector<std::vector<std::vector<std::string>>> &screen_data,
-    nlohmann::json &pgm_commands, nlohmann::json &pvw_commands
-    /*nlohmann::json &key_commands, nlohmann::json &fill_commands*/);
+    nlohmann::json &pgm_commands, nlohmann::json &pvw_commands, nlohmann::json &proxy_keys_commands);
   void get_hex_vector(const std::vector<std::string>& names, 
     std::vector<std::vector<std::string>>& hexVector, int shift_status, int panel_config_num);
   void update_oled_display(std::vector<std::vector<std::vector<std::string>>>& data, 
@@ -40,7 +41,7 @@ public:
   void execute_on_air_command(const nlohmann::json &command);
   void xpt_pgm(int index);
   void xpt_pvw(int index);
-  void on_air_tie_fill(int index);
+  // void on_air_tie_fill(int index);
   
   void cut();
   void auto_();
@@ -77,21 +78,15 @@ public:
   void
   set_panel_status_handler(std::function<void(int, int)> panel_status_handler);
   void 
+  set_proxy_sources_update_handler(std::function<void(std::vector<int>)> proxy_sources_update_handler);
+  void 
   set_dsk_status_handler(std::function<void(std::vector<bool>)> dsk_status_handler);
   void 
   set_transition_type_handler(std::function<void(std::string)> transition_type_handler);
   void 
-  set_proxy_type_handler(std::function<void(std::vector<bool>)> proxy_type_handler);
-  void 
-  set_next_transition_handler(std::function<void(std::vector<bool>)> set_next_transition_handler);
-  void 
-  set_proxy_source_handler(std::function<void(std::vector<bool>)> proxy_source_handler);
-  void 
-  set_mode_status_handler(std::function<void(std::vector<bool>)> mode_status_handler);
-  void 
-  set_shift_status_handler(std::function<void(std::vector<bool>)> shift_status_handler);
-  void 
   set_panel_status_update_handler(std::function<void(nlohmann::json)> panel_status_update_handler);
+  void 
+  set_get_key_status_handler(std::function<void(nlohmann::json)> get_key_status_handle);
   void 
   set_config_update_notify_handler(std::function<void(nlohmann::json)> config_update_notify_handler);
   
@@ -103,21 +98,22 @@ public:
   std::string config_file;
 
   std::shared_ptr<HttpClient> http_client;
+  std::shared_ptr<HttpServer> http_service;
+  
   std::shared_ptr<seeder::websocket_endpoint> endpoint_panel_status;
   std::shared_ptr<seeder::websocket_endpoint> endpoint_config_update;
   nlohmann::json pgm_commands;
   nlohmann::json pvw_commands;
-  nlohmann::json key_commands;
-  nlohmann::json key_sources_commands;
+  nlohmann::json proxy_keys_commands;
   
   int pgm_source_sum = 0;
   int pvw_source_sum = 0;
-  int key_sum = 0;
-  int key_sources_sum = 0;
+  int proxy_sum = 0;
+  int proxy_sources_sum = 0;
 
   int pgm_shift_status = 0;
   int pvw_shift_status = 0;
-  int key_source_shift_status = 0;
+  int proxy_source_shift_status = 0;
   
   std::vector<int> sw_pgm_pvw_shift_status = {0,0};
 

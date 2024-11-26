@@ -73,6 +73,15 @@ void websocket_endpoint::panel_status_handler_message(websocketpp::connection_hd
     panel_status_handler(pgm_index.is_null() ? -1 : pgm_index.get<int>(), pvw_index.is_null() ? -1 : pvw_index.get<int>());
   }
 
+  if (proxy_sources_update_handler) {
+    std::vector<int> proxy_sources;
+    proxy_sources.clear();
+    for(auto &sources : json_data["downstream_keys"]) {
+      proxy_sources.push_back(sources["fill_source_index"].is_null() ? -1 : sources["fill_source_index"].get<int>());
+    }
+    proxy_sources_update_handler(proxy_sources);
+  }
+
   // 处理 DSK 状态
   if (dsk_status_handler) {
     std::vector<bool> dsk_status;
@@ -89,45 +98,14 @@ void websocket_endpoint::panel_status_handler_message(websocketpp::connection_hd
         json_data["transition_status"]["active_type"];
     transition_type_handler(activate_transition_type);
   }
-  // 处理 下一个过度效果类型 状态
-  if (next_transition_handler) {
-    std::vector<bool> next_transition_type =
-        json_data["next_transition_status"]["next_type"];
-    next_transition_handler(next_transition_type);
-  }
-
-  // 代理键
-  if (proxy_type_handler) {
-    std::vector<bool> proxy_type =
-        json_data["proxy_type"]["proxy_type"];
-    proxy_type_handler(proxy_type);
-  }
-
-  // 代理源
-  if (proxy_source_handler) {
-    std::vector<bool> proxy_source =
-        json_data["proxy_source"]["proxy_type_source"];
-    proxy_source_handler(proxy_source);
-  }
-
-  //mode
-  if (mode_status_handler) {
-    std::vector<bool> mdoe_status =
-        json_data["mode_status"]["mode_type"];
-    mode_status_handler(mdoe_status);
-  }
-
-  // keytrans
-  if (shift_status_handler) {
-    std::vector<bool> shift_status =
-        json_data["shift_status"]["shift_type"];
-    shift_status_handler(shift_status);
-  }
 
   if(panel_status_update_handler) {
     panel_status_update_handler(json_data);
   }
 
+  if (get_key_status_handler) {
+    get_key_status_handler(json_data);
+  }
 }
 
 //config update message handler
@@ -150,6 +128,16 @@ void websocket_endpoint::set_panel_status_update_handler(
   this->panel_status_update_handler = panel_status_update_handler;
 }
 
+void websocket_endpoint::set_proxy_sources_update_handler(
+    std::function<void(std::vector<int>)> proxy_sources_update_handler) {
+  this->proxy_sources_update_handler = proxy_sources_update_handler;
+}
+
+void websocket_endpoint::set_get_key_status_handler(
+    std::function<void(nlohmann::json)> get_key_status_handler) {
+  this->get_key_status_handler = get_key_status_handler;
+}
+
 void websocket_endpoint::set_panel_status_handler(
     std::function<void(int, int)> panel_status_handler) {
   this->panel_status_handler = panel_status_handler;
@@ -163,31 +151,6 @@ void websocket_endpoint::set_dsk_status_handler(
 void websocket_endpoint::set_transition_type_handler(
     std::function<void(std::string)> transition_type_handler) {
   this->transition_type_handler = transition_type_handler;
-}
-
-void websocket_endpoint::set_next_transition_handler(
-    std::function<void(std::vector<bool>)> next_transition_handler) {
-  this->next_transition_handler = next_transition_handler;
-}
-
-void websocket_endpoint::set_proxy_type_handler(
-    std::function<void(std::vector<bool>)> proxy_type_handler) {
-  this->proxy_type_handler = proxy_type_handler;
-}
-
-void websocket_endpoint::set_proxy_source_handler(
-    std::function<void(std::vector<bool>)> proxy_source_handler) {
-  this->proxy_source_handler = proxy_source_handler;
-}
-
-void websocket_endpoint::set_mode_status_handler(
-    std::function<void(std::vector<bool>)> mode_status_handler) {
-  this->mode_status_handler = mode_status_handler;
-}
-
-void websocket_endpoint::set_shift_status_handler(
-    std::function<void(std::vector<bool>)> shift_status_handler) {
-  this->shift_status_handler = shift_status_handler;
 }
 
 websocket_endpoint::~websocket_endpoint() {
@@ -238,8 +201,6 @@ int websocket_endpoint::connect(std::string const &uri) {
       websocketpp::lib::bind(&connection_metadata::on_open, metadata_ptr,
                              &m_endpoint, websocketpp::lib::placeholders::_1));
   // 注册连接失败的Handler
-  // con->set_fail_handler(
-  //     [this, uri](websocketpp::connection_hdl hdl) { this->connect(uri); });
   con->set_fail_handler(
       websocketpp::lib::bind(&connection_metadata::on_fail, metadata_ptr,
                              &m_endpoint, websocketpp::lib::placeholders::_1));

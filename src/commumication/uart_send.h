@@ -21,7 +21,7 @@
 #include <fstream>
 #include <iomanip>
 #include <spdlog/common.h>
-#include "can_receive.h"
+#include "../switcher.h"
 #include "http_client.h"
 #include "ascll_convert_16_demo.h"
 #include "config.h"
@@ -70,7 +70,7 @@ private:
 class DataFrame
 {
 public:
-    explicit DataFrame(const std::shared_ptr<config::Config> control_panel_config);
+    explicit DataFrame(const std::shared_ptr<config::Config> control_panel_config, std::shared_ptr<Switcher> switcher);
 
     ~DataFrame();
 
@@ -81,14 +81,12 @@ public:
                                                 unsigned char device_id,
                                                 const std::vector<std::vector<std::vector<std::string>>> &data);
     // 构造第二帧数据 -- 按键灯光数据
-    std::vector<unsigned char> construct_frame2(unsigned char frame_header,
-                                                unsigned char device_id, int pgm,
-                                                int pvw, std::string transition_type, std::vector<int> dsk);
+    std::vector<unsigned char> construct_frame2(unsigned char frame_header, unsigned char device_id, 
+                                                int pgm, int pvw, std::string transition_type, std::vector<int> dsk, int proxy_key);
     std::vector<std::vector<std::vector<std::string>>> readHexData(const std::string& filename);
     void writeHexData(const std::string& filename, const std::vector<std::vector<std::vector<std::string>>>& data);
 
-    // config::Key_Status_Config key_status_config;
-    std::shared_ptr<seeder::Switcher> switcher;
+    std::shared_ptr<Switcher> switcher;
     std::shared_ptr<config::Config> control_panel_config;
     
 private:
@@ -98,7 +96,7 @@ private:
 
     std::string last_transition_type = "";
 
-    std::vector<int> key_colour = {0,1,2,3};
+    std::vector<int> key_colour = {0,1,2,3,4,5};
 
     int num_slave = 0;
     int num_screen = 0;
@@ -118,7 +116,8 @@ class MainController
 {
 public:
     explicit MainController(const UARTConfig &uart_config1, const UARTConfig &uart_config2, 
-                            const std::shared_ptr<config::Config> control_panel_config, const std::shared_ptr<DataFrame> data_frame);
+                        const std::shared_ptr<config::Config> control_panel_config, 
+                        const std::shared_ptr<DataFrame> data_frame, std::shared_ptr<Switcher> switcher);
 
     ~MainController();
 
@@ -134,11 +133,17 @@ public:
     void handler_shift(std::vector<bool> shift);
     void handler_transition_type(std::string transition_type);
     void handler_status(int pgm_, int pvw_);
+    void handle_proxy_keys_status(
+        std::vector<bool>is_on_air0, std::vector<bool>is_tied0, int fill_source_index, 
+        std::vector<bool>is_on_air1, std::vector<bool>is_tied1, int key_source_index);
     void sendFrames();
 
-    void handle_key_press(const std::string &key);
+    void handle_transition_press(const std::string &transition);
+    void handle_proxy_press(const int proxy_idx, const std::string &proxy_type);
+    void handle_proxy_sources_press(std::vector<int> proxy_sources);
+    void handle_get_key_status(nlohmann::json param);
 
-    std::shared_ptr<seeder::Switcher> switcher;
+    std::shared_ptr<Switcher> switcher;
     std::shared_ptr<config::Config> control_panel_config;
     std::vector<std::vector<std::vector<std::string>>> screen_frame_hex_data;
     std::shared_ptr<DataFrame> data_frame_;        // 数据帧对象
@@ -154,10 +159,14 @@ public:
 private:
     std::recursive_mutex mutex;
     
+    nlohmann::json old_trans_type = nlohmann::json();
     int pgm = 1;
     int pvw = 1;
     std::vector<int> sw_pgm_pvw_shift_status = {0,0};
     std::vector<int> dsk = {1, 1};
+    int proxy_key = 0;
+    int proxy_index = 0;
+    std::string proxy_types = "";
     std::vector<int> nextkey = {0};
     std::string transition_type = "";
     int bkgd = 1;
@@ -166,9 +175,6 @@ private:
     int key_each_row_num = 0;
     int max_source_num = 0;
 
-    // 打印数据帧
-    std::vector<unsigned char> format_frame1(const std::vector<unsigned char> &data);
-    std::vector<unsigned char> format_frame2(const std::vector<unsigned char> &data);
 };
 };// namespace seeder
 

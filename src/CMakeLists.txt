@@ -7,22 +7,23 @@ find_package(WebsocketPP REQUIRED)
 find_package(spdlog REQUIRED)
 
 include_directories(../lib
-                    commumication/)
+                    commumication/
+                    util/)
 
 
 add_executable(
     switcher_keyboard
+    main.cpp
+    server.cpp
+    switcher.cpp
+    util/os.cpp
     commumication/can_receive.cpp
     commumication/uart_send.cpp
-    #main.cpp
-    main_demo.cpp
-    server.cpp
     commumication/http_client.cpp
+    commumication/http_server.cpp
     commumication/websocket_client.cpp
     commumication/config.h
     commumication/ascll_convert_16_demo.cpp
-    switcher.cpp
-    #uart_can_all.cpp
 )
 
 target_link_libraries(switcher_keyboard PRIVATE spdlog::spdlog Boost::system Boost::filesystem Threads::Threads Boost::program_options Boost::log)

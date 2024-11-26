@@ -12,7 +12,9 @@ std::shared_ptr<seeder::ASCIIConvert16> ascll_convert_16;
 Switcher::Switcher(std::string config_file_path)
     : config_file(config_file_path) {}
 
-Switcher::~Switcher() {}
+Switcher::~Switcher() {
+  stop();
+}
 
 bool Switcher::init() {
   if (config_file.empty()) {
@@ -33,6 +35,9 @@ bool Switcher::init() {
   http_client->cli_->set_write_timeout(0,control_panel_config->http_timeout.http_write_timeout);
   http_client->cli_->set_read_timeout(0,control_panel_config->http_timeout.http_read_timeout);
 
+  http_service = std::make_shared<HttpServer>("192.168.123.145", 12001);
+  http_service->start();
+
   // 初始化 WebSocket 端点
   endpoint_panel_status = std::make_shared<seeder::websocket_endpoint>();
   endpoint_config_update = std::make_shared<seeder::websocket_endpoint>();
@@ -44,6 +49,10 @@ bool Switcher::init() {
   endpoint_config_update->connect(control_panel_config->url_config.ws_url_config_update);
 
   return true;
+}
+
+void Switcher::stop() {
+  http_service->stop();
 }
 
 void Switcher::loadConfig(nlohmann::json &config) {
@@ -117,42 +126,54 @@ static void take_source_xpt_commands(const nlohmann::json &sources,nlohmann::jso
   }
 }
 
-static void take_source_on_air_tie_commands(const nlohmann::json &sources,nlohmann::json &out_commands) {
+static void take_downstream_keys_commands(const nlohmann::json &proxy_keys, nlohmann::json &out_commands) {
   out_commands = nlohmann::json::array();
-  if (!sources.is_array()) {return;}
-  for (auto &source : sources) {
-    nlohmann::json command;
-    auto &j_commands = source.at("commands");
+  if (!proxy_keys.is_array()) {return;}
+  for (auto &key : proxy_keys) {
+    nlohmann::json on_air_command;
+    nlohmann::json tie_command;
+    // 创建新的commands数组
+    nlohmann::json new_commands;
+    auto &j_commands = key.at("commands");
     if (j_commands.is_array()) {
       for (auto &j_command : j_commands) {
-        if (j_command.at("id") == "xpt") {
-          command = j_command;
-          break;
+        if (j_command.at("id") == "on_air") {
+          on_air_command = j_command;
         }
+        if (j_command.at("id") == "tie") {
+          tie_command = j_command;
+        }
+        new_commands = nlohmann::json::array();
+        if (!on_air_command.empty()) {
+          new_commands.push_back(on_air_command);
+        }
+        if (!tie_command.empty()) {
+          new_commands.push_back(tie_command);
+        }
+        break;
       }
     }
-    out_commands.push_back(command);
+    out_commands.push_back(new_commands);
   }
 }
 
 void Switcher::store_screens_config(
   std::vector<std::vector<std::vector<std::string>>> &screen_data,
-  nlohmann::json &pgm_commands, nlohmann::json &pvw_commands
-  nlohmann::json &key_commands, nlohmann::json &fill_commands
+  nlohmann::json &pgm_commands, nlohmann::json &pvw_commands, nlohmann::json &proxy_keys_commands
 ) {
   nlohmann::json config_screen = get_screens_config(control_panel_config->url_config.screen_path);
   auto &panel_config = control_panel_config->panel_config;
   auto &pgm_name = control_panel_config->screen_config.pgm_name;
   auto &pvw_name = control_panel_config->screen_config.pvw_name;
-  auto &key_name = control_panel_config->screen_config.key_name;
-  auto &key_sources_name = control_panel_config->screen_config.key_sources_name;
+  auto &proxy_name = control_panel_config->screen_config.proxy_name;
+  auto &proxy_sources_name = control_panel_config->screen_config.proxy_sources_name;
   auto &key_each_row_num = panel_config.key_each_row_num;
   int panel_config_num = key_each_row_num - 1;
 
   pgm_name.clear();
   pvw_name.clear();
-  key_name.clear();
-  key_sources_name.clear();
+  proxy_name.clear();
+  proxy_sources_name.clear();
   
   for(auto &source : config_screen["pgm"]["sources"]){
     pgm_name.push_back(source["name"]);
@@ -162,11 +183,11 @@ void Switcher::store_screens_config(
   }
   //代理键第一行 key name
   for(auto &source : config_screen["downstream_keys"]){
-    key_name.push_back(source["name"]);
+    proxy_name.push_back(source["name"]);
   }
   //代理键第二行 key sources name 
   for(auto &source : config_screen["delegate_key_sources"]){
-    key_sources_name.push_back(source["name"]);
+    proxy_sources_name.push_back(source["name"]);
   }
 
   std::vector<std::vector<std::vector<std::string>>> hexVector(
@@ -184,16 +205,16 @@ void Switcher::store_screens_config(
     logger->warn("pvw input source received null");
   }
   //代理键第一行 key name
-  if(!key_name.empty()) {
-    this->key_sum = key_name.size();
-    get_hex_vector(key_name, hexVector[2],-1, panel_config_num);//代理键
+  if(!proxy_name.empty()) {
+    this->proxy_sum = proxy_name.size();
+    get_hex_vector(proxy_name, hexVector[2],-1, panel_config_num);//代理键
   } else {
     logger->warn("key type input source received null");
   }
   //代理键第二行 key sources name 
-  if(!key_sources_name.empty()) {
-    this->key_sources_sum = key_sources_name.size();
-    get_hex_vector(key_sources_name, hexVector[3], this->key_source_shift_status, panel_config_num);//代理键
+  if(!proxy_sources_name.empty()) {
+    this->proxy_sources_sum = proxy_sources_name.size();
+    get_hex_vector(proxy_sources_name, hexVector[3], this->proxy_source_shift_status, panel_config_num);//代理键源
   } else {
       logger->warn("key input source received null");
   }
@@ -206,12 +227,12 @@ void Switcher::store_screens_config(
 
   auto &pgm_sources = config_screen["pgm"]["sources"];
   auto &pvw_sources = config_screen["pvw"]["sources"];
-  auto &key_sources = config_screen["downstream_keys"];
-  auto &key_sourcess = config_screen["delegate_key_sources"];
+  auto &proxy_keys = config_screen["downstream_keys"];
+  auto &proxy_key_sources = config_screen["delegate_key_sources"];
   take_source_xpt_commands(pgm_sources, pgm_commands);
   take_source_xpt_commands(pvw_sources, pvw_commands);
-  take_source_on_air_tie_commands(key_sources, key_commands);
-  take_source_on_air_tie_commands(key_sourcess, key_sources_commands);
+  take_downstream_keys_commands(proxy_keys, proxy_keys_commands);
+  // take_delegate_key_sources_commands(delegate_key_sources, delegate_key_sources_commands);
 }
 
 void Switcher::get_hex_vector(
@@ -271,7 +292,7 @@ void Switcher::execute_xpt_command(const nlohmann::json &command) {
   http_client->post("/api/panel/mixer_command", command.dump());
 }
 void Switcher::execute_on_air_command(const nlohmann::json &command) {
-  http_client->post("/api/mixer/update_keyer_params", command.dump());
+  http_client->post("/api/panel/mixer_command", command.dump());
 }
 //pgm pvw ket fill
 void Switcher::xpt_pgm(int index) {
@@ -292,15 +313,15 @@ void Switcher::xpt_pvw(int index) {
   }
   execute_xpt_command(pvw_commands.at(index));
 }
-void Switcher::on_air_tie_fill(int index) {
-  if (!key_fill_commands.is_array()) {
-    return;
-  }
-  if (index < 0 || index >= key_fill_commands.size()) {
-    return;
-  }
-  execute_on_air_command(key_fill_commands.at(index));
-}
+// void Switcher::on_air_tie_fill(int index) {
+//   if (!key_fill_commands.is_array()) {
+//     return;
+//   }
+//   if (index < 0 || index >= key_fill_commands.size()) {
+//     return;
+//   }
+//   execute_on_air_command(key_fill_commands.at(index));
+// }
   
 //cut
 void Switcher::cut() {
@@ -408,6 +429,11 @@ void Switcher::auto_() {
   logger->info("auto transition");
   http_client->post("/api/panel/mixer_command", command.dump());
 }
+
+// //key
+// void Switcher::proxy_key(int idx) {
+//   this->proxy_key = idx;
+// }
 
 //1 MODE按键 -- 位于代理键的上行最后一个按键 -- 按一次切换到：KEY->AUX->UTL->MACRO->SNAPSHOT->M/E，长按可以对KEY、AUX、UTL、MACRO、SNAPSHOT、M/E进行选择
 void Switcher::mode() {
@@ -647,6 +673,7 @@ void Switcher::set_panel_status_handler(
     std::function<void(int, int)> panel_status_handler) {
   endpoint_panel_status->set_panel_status_handler(panel_status_handler);
 }
+
 void Switcher::set_dsk_status_handler(
     std::function<void(std::vector<bool>)> dsk_status_handler) {
   endpoint_panel_status->set_dsk_status_handler(dsk_status_handler);
@@ -657,34 +684,19 @@ void Switcher::set_transition_type_handler(
   endpoint_panel_status->set_transition_type_handler(transition_type_handler);
 }
 
-void Switcher::set_next_transition_handler(
-    std::function<void(std::vector<bool>)> next_transition_handler) {
-  endpoint_panel_status->set_next_transition_handler(next_transition_handler);
-}
-
-void Switcher::set_proxy_type_handler(
-    std::function<void(std::vector<bool>)> proxy_type_handler) {
-  endpoint_panel_status->set_proxy_type_handler(proxy_type_handler);
-}
-
-void Switcher::set_proxy_source_handler(
-    std::function<void(std::vector<bool>)> proxy_source_handler) {
-  endpoint_panel_status->set_proxy_source_handler(proxy_source_handler);
-}
-
-void Switcher::set_mode_status_handler(
-    std::function<void(std::vector<bool>)> mode_status_handler) {
-  endpoint_panel_status->set_mode_status_handler(mode_status_handler);
-}
-
-void Switcher::set_shift_status_handler(
-    std::function<void(std::vector<bool>)> shift_status_handler) {
-  endpoint_panel_status->set_shift_status_handler(shift_status_handler);
-}
-
 void Switcher::set_panel_status_update_handler(
     std::function<void(nlohmann::json)> panel_status_update_handler) {
   endpoint_panel_status->set_panel_status_update_handler(panel_status_update_handler);
+}
+
+void Switcher::set_proxy_sources_update_handler(
+    std::function<void(std::vector<int>)> proxy_sources_update_handler) {
+  endpoint_panel_status->set_proxy_sources_update_handler(proxy_sources_update_handler);
+}
+
+void Switcher::set_get_key_status_handler(
+    std::function<void(nlohmann::json)> get_key_status_handle) {
+  endpoint_panel_status->set_get_key_status_handler(get_key_status_handle);
 }
 
 void Switcher::set_config_update_notify_handler(

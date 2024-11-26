@@ -104,8 +104,8 @@ void CanSocket::stop() {close(socket_fd);}
 
 
 //接受 CanSocket 实例
-CanFrameProcessor::CanFrameProcessor(CanSocket &canSocket, std::shared_ptr<seeder::Switcher> sw)
-    : socket(canSocket), switcher(sw){
+CanFrameProcessor::CanFrameProcessor(CanSocket &canSocket, std::shared_ptr<seeder::Switcher> switcher)
+    : socket(canSocket), switcher(switcher){
     init();
 }
 
@@ -172,7 +172,7 @@ void CanFrameProcessor::processFrame(const can_frame &frame)
         if(frame.can_id == can_frame_ids[0]){
             handle_FrameData(frame);
         } else if(frame.can_id == can_frame_ids[1]){
-            // handle_FrameData1(frame);
+            handle_FrameData1(frame);
         } else if(frame.can_id == can_frame_ids[2]){
             handle_FrameData4(frame);
         } else {
@@ -234,14 +234,20 @@ void CanFrameProcessor::handle_FrameData(const can_frame &frame)
             }
             if (can_start_clipper) {
                 if(this->progress_ratio_now != clipper_max && this->progress_ratio_now != 0) {
+                    auto lock = acquire_lock();
                     switcher->mixer_command_manual(this->is_auto);
+                    lock.unlock();
                 }
             }
         } else if (this->is_auto) {
             if (is_up_cut) {
+                auto lock = acquire_lock();
                 switcher->mixer_command_manual_ratio(this->progress_ratio_now);
+                lock.unlock();
             } else if (!is_up_cut) {
+                auto lock = acquire_lock();
                 switcher->mixer_command_manual_ratio(clipper_max - progress_ratio_now);
+                lock.unlock();
             }
 
             if (this->progress_ratio_now == 0) {
@@ -262,10 +268,7 @@ void CanFrameProcessor::handle_FrameData(const can_frame &frame)
 void CanFrameProcessor::handle_panel_status_update(nlohmann::json param) {
     // std::cout << param.dump(4) << std::endl;
     if (param["transition_status"]["is_playing"]) {
-        if (!this->is_auto) {
-            // switcher->mixer_command_manual_ratio(this->progress_ratio_now);
-            this->is_auto = true;
-        }
+        this->is_auto = true;
     } else if (!param["transition_status"]["is_playing"]) {
         this->is_auto = false;
     } else {
@@ -281,17 +284,42 @@ void CanFrameProcessor::handle_FrameData1(const can_frame &frame)
     if (slave_key_press_states[0][0].update(frame.data[0] != 0x00 ? 1 : 0) && slave_key_press_states[0][0].value) {
         idx = calculateidex(frame.data[0], 1);
         // handles_proxy_key(idx);
+        on_proxy_press(idx, "key");
+        proxy_type = "key" + std::to_string(idx);
     }
     //代理源
     if (slave_key_press_states[0][1].update(frame.data[1] != 0x00 ? 1 : 0) && slave_key_press_states[0][1].value) {
         idx = calculateidex(frame.data[1], 9);
-        if (idx != 12) {
+        if (idx < 12) {
             // handles_proxy_key(idx);
+            on_proxy_press(idx, "key");
+            proxy_type = "key" + std::to_string(idx);
+        } else if (idx == 12) {
+            on_proxy_press(1, "mode");
+        } else {
+            //TODO：判断一下是否选择了key
+            if (!proxy_type.empty()) {
+                on_proxy_press(idx-12, "key source");
+                proxy_source = "key source" + std::to_string(idx-12);
+            } else {
+                logger->info("Please select a key");
+            }
         }
     }
     if (slave_key_press_states[0][2].update(frame.data[2] != 0x00 ? 1 : 0) && slave_key_press_states[0][2].value) {
         idx = calculateidex(frame.data[2], 17);
         // handles_proxy_key(idx);
+        if (idx < 24) {
+            if (!proxy_type.empty()) {
+                on_proxy_press(idx-12, "key source");
+                proxy_source = "key source" + std::to_string(idx-12);
+            } else {
+                logger->info("Please select a key");
+            }
+        } else {
+            //TODO: 执行downstream_source_shift
+
+        }
     }
     /*
     //处理mode按键长按状态
@@ -417,7 +445,7 @@ uint16_t CanFrameProcessor::convertToPercentage(uint8_t highbyte, uint8_t lowbyt
 
 void CanFrameProcessor::handles_pgm_pvw_module(int idx, bool is_pgm) {
     if (idx <= 0 || idx > key_each_row_num + key_difference_value) {
-        logger->warn("Received an incorrect key value, idx is {}",idx);
+        logger->warn("Received an incorrect pgm pvw key value, idx is {}",idx);
         return;
     }
 
@@ -459,25 +487,8 @@ void CanFrameProcessor::update_pgm_pvw_shift_status(int key_each_row_num, bool i
     on_shift_press();
 }
 
-void CanFrameProcessor::update_key_source_shift_status(int key_each_row_num) {
-    if (key_source_sum < key_each_row_num) {
-        logger->info("The input source is insufficient, the shift function is disabled procedure");
-        return;
-    }
-
-    if (key_source_sum < (key_each_row_num * 2 - 1)) {key_source_shift_status = (key_source_shift_status + 1) % 2;} 
-    else if (key_source_sum < (key_each_row_num * 3 - 2)) {key_source_shift_status = (key_source_shift_status + 1) % 3;} 
-    else {key_source_shift_status = (key_source_shift_status + 1) % 4;}
-
-    on_shift_press();
-}
-
 int CanFrameProcessor::handle_pgm_pvw_increment(int pgm_pvw_shift_status) {
     return pgm_pvw_shift_status * (key_each_row_num - 1);
-}
-
-int CanFrameProcessor::handle_key_source_increment(int key_source_shift_status) {
-    return key_source_shift_status * (key_each_row_num - 1);
 }
 
 void CanFrameProcessor::handles_clipper_key(int idx) {
@@ -491,17 +502,20 @@ void CanFrameProcessor::handles_clipper_key(int idx) {
         switcher->prevtrans();
     }*/
     if (idx == 11){
-        on_key_press("mix");
+        on_transition_press("mix");
     }
-    /*if (idx == 12) {
-        on_key_press("dip");
+    if (idx == 12) {
+        on_transition_press("dip");
     }
     if (idx == 13) {
-        on_key_press("luma_wipe");
+        on_transition_press("luma_wipe");
     }
     if (idx == 14) {
-        on_key_press("slide");
-    }*/
+        on_transition_press("slide");
+    }
+    if (idx == 15) {
+        on_transition_press("dve");
+    }
     if (idx == 16){
         switcher->auto_();
     }
@@ -519,69 +533,59 @@ void CanFrameProcessor::handles_clipper_key(int idx) {
     }*/
 }
 
-void CanFrameProcessor::handles_proxy_key(int idx) {
-    if (idx > 0 && idx < 12) {
-        switch(this->proxy_type) {
-            case KEY: switcher->proxy_key_source(idx); break;
-            case AUX: switcher->proxy_aux_source(idx); break;
-            case UTL: switcher->proxy_macro_source(idx); break;
-            case MACRO: switcher->proxy_snapshot_source(idx); break;
-            case SNAPSHOT: switcher->proxy_snapshot_source(idx); break;
-            case M_e: switcher->proxy_m_e_source(idx); break;
-            default: logger->warn("The proxy mode is not set"); break;
-        }
-        /*if(this->mode_status == LongPress) {
-            switch(idx) {
-                case 1: switcher->proxy_key(); this->proxy_type = KEY; break;
-                case 2: switcher->proxy_aux(); this->proxy_type = AUX; break;
-                case 3: switcher->proxy_utl(); this->proxy_type = UTL; break;
-                case 4: switcher->proxy_macro(); this->proxy_type = MACRO; break;
-                case 5: switcher->proxy_snapshot(); this->proxy_type = SNAPSHOT; break;
-                case 6: switcher->proxy_m_e(); this->proxy_type = M_e; break;
-                default: logger->warn("The proxy mode is not set"); break;
-            }
-        }*/
-    } else if (idx == 12) {
+void CanFrameProcessor::handles_proxy_key_module(int idx, bool is_proxy_type) {
+    if (idx <= 0 || idx > key_each_row_num + key_difference_value) {
+        logger->warn("Received an incorrect proxy key value, idx is {}",idx);
+        return;
+    }
+
+    if (idx < key_each_row_num) {
+        handle_proxy(idx, is_proxy_type);
+    } else if (idx == key_each_row_num) {
         //TODO: 判断MODE按键的状态是否是长按
+
+    } else if (idx > key_each_row_num && idx < key_each_row_num + key_difference_value) {
+        handle_proxy(idx, is_proxy_type);
+    } else if (idx == key_each_row_num + key_difference_value) {
+        update_proxy_source_shift_status(key_each_row_num, is_proxy_type);
+    }
+    
+}
+
+void CanFrameProcessor::handle_proxy(int idx, bool is_proxy_type) {
+    proxy_shift_amount = handle_proxy_source_increment(switcher->proxy_source_shift_status);
+    if (is_proxy_type) {
+        on_proxy_press(idx, "key");
+        logger->info("send can pgm : {}", std::to_string(idx + pgm_pvw_shift_amount));
+    } else {
+        // switcher->xpt_pvw(idx - key_difference_value -1 + pgm_pvw_shift_amount);
+        // TODO: 像switcher接口发送
         
-        switch (mode_status) {
-            case InitValue: switcher->mode(); this->mode_status = FirstValue; break;
-            case FirstValue: switcher->mode(); this->mode_status = SecondValue; break;
-            case SecondValue: switcher->mode(); this->mode_status = ThirdValue; break;
-            case ThirdValue: switcher->mode(); this->mode_status = FourValue; break;
-            case FourValue: switcher->mode(); this->mode_status = FiveValue; break;
-            case FiveValue: switcher->mode(); this->mode_status == InitValue; break;
-            // case LongPress: switcher->mode(); break;
-            default: logger->warn("The mode button is not set"); break;
-        }
-    } else if (idx > 12 && idx < 24) {
-        /*if (this->mode_status == LongPress) {
-            return;
-        }*/
-        switch(this->proxy_type) {
-            case KEY: switcher->proxy_source(idx - key_difference_value, "key"); break;
-            case AUX: switcher->proxy_source(idx - key_difference_value, "aux"); break;
-            case UTL: switcher->proxy_source(idx - key_difference_value, "macro"); break;
-            case MACRO: switcher->proxy_source(idx - key_difference_value, "macro"); break;
-            case SNAPSHOT: switcher->proxy_source(idx - key_difference_value, "snapshot"); break;
-            case M_e: switcher->proxy_source(idx - key_difference_value, "m_e"); break;
-            default: logger->warn("The mode button is not set");
-        }        
-    } else if (idx == 24) {
-        /*if (this->mode_status == LongPress) {
-            return;
-        }*/
-        switch(this->proxy_type) {
-            case KEY: switcher->shift("key"); break;
-            case AUX: switcher->shift("aux"); break;
-            case UTL: switcher->shift("utl"); break;
-            case MACRO: switcher->shift("macro"); break;
-            case SNAPSHOT: switcher->shift("snapshot"); break;
-            case M_e: switcher->shift("m_e"); break;
-            default: logger->warn("The mode button is not set");
-        }
+        logger->info("send can pvw : {}", std::to_string(idx + pgm_pvw_shift_amount - key_difference_value));
     }
 }
+
+void CanFrameProcessor::update_proxy_source_shift_status(int key_each_row_num, bool is_proxy_type) {
+    int& proxy_source_shift_status = switcher->proxy_source_shift_status;
+    proxy_source_sum = switcher->proxy_sources_sum;
+
+    if (proxy_source_sum < key_each_row_num) {
+        logger->info("The input source is insufficient, the shift function is disabled procedure");
+        return;
+    }
+
+    if (proxy_source_sum < (key_each_row_num * 2 - 1)) {proxy_source_shift_status = (proxy_source_shift_status + 1) % 2;} 
+    else if (proxy_source_sum < (key_each_row_num * 3 - 2)) {proxy_source_shift_status = (proxy_source_shift_status + 1) % 3;} 
+    else {proxy_source_sum = (proxy_source_shift_status + 1) % 4;}
+
+    on_shift_press();
+}
+
+int CanFrameProcessor::handle_proxy_source_increment(int key_source_shift_status) {
+    return key_source_shift_status * (key_each_row_num - 1);
+}
+
+
 
 // 计算按键索引的辅助函数
 int CanFrameProcessor::calculateidex(unsigned char value, int offset)

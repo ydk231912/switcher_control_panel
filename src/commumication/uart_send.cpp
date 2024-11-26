@@ -101,8 +101,8 @@ void UART::stop() {
     closePort();
 }
 
-DataFrame::DataFrame(const std::shared_ptr<config::Config> control_panel_config) : 
-    control_panel_config(control_panel_config) {
+DataFrame::DataFrame(const std::shared_ptr<config::Config> control_panel_config, std::shared_ptr<Switcher> switcher) : 
+    control_panel_config(control_panel_config), switcher(switcher) {
     init();
 }
 
@@ -221,9 +221,8 @@ std::vector<unsigned char> DataFrame::construct_frame1(
 }
 
 // 构造第二帧数据 -- 按键灯光数据
-std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_header,
-                                                       unsigned char device_id, int pgm,int pvw,
-                                                       std::string transition_type, std::vector<int> dsk)
+std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_header, unsigned char device_id, 
+                                                       int pgm, int pvw, std::string transition_type, std::vector<int> dsk, int proxy_key)
 {
     size_t offset = 0;
     std::vector<unsigned char> frame(key_frame_size, 0); // 初始化数据帧
@@ -233,7 +232,17 @@ std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_heade
     
     std::vector<unsigned char> main_ctrl_keys(main_ctrl_keys_size, 1);
     if (transition_type == "mix") {
-        main_ctrl_keys[10] = key_colour[2];
+        main_ctrl_keys[10] = key_colour[5];
+    } else if (transition_type == "dip") {
+        main_ctrl_keys[11] = key_colour[5];
+    } else if (transition_type == "luma_wipe") {
+        main_ctrl_keys[12] = key_colour[5];
+    } else if (transition_type == "slide") {
+        main_ctrl_keys[13] = key_colour[5];
+    } else if (transition_type == "dve") {
+        main_ctrl_keys[14] = key_colour[5];
+    } else {
+
     }
     if (!dsk.empty()) {
         for (size_t i = 0; i < dsk.size() && i < main_ctrl_keys_size - 17; ++i) {
@@ -253,7 +262,7 @@ std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_heade
         }
     };
     if (switcher->pgm_shift_status != switcher->sw_pgm_pvw_shift_status[0]) {
-        logger->info("The status of the PGM shift key is incorrect");
+        // logger->info("The status of the PGM shift key is incorrect");
     } else {
         if (pgm > 0) {
             if (switcher_keyboard_id == 1) {
@@ -266,15 +275,15 @@ std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_heade
         }
     };
     if (switcher->pvw_shift_status != switcher->sw_pgm_pvw_shift_status[1]) {
-        logger->info("The status of the PVW shift key is incorrect");
+        // logger->info("The status of the PVW shift key is incorrect");
     } else {
         if (pvw > 0) {
             if (switcher_keyboard_id == 1) {
                 update_slave_key(1, key_difference_value + pvw, key_colour[3]);
             } else {
-                update_slave_key(3, key_difference_value + pvw, key_colour[3]);
-                update_slave_key(4, (pvw > key_difference_value + slave_key_each_row_num && pgm <= key_difference_value + slave_key_each_row_num*2) ? pvw - slave_key_each_row_num : 0, key_colour[3]);
-                update_slave_key(5, (pvw > key_difference_value + slave_key_each_row_num*2) ? pvw - slave_key_each_row_num*2 : 0, key_colour[3]);
+                update_slave_key(3, (pvw <= slave_key_each_row_num) ? key_difference_value + pvw : 0, key_colour[3]);
+                update_slave_key(4, (pvw > slave_key_each_row_num && pvw <= slave_key_each_row_num*2) ? pvw + key_difference_value - slave_key_each_row_num : 0, key_colour[3]);
+                update_slave_key(5, (pvw > slave_key_each_row_num*2) ? pvw + key_difference_value - slave_key_each_row_num*2 : 0, key_colour[3]);
             }
         }
     }
@@ -306,8 +315,10 @@ unsigned char DataFrame::calculate_checksum(const std::vector<unsigned char> &da
 
 // 主控制类 -- 处理服务器的消息并发送数据帧
 MainController::MainController(const UARTConfig &uart_config1, const UARTConfig &uart_config2, 
-    const std::shared_ptr<config::Config> control_panel_config, const std::shared_ptr<DataFrame> data_frame)
-    : uart1_(uart_config1), uart3_(uart_config2), control_panel_config(control_panel_config) ,data_frame_(data_frame) {
+                        const std::shared_ptr<config::Config> control_panel_config, 
+                        const std::shared_ptr<DataFrame> data_frame, std::shared_ptr<Switcher> switcher)
+    : uart1_(uart_config1), uart3_(uart_config2), control_panel_config(control_panel_config), 
+        data_frame_(data_frame), switcher(switcher) {
     init();
 }
 
@@ -318,8 +329,6 @@ MainController::~MainController() {
 void MainController::init() {
     key_each_row_num = control_panel_config->panel_config.key_each_row_num;
     max_source_num = control_panel_config->panel_config.max_source_num;
-    // uart1_.init();
-    // uart3_.init();
 }
 void MainController::start() {
     uart1_.start();
@@ -341,44 +350,15 @@ void MainController::sendFrames()
         std::this_thread::sleep_for(std::chrono::microseconds(10000));
         lock.lock();
         // std::vector<unsigned char> frame2 = data_frame_.construct_frame2(0xB7, 0x01, this->pgm, this->pvw, this->transition_type, this->dsk);
-        key_status_data = data_frame_->construct_frame2(0xB7, 0x01, this->pgm, this->pvw, this->transition_type, this->dsk);
+        key_status_data = data_frame_->construct_frame2(0xB7, 0x01, this->pgm, this->pvw, this->transition_type, this->dsk, this->proxy_key);
         uart3_.sendFrame(key_status_data);
     }
     catch (const std::exception &e){
         logger->error("发送错误: {}", e.what());
     }
-    #ifdef DEBUG_SEND_LOG
-        format_frame1(frame1);
-        format_frame2(frame2);
-    #endif
+    lock.unlock();
 }
 
-
-// 打印数据帧1 -- 屏幕数据
-std::vector<unsigned char> MainController::format_frame1(const std::vector<unsigned char> &data)
-{
-    std::cout << "Frame1 data:" << std::endl;
-    for (size_t i = 0; i < data.size(); ++i) {
-        std::cout << "0x" << std::hex << std::uppercase <<std::setw(2) << std::setfill('0') << static_cast<int>(data[i]) << " ";
-        if ((i + 1) % 40 == 0) {
-            std::cout  << std::endl;
-        }
-    }
-    return data;
-}
-
-// 打印数据帧2 -- 按键灯光数据
-std::vector<unsigned char> MainController::format_frame2(const std::vector<unsigned char> &data)
-{
-    std::cout << "Frame2 data:" << std::endl;
-    for (size_t i = 0; i < data.size(); ++i) {
-        std::cout  << std::hex << std::uppercase << static_cast<int>(data[i]) << " ";
-        if ((i + 1) % 16 == 0) {
-            std::cout  << std::endl;
-        }
-    }
-    return data;
-}
 
 // 接收服务器的消息，构造并发送数据帧 -- DSK
 void MainController::handler_dsk_status(std::vector<bool> dsk_status)
@@ -391,17 +371,14 @@ void MainController::handler_dsk_status(std::vector<bool> dsk_status)
         if (status != this->dsk[i]){
           sendFlag = true;
           this->dsk[i] = status;
-        //   control_panel_config->key_status_config.keys_trans[i] = status;
         }
       }
     }
-    // for (int i = 0; i < dsk_status.size(); i++){
-    //     logger->info("dsk[{}]: {}", i, dsk_status[i] ? "true" : "false");
-    // }
+    lock.unlock();
     if (sendFlag){
-        lock.unlock();
         sendFrames();
     }
+    
 }
 
 // 接收服务器的消息，构造并发送数据帧 -- nextkey
@@ -422,10 +399,10 @@ void MainController::handler_nextkey(std::vector<bool> nextkey_status)
     for (int i = 0; i < nextkey_status.size(); i++){
         logger->info("nextkey[{}]: {}", i, nextkey_status[i] ? "true" : "false");
     }
+    lock.unlock();
     if (sendFlag){
       sendFrames();
     }
-
 }
 
 // 接收服务器的消息，构造并发送数据帧 -- mode
@@ -475,7 +452,7 @@ void MainController::handler_status(int pgm_, int pvw_)
 
     int pgm_offset = (pgm_ - 1) / i_source;
     int pvw_offset = (pvw_ - 1) / i_source;
-
+    lock.unlock();
     if ((pgm_offset <= max_source_num) && (pvw_offset <= max_source_num)) {
         if (this->pgm == pgm_ && this->pvw == pvw_) {
             return;
@@ -483,41 +460,88 @@ void MainController::handler_status(int pgm_, int pvw_)
             switcher->sw_pgm_pvw_shift_status = {pgm_offset, pvw_offset};
             this->pgm = pgm_ - pgm_offset * i_source;
             this->pvw = pvw_ - pvw_offset * i_source;
-            lock.unlock();
             sendFrames();
         }
     } else {
-        lock.unlock();
         logger->warn("The number of input sources exceeds the configured quantity");
     }
 }
 
-void MainController::handle_key_press(const std::string &key) 
+// 代理键
+void MainController::handle_proxy_keys_status(
+    std::vector<bool>is_on_air0, std::vector<bool>is_tied0, int fill_source_index, 
+    std::vector<bool>is_on_air1, std::vector<bool>is_tied1, int key_source_index){
+    
+}
+
+void MainController::handle_transition_press(const std::string &transition) 
 {
-    nlohmann::json trans_type;
+    auto lock = acquire_lock();
+    nlohmann::json trans_type = nlohmann::json();
     {
-        auto lock = acquire_lock();
-        if (transition_type.empty()) {
-            if (key == "mix") {
-                trans_type = "mix";
-            } else if (key == "dip") {
-                trans_type = "dip";
-            } else if (key == "slide") {
-                trans_type = "slide";
-            } else if (key == "luma_wipe") {
-                trans_type = "luma_wipe";
-            } else {
-                logger->warn("The transition effect incoming type {}, is incorrect",key);
-            }
-            
+        if (transition == "mix") {
+            trans_type = "mix";
+        } else if (transition == "dip") {
+            trans_type = "dip";
+        } else if (transition == "luma_wipe") {
+            trans_type = "luma_wipe";
+        } else if (transition == "slide") {
+            trans_type = "slide";
+        } else if (transition == "dve") {
+            trans_type = "dve";
         } else {
-            trans_type = nlohmann::json();
-            // control_panel_config->key_status_config.toggle_effect_keys = "";
+            logger->warn("The transition effect incoming type {}, is incorrect",transition);
         }
         lock.unlock();
     }
+    lock.lock();
+    if (old_trans_type != trans_type) {
+        switcher->set_transition(trans_type);
+    } else {
+        trans_type = nlohmann::json();
+        switcher->set_transition(trans_type);
+    }
+    old_trans_type = trans_type;
+    lock.unlock();
+}
 
-    switcher->set_transition(trans_type);
+void MainController::handle_proxy_press(const int proxy_idx, const std::string &proxy_type) {
+    if (!proxy_type.empty()) {
+        if (proxy_type == "key") {
+            
+        }
+
+    } else {
+        logger->warn("The downstream type incoming type {}, is incorrect", proxy_type);
+    }
+}
+
+void MainController::handle_proxy_sources_press(std::vector<int> proxy_sources) {
+    // int i_source = key_each_row_num - 1;
+    // pgm_ += 1; 
+    // pvw_ += 1;
+
+    // auto lock = acquire_lock();
+
+    // int pgm_offset = (pgm_ - 1) / i_source;
+    // int pvw_offset = (pvw_ - 1) / i_source;
+    // lock.unlock();
+    // if ((pgm_offset <= max_source_num) && (pvw_offset <= max_source_num)) {
+    //     if (this->pgm == pgm_ && this->pvw == pvw_) {
+    //         return;
+    //     } else {
+    //         switcher->sw_pgm_pvw_shift_status = {pgm_offset, pvw_offset};
+    //         this->pgm = pgm_ - pgm_offset * i_source;
+    //         this->pvw = pvw_ - pvw_offset * i_source;
+    //         sendFrames();
+    //     }
+    // } else {
+    //     logger->warn("The number of input sources exceeds the configured quantity");
+    // }
+}
+
+void MainController::handle_get_key_status(nlohmann::json param) {
+    
 }
 
 };//namespace seeder

@@ -65,26 +65,23 @@ public:
   void panel_status_handler_message(websocketpp::connection_hdl, client::message_ptr msg);
   void config_update_handler_message(websocketpp::connection_hdl, client::message_ptr msg);
 
+  void 
+  set_config_update_notify_handler(std::function<void(nlohmann::json)> config_update_notify_handler);
+  void 
+  set_panel_status_update_handler(std::function<void(nlohmann::json)> panel_status_update_handler);
+  void 
+  set_proxy_sources_update_handler(std::function<void(std::vector<int>)> proxy_sources_update_handler);
+  void 
+  set_get_key_status_handler(std::function<void(nlohmann::json)> get_key_status_handler);
   void
   set_panel_status_handler(std::function<void(int, int)> panel_status_handler);
   void 
   set_dsk_status_handler(std::function<void(std::vector<bool>)> dsk_status_handler);
   void 
   set_transition_type_handler(std::function<void(std::string)> transition_type_handler);
-  void 
-  set_next_transition_handler(std::function<void(std::vector<bool>)> next_transition_handler);
-  void 
-  set_proxy_type_handler(std::function<void(std::vector<bool>)> proxy_type_handler);
-  void 
-  set_proxy_source_handler(std::function<void(std::vector<bool>)> proxy_source_handler);
-  void 
-  set_mode_status_handler(std::function<void(std::vector<bool>)> mode_status_handler);
-  void 
-  set_shift_status_handler(std::function<void(std::vector<bool>)> shift_status_handler);
-  void 
-  set_config_update_notify_handler(std::function<void(nlohmann::json)> config_update_notify_handler);
-  void 
-  set_panel_status_update_handler(std::function<void(nlohmann::json)> panel_status_update_handler);
+  
+  
+  
 
   int connect(std::string const &uri);
 
@@ -104,6 +101,8 @@ private:
   typedef std::map<int, connection_metadata::ptr> con_list;
   
   std::function<void(int, int)> panel_status_handler;
+  std::function<void(std::vector<bool>, std::vector<bool>, int, 
+                    std::vector<bool>, std::vector<bool>, int)> downstream_keys_status_handler;
   std::function<void(std::vector<bool>)> dsk_status_handler;
   std::function<void(std::string)> transition_type_handler;
   std::function<void(std::vector<bool>)> next_transition_handler;
@@ -112,6 +111,8 @@ private:
   std::function<void(std::vector<bool>)> mode_status_handler;
   std::function<void(std::vector<bool>)> shift_status_handler;
   std::function<void(nlohmann::json)> panel_status_update_handler;
+  std::function<void(std::vector<int>)> proxy_sources_update_handler;
+  std::function<void(nlohmann::json)> get_key_status_handler;
 
   std::function<void(nlohmann::json)> config_update_notify_handler;
 

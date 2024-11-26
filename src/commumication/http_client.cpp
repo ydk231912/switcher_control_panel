@@ -6,7 +6,7 @@ namespace seeder {
 
 HttpClient::HttpClient(std::string host) : host_(host) {
   cli_ = std::make_shared<httplib::Client>(host);
-   logger->info("HttpClient host : {}",host);
+  logger->info("HttpClient host : {}",host);
 };
 HttpClient::~HttpClient(){};
 

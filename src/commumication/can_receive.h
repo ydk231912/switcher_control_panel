@@ -95,23 +95,31 @@ struct KeyPressState {
   int value;
   std::string name;
 
-  static constexpr int DEBOUNCE_TIME = 50;
+  static constexpr int DEBOUNCE_TIME = 20;
 };
 
 class CanFrameProcessor
 {
 public:
-  explicit CanFrameProcessor(CanSocket &canSocket, std::shared_ptr<seeder::Switcher> sw);
+  explicit CanFrameProcessor(CanSocket &canSocket, std::shared_ptr<seeder::Switcher> switcher);
   ~CanFrameProcessor();
 
   void init();
   void start();
   void stop();
 
-  std::function<void(const std::string &)> on_key_press;
+  std::function<void(const std::string &)> on_transition_press;
   std::function<void(void)> on_shift_press;
+  std::function<void(const int, const std::string &)> on_proxy_press;
+  std::string proxy_type = "";
+  std::string proxy_source = "";
+
   void handle_panel_status_update(nlohmann::json param);
 
+  std::unique_lock<std::recursive_mutex> acquire_lock() {
+      return std::unique_lock<std::recursive_mutex>(mutex);
+  }
+  std::recursive_mutex mutex;
 private:
   CanSocket &socket;
   std::thread processing_thread;
@@ -122,7 +130,9 @@ private:
   int key_each_row_num = 0;
   int key_difference_value = 0;
   int pgm_pvw_shift_amount = 0;
+  int proxy_shift_amount = 0;
   int pgm_pvw_source_sum = 0;
+  int proxy_source_sum = 0;
   int key_source_sum = 0;
   int key_source_shift_status = 0;
   int can_array_every = 8;
@@ -143,7 +153,7 @@ private:
     M_e,
     UNKNOWN
   };
-  Proxy_Type proxy_type = KEY;
+  Proxy_Type proxy_types = KEY;
   enum Mode_status {
     InitValue,
     FirstValue,
@@ -169,11 +179,13 @@ private:
   void handles_pgm_pvw_module(int idx, bool is_pgm);
   void handle_pgm_pvw(int idx, bool is_pgm);
   void update_pgm_pvw_shift_status(int key_each_row_num, bool is_pgm);
-  void update_key_source_shift_status(int key_each_row_num);
   int handle_pgm_pvw_increment(int pgm_pvw_shift_status);
-  int handle_key_source_increment(int key_source_shift_status);
+  void handles_proxy_key_module(int idx, bool is_proxy_type);
+  void handle_proxy(int idx, bool is_proxy_type);
+  int handle_proxy_source_increment(int key_source_shift_status);
+  void update_proxy_source_shift_status(int key_each_row_num, bool is_proxy_type);
+
   void handles_clipper_key(int idx);
-  void handles_proxy_key(int idx);
   uint16_t clipper_handle(const can_frame &frame);
   uint16_t convertToPercentage(uint8_t highbyte, uint8_t lowbyte);
   int calculateidex(unsigned char value, int offset);
