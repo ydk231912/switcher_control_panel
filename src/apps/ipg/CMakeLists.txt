@@ -4,7 +4,7 @@ if(ENABLE_SEEDER_LICENSE)
     FetchContent_Declare(
         seeder_license
         GIT_REPOSITORY git@seeder-git-server:seeder/seeder_license.git
-        GIT_TAG 4fe822d3909d533200b2f1072fd7772be126658e
+        GIT_TAG 6aba4ce30ee15ffe26f3e8c8d8a1ad792df938d8
     )
     FetchContent_MakeAvailable(seeder_license)
 endif()
