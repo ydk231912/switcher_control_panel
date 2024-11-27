@@ -15,7 +15,8 @@
           "CMAKE_BUILD_TYPE": "Debug",
           "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
           "TRACY_ENABLE": "ON",
-          "TRACY_ON_DEMAND": "ON"
+          "TRACY_ON_DEMAND": "ON",
+          "ENABLE_SEEDER_LICENSE": "OFF"
         }
       },
       {

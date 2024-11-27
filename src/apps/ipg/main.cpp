@@ -47,6 +47,10 @@
 
 #include "app_build_config.h"
 
+#ifdef HAVE_SEEDER_LICENSE
+#include "license_server.h"
+#endif
+
 using namespace seeder::core;
 
 static struct st_app_context *g_app_ctx; /* only for st_app_sig_handler */
@@ -204,6 +208,10 @@ convert_json_object(const Json::Value &v) {
       json_tokener_parse(s.c_str()));
 }
 
+#ifdef HAVE_SEEDER_LICENSE
+    std::unique_ptr<seeder::license::Server> license_server;
+#endif
+
 } // namespace
 
 // check args are correct
@@ -269,6 +277,12 @@ static void init_decklink(st_app_context *ctx) {
 std::unique_ptr<st_app_context> ctx;
 
 int main(int argc, char **argv) {
+
+#ifdef HAVE_SEEDER_LICENSE
+    license_server.reset(new seeder::license::Server);
+    license_server->start();
+    license_server->wait_until_activated();
+#endif
 
   ctx = std::unique_ptr<st_app_context>(new st_app_context{});
   int ret = 0;

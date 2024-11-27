@@ -1,3 +1,14 @@
+option(ENABLE_SEEDER_LICENSE "Enable seeder_license" ON)
+
+if(ENABLE_SEEDER_LICENSE)
+    FetchContent_Declare(
+        seeder_license
+        GIT_REPOSITORY git@seeder-git-server:seeder/seeder_license.git
+        GIT_TAG 4fe822d3909d533200b2f1072fd7772be126658e
+    )
+    FetchContent_MakeAvailable(seeder_license)
+endif()
+
 configure_file(app_build_config.h.in app_build_config.h @ONLY)
 
 add_executable(
@@ -22,19 +33,19 @@ add_executable(
     st_config_utils.cpp
 )
 
-# aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/json SRC)
-# add_library(calc STATIC ${SRC})
+target_compile_definitions(
+    ipg
+    PRIVATE
+    $<$<BOOL:${ENABLE_SEEDER_LICENSE}>:HAVE_SEEDER_LICENSE>
+)
 
 target_link_libraries(
     ipg
     PRIVATE
     core
     decklink
-    # sdl
-    # ffmpeg
     
     ffmpeg_deps
-    # sdl2_deps
     boost_deps
     decklink_deps
     mtl_deps
@@ -47,6 +58,7 @@ target_link_libraries(
     nmos-cpp::nmos-cpp
 
     TracyClient
+    $<$<BOOL:${ENABLE_SEEDER_LICENSE}>:seeder_license>
 )
 
 target_include_directories(
@@ -57,9 +69,6 @@ target_include_directories(
 )
 
 set_target_properties(ipg PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-# file(COPY ./ipg_config.xml DESTINATION  ${PROJECT_SOURCE_DIR}/build/bin)
-# file(COPY ./test_tx_1port_1v_1a_1anc.json DESTINATION  ${CMAKE_BINARY_DIR}/bin)
 
 include(GNUInstallDirs)
 install(
