@@ -190,7 +190,7 @@ int seeder::nmos_node::nmos_node_start() {
                           // obtain the access token
     }
 
-    nmos::experimental::control_protocol_state control_protocol_state;
+    nmos::experimental::control_protocol_state control_protocol_state(nullptr);
     if (0 <= nmos::fields::control_protocol_ws_port(node_model_.settings)) {
       node_implementation
           .on_get_control_class_descriptor(

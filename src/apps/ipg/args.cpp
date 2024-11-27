@@ -8,7 +8,7 @@
 #include <inttypes.h>
 #include <spdlog/common.h>
 
-#include <mtl/mtl_seeder_api.h>
+// #include <mtl/mtl_seeder_api.h>
 
 #include "app_base.h"
 #include "core/util/logger.h"

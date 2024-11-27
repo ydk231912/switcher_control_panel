@@ -200,13 +200,13 @@ public:
   void operator()(json_object *o) { json_object_put(o); }
 };
 
-std::unique_ptr<json_object, JsonObjectDeleter>
+/* std::unique_ptr<json_object, JsonObjectDeleter>
 convert_json_object(const Json::Value &v) {
   Json::FastWriter writer;
   auto s = writer.write(v);
   return std::unique_ptr<json_object, JsonObjectDeleter>(
       json_tokener_parse(s.c_str()));
-}
+} */
 
 #ifdef HAVE_SEEDER_LICENSE
     std::unique_ptr<seeder::license::Server> license_server;
