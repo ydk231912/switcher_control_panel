@@ -82,7 +82,7 @@ public:
                                                 const std::vector<std::vector<std::vector<std::string>>> &data);
     // 构造第二帧数据 -- 按键灯光数据
     std::vector<unsigned char> construct_frame2(unsigned char frame_header, unsigned char device_id, 
-                                                int pgm, int pvw, std::string transition_type, std::vector<int> dsk, int proxy_key);
+                                                int pgm, int pvw, std::string transition_type, std::vector<int> dsk, int proxy_index, std::vector<int> proxy_sources);
     std::vector<std::vector<std::vector<std::string>>> readHexData(const std::string& filename);
     void writeHexData(const std::string& filename, const std::vector<std::vector<std::vector<std::string>>>& data);
 
@@ -93,8 +93,6 @@ private:
     // 计算数据的校验和
     unsigned char calculate_checksum(const std::vector<unsigned char> &data,
                                      size_t start, size_t end);
-
-    std::string last_transition_type = "";
 
     std::vector<int> key_colour = {0,1,2,3,4,5};
 
@@ -127,29 +125,23 @@ public:
 
     void handler_dsk_status(std::vector<bool> dsk_status);
     void handler_nextkey(std::vector<bool> nextkey_status);
-    void handler_mode(std::vector<bool> mode);
-    void handler_bkgd(std::vector<bool> bkgd);
-    void handler_prevtrans(std::vector<bool> prvtrans);
-    void handler_shift(std::vector<bool> shift);
     void handler_transition_type(std::string transition_type);
     void handler_status(int pgm_, int pvw_);
-    void handle_proxy_keys_status(
-        std::vector<bool>is_on_air0, std::vector<bool>is_tied0, int fill_source_index, 
-        std::vector<bool>is_on_air1, std::vector<bool>is_tied1, int key_source_index);
     void sendFrames();
 
     void handle_transition_press(const std::string &transition);
-    void handle_proxy_press(const int proxy_idx, const std::string &proxy_type);
-    void handle_proxy_sources_press(std::vector<int> proxy_sources);
+    void handle_proxy_press(const int proxy_idx_, const int proxy_type_);
+    void handle_proxy_sources_press(std::vector<int> proxy_sources_);
+    void handle_proxy_shift_press(int proxy_source_, int key_idx_);
     void handle_get_key_status(nlohmann::json param);
-
+    
     std::shared_ptr<Switcher> switcher;
     std::shared_ptr<config::Config> control_panel_config;
     std::vector<std::vector<std::vector<std::string>>> screen_frame_hex_data;
-    std::shared_ptr<DataFrame> data_frame_;        // 数据帧对象
+    std::shared_ptr<DataFrame> data_frame_;
     std::vector<uint8_t> screen_frame_data;
     std::vector<uint8_t> key_status_data;
-
+    
     std::unique_lock<std::recursive_mutex> acquire_lock() {
         return std::unique_lock<std::recursive_mutex>(mutex);
     }
@@ -160,13 +152,15 @@ private:
     std::recursive_mutex mutex;
     
     nlohmann::json old_trans_type = nlohmann::json();
-    int pgm = 1;
-    int pvw = 1;
-    std::vector<int> sw_pgm_pvw_shift_status = {0,0};
+    int pgm = 0;
+    int pvw = 0;
     std::vector<int> dsk = {1, 1};
-    int proxy_key = 0;
+    int proxy_type = 0;
     int proxy_index = 0;
-    std::string proxy_types = "";
+    std::vector<int> proxy_sources = {0,0,0,0};
+    std::vector<int> last_proxy_sources = {0,0,0,0};
+    bool is_proxy_sending = false;
+
     std::vector<int> nextkey = {0};
     std::string transition_type = "";
     int bkgd = 1;
@@ -174,7 +168,7 @@ private:
 
     int key_each_row_num = 0;
     int max_source_num = 0;
-
+    
 };
 };// namespace seeder
 

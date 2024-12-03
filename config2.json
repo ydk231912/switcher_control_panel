@@ -42,162 +42,109 @@
             "one_display_board_can_frame_id": 1540,
             "two_display_board_can_frame_id": 1542,
             "three_display_board_can_frame_id": 1544,
-            "four_display_board_can_frame_id": 1546,
-            "five_display_board_can_frame_id": 1548,
-            "six_display_board_can_frame_id": 1550
+            "four_display_board_can_frame_id": 1552,
+            "five_display_board_can_frame_id": 1554,
+            "six_display_board_can_frame_id": 1556
         }
     },
-    "key_status": {
-        "key_key" :{
-            "KEY1": "",
-            "KEY2": "",
-            "KEY3": "",
-            "KEY4": "",
-            "KEY5": "",
-            "KEY6": "",
-            "KEY7": "",
-            "KEY8": ""
-        },
-        "bkgd_key" :{
-            "BKGD": ""
-        },
-        "PRVTRANS": "",
-        "toggle_effect_key" :{
-            "MIX": "",
-            "DIP": "",
-            "WIPE": "",
-            "STINGER": "",
-            "DVE": ""
-        },
-        "AUTO": "",
-        "CUT": "",
-        "key_trans": {
-            "KEY1_TRANS": "",
-            "KEY2_TRANS": "",
-            "KEY3_TRANS": "",
-            "KEY4_TRANS": "",
-            "KEY5_TRANS": "",
-            "KEY6_TRANS": "",
-            "KEY7_TRANS": "",
-            "KEY8_TRANS": ""
-        },
-        "mode_key" :{
-            "MODE": ""
-        },
-        "surrogate_key" :{
-            "KEY": "",
-            "AUX": "",
-            "MCRO": "",
-            "SNAPSHOT": "",
-            "M/E": ""
-        },
-        "surrogate_key_type" :{
-            "KEY_source": {
-                "CAM1": "",
-                "CAM2": "",
-                "CAM3": "",
-                "V1": "",
-                "V2": "",
-                "KEY": "",
-                "FILL": "",
-                "AR": "",
-                "IP9": "",
-                "IP10": "",
-                "IP11": ""
+    "keys_position": {
+        "main_keys": [
+            {"name": "key1", "position": 1},
+            {"name": "key2", "position": 2},
+            {"name": "key3", "position": 3},
+            {"name": "key4", "position": 4},
+            {"name": "key5", "position": 5},
+            {"name": "key6", "position": 6},
+            {"name": "key7", "position": 7},
+            {"name": "bkgd", "position": 8},
+            {"name": "key8", "position": 9},
+            {"name": "prvtrans", "position": 10},
+            {"name": "mix", "position": 11},
+            {"name": "dip", "position": 12},
+            {"name": "wipe", "position": 13},
+            {"name": "stinger", "position": 14},
+            {"name": "dve", "position": 15},
+            {"name": "quto", "position": 16},
+            {"name": "cut", "position": 17},
+            {"name": "key1_trans", "position": 18},
+            {"name": "key2_trans", "position": 19},
+            {"name": "key3_trans", "position": 20},
+            {"name": "key4_trans", "position": 21},
+            {"name": "key5_trans", "position": 22},
+            {"name": "key6_trans", "position": 23},
+            {"name": "key7_trans", "position": 24},
+            {"name": "key8_trans", "position": 25}
+        ],
+        "slaves_keys": {
+            "slave1": {
+                "mode": 12,
+                "proxies": {
+                    "types": [
+                        {"name": "key_proxy", "position": 1},
+                        {"name": "aux_proxy", "position": 2},
+                        {"name": "mcro_proxy", "position": 3},
+                        {"name": "snapshot_proxy", "position": 4},
+                        {"name": "m_e_proxy", "position": 5}
+                    ],
+                    "types_sources": [
+                        {"name": "type_source1", "position": 1},
+                        {"name": "type_source2", "position": 2},
+                        {"name": "type_source3", "position": 3},
+                        {"name": "type_source4", "position": 4},
+                        {"name": "type_source5", "position": 5},
+                        {"name": "type_source6", "position": 6},
+                        {"name": "type_source7", "position": 7},
+                        {"name": "type_source8", "position": 8},
+                        {"name": "type_source9", "position": 9},
+                        {"name": "type_source10", "position": 10},
+                        {"name": "type_source11", "position": 11}
+                    ],
+                    "sources": [
+                        {"name": "proxy_source1", "position": 13},
+                        {"name": "proxy_source2", "position": 14},
+                        {"name": "proxy_source3", "position": 15},
+                        {"name": "proxy_source4", "position": 16},
+                        {"name": "proxy_source5", "position": 17},
+                        {"name": "proxy_source6", "position": 18},
+                        {"name": "proxy_source7", "position": 19},
+                        {"name": "proxy_source8", "position": 20},
+                        {"name": "proxy_source9", "position": 21},
+                        {"name": "proxy_source10", "position": 22},
+                        {"name": "proxy_source11", "position": 23}
+                    ]
+                },
+                "proxy_source_shift": 24
             },
-            "AUX_source": {
-                "CAM1": "",
-                "CAM2": "",
-                "CAM3": "",
-                "V1": "",
-                "V2": "",
-                "KEY": "",
-                "FILL": "",
-                "AR": "",
-                "IP9": "",
-                "IP10": "",
-                "IP11": ""
-            },
-            "MCRO_source":{
-                "MCR1": "",
-                "MCR2": "",
-                "MCR3": "",
-                "MCR4": "",
-                "MCR5": "",
-                "MCR6": "",
-                "MCR7": "",
-                "MCR8": "",
-                "MCR9": "",
-                "MCR10": "",
-                "MCR11": "",
-                "MCR12": ""
-            },
-            "SNAPSHOT_source": {
-                "SNAPSHOT1": "",
-                "SNAPSHOT2": "",
-                "SNAPSHOT3": "",
-                "SNAPSHOT4": "",
-                "SNAPSHOT5": "",
-                "SNAPSHOT6": "",
-                "SNAPSHOT7": "",
-                "SNAPSHOT8": "",
-                "SNAPSHOT9": "",
-                "SNAPSHOT10": "",
-                "SNAPSHOT11": "",
-                "SNAPSHOT12": ""
-            },
-            "M/E_source": {
-                "M/E1": "",
-                "M/E2": ""
+            "slave2": {
+                "pgm": [
+                    {"name": "pgm1", "position": 1},
+                    {"name": "pgm2", "position": 2},
+                    {"name": "pgm3", "position": 3},
+                    {"name": "pgm4", "position": 4},
+                    {"name": "pgm5", "position": 5},
+                    {"name": "pgm6", "position": 6},
+                    {"name": "pgm7", "position": 7},
+                    {"name": "pgm8", "position": 8},
+                    {"name": "pgm9", "position": 9},
+                    {"name": "pgm10", "position": 10},
+                    {"name": "pgm11", "position": 11}
+                ],
+                "pgm_shift": 12,
+                "pvw": [
+                    {"name": "pvw1", "position": 13},
+                    {"name": "pvw2", "position": 14},
+                    {"name": "pvw3", "position": 15},
+                    {"name": "pvw4", "position": 16},
+                    {"name": "pvw5", "position": 17},
+                    {"name": "pvw6", "position": 18},
+                    {"name": "pvw7", "position": 19},
+                    {"name": "pvw8", "position": 20},
+                    {"name": "pvw9", "position": 21},
+                    {"name": "pvw10", "position": 22},
+                    {"name": "pvw11", "position": 23}
+                ],
+                "pvw_shift": 24
             }
-        },
-        "video_source" :{
-            "video1": "",
-            "video2": "",
-            "video3": "",
-            "video4": "",
-            "video5": "",
-            "video6": "",
-            "video7": "",
-            "video8": "",
-            "video9": "",
-            "video10": "",
-            "video11": ""
-        },
-        "video_source_shift" :{
-            "video_shift": ""
-        },
-        "pgm_source" :{
-            "pgm1": "",
-            "pgm2": "",
-            "pgm3": "",
-            "pgm4": "",
-            "pgm5": "",
-            "pgm6": "",
-            "pgm7": "",
-            "pgm8": "",
-            "pgm9": "",
-            "pgm10": "",
-            "pgm11": ""
-        },
-        "pgm_source_shift" :{
-            "pgm_shift": ""
-        },
-        "pvw_source" :{
-            "pvw1": "",
-            "pvw2": "",
-            "pvw3": "",
-            "pvw4": "",
-            "pvw5": "",
-            "pvw6": "",
-            "pvw7": "",
-            "pvw8": "",
-            "pvw9": "",
-            "pvw10": "",
-            "pvw11": ""
-        },
-        "pvw_source_shift" :{
-            "pvw_shift": ""
         }
     }
 }

@@ -119,7 +119,7 @@ void DataFrame::init() {
     main_ctrl_keys_size = control_panel_config->panel_config.main_ctrl_keys_size;
     slave_keys_size = control_panel_config->panel_config.slave_keys_size;
     key_frame_size = control_panel_config->panel_config.key_frame_size;
-    slave_key_each_row_num = control_panel_config->panel_config.slave_keys_size;
+    slave_key_each_row_num = control_panel_config->panel_config.slave_key_each_row_num;
 }
 
 // 函数：从文件中读取十六进制数据并解析为 2x3x40 的三维数组
@@ -222,7 +222,8 @@ std::vector<unsigned char> DataFrame::construct_frame1(
 
 // 构造第二帧数据 -- 按键灯光数据
 std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_header, unsigned char device_id, 
-                                                       int pgm, int pvw, std::string transition_type, std::vector<int> dsk, int proxy_key)
+                                                       int pgm, int pvw, std::string transition_type, std::vector<int> dsk, 
+                                                       int proxy_index, std::vector<int> proxy_sources)
 {
     size_t offset = 0;
     std::vector<unsigned char> frame(key_frame_size, 0); // 初始化数据帧
@@ -242,7 +243,7 @@ std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_heade
     } else if (transition_type == "dve") {
         main_ctrl_keys[14] = key_colour[5];
     } else {
-
+        // logger->error("Invalid transition type: {}", transition_type);
     }
     if (!dsk.empty()) {
         for (size_t i = 0; i < dsk.size() && i < main_ctrl_keys_size - 17; ++i) {
@@ -261,6 +262,46 @@ std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_heade
             std::cerr << "Invalid index or value: index=" << index << ", value=" << value << std::endl;
         }
     };
+
+    if (proxy_index > 0) {
+        update_slave_key(0, proxy_index, key_colour[4]);
+
+        if (switcher->proxy_type_idx == 0) {
+            if (switcher->proxy_source_shift_status[0] != switcher->sw_proxy_source_shift_status[0]) {
+
+            } else {
+                if (proxy_sources[0] > 0) {
+                    update_slave_key(0, proxy_sources[0] + slave_key_each_row_num, key_colour[4]);
+                }
+            }
+        } else if (switcher->proxy_type_idx == 1) {
+            if (switcher->proxy_source_shift_status[1] != switcher->sw_proxy_source_shift_status[1]) {
+
+            } else {
+                if (proxy_sources[1] > 0) {
+                    update_slave_key(0, proxy_sources[1] + slave_key_each_row_num, key_colour[4]);
+                }
+            }
+        } else if (switcher->proxy_type_idx == 2) {
+            if (switcher->proxy_source_shift_status[2] != switcher->sw_proxy_source_shift_status[2]) {
+
+            } else {
+                if (proxy_sources[2] > 0) {
+                    update_slave_key(0, proxy_sources[2] + slave_key_each_row_num, key_colour[4]);
+                }
+            }
+        } else if (switcher->proxy_type_idx == 3) {
+            if (switcher->proxy_source_shift_status[3] != switcher->sw_proxy_source_shift_status[3]) {
+
+            } else {
+                if (proxy_sources[3] > 0) {
+                    update_slave_key(0, proxy_sources[3] + slave_key_each_row_num, key_colour[4]);
+                }
+            }
+        }
+    }
+
+
     if (switcher->pgm_shift_status != switcher->sw_pgm_pvw_shift_status[0]) {
         // logger->info("The status of the PGM shift key is incorrect");
     } else {
@@ -269,8 +310,8 @@ std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_heade
                 update_slave_key(1, pgm, key_colour[2]);
             } else {
                 update_slave_key(3, (pgm <= slave_key_each_row_num) ? pgm : 0, key_colour[2]);
-                update_slave_key(4, (pgm > slave_key_each_row_num && pgm <= slave_key_each_row_num*2) ? pgm - slave_key_each_row_num : 0, key_colour[2]);
-                update_slave_key(5, (pgm > slave_key_each_row_num*2) ? pgm - slave_key_each_row_num*2 : 0, key_colour[2]);
+                update_slave_key(4, (pgm > slave_key_each_row_num && pgm <= slave_key_each_row_num * 2) ? pgm - slave_key_each_row_num : 0, key_colour[2]);
+                update_slave_key(5, (pgm > slave_key_each_row_num * 2) ? pgm - slave_key_each_row_num * 2 : 0, key_colour[2]);
             }
         }
     };
@@ -282,8 +323,8 @@ std::vector<unsigned char> DataFrame::construct_frame2(unsigned char frame_heade
                 update_slave_key(1, key_difference_value + pvw, key_colour[3]);
             } else {
                 update_slave_key(3, (pvw <= slave_key_each_row_num) ? key_difference_value + pvw : 0, key_colour[3]);
-                update_slave_key(4, (pvw > slave_key_each_row_num && pvw <= slave_key_each_row_num*2) ? pvw + key_difference_value - slave_key_each_row_num : 0, key_colour[3]);
-                update_slave_key(5, (pvw > slave_key_each_row_num*2) ? pvw + key_difference_value - slave_key_each_row_num*2 : 0, key_colour[3]);
+                update_slave_key(4, (pvw > slave_key_each_row_num && pvw <= slave_key_each_row_num * 2) ? pvw + key_difference_value - slave_key_each_row_num : 0, key_colour[3]);
+                update_slave_key(5, (pvw > slave_key_each_row_num * 2) ? pvw + key_difference_value - slave_key_each_row_num * 2 : 0, key_colour[3]);
             }
         }
     }
@@ -350,7 +391,7 @@ void MainController::sendFrames()
         std::this_thread::sleep_for(std::chrono::microseconds(10000));
         lock.lock();
         // std::vector<unsigned char> frame2 = data_frame_.construct_frame2(0xB7, 0x01, this->pgm, this->pvw, this->transition_type, this->dsk);
-        key_status_data = data_frame_->construct_frame2(0xB7, 0x01, this->pgm, this->pvw, this->transition_type, this->dsk, this->proxy_key);
+        key_status_data = data_frame_->construct_frame2(0xB7, 0x01, this->pgm, this->pvw, this->transition_type, this->dsk, this->proxy_index, this->proxy_sources);
         uart3_.sendFrame(key_status_data);
     }
     catch (const std::exception &e){
@@ -381,7 +422,7 @@ void MainController::handler_dsk_status(std::vector<bool> dsk_status)
     
 }
 
-// 接收服务器的消息，构造并发送数据帧 -- nextkey
+// 接收服务器的消息，构造并发送数据帧 -- nextkey -- 目前还没用到
 void MainController::handler_nextkey(std::vector<bool> nextkey_status)
 {
   // 处理下一个键值   
@@ -403,30 +444,6 @@ void MainController::handler_nextkey(std::vector<bool> nextkey_status)
     if (sendFlag){
       sendFrames();
     }
-}
-
-// 接收服务器的消息，构造并发送数据帧 -- mode
-void MainController::handler_mode(std::vector<bool> mode)
-{
-  sendFrames();
-}
-
-// 接收服务器的消息，构造并发送数据帧 -- bkgd
-void MainController::handler_bkgd(std::vector<bool> bkgd)
-{
-  sendFrames();
-}
-
-// 接收服务器的消息，构造并发送数据帧 -- prevtrans
-void MainController::handler_prevtrans(std::vector<bool> prevtrans)
-{
-  sendFrames();
-}
-
-//接收服务器的消息，构造并发送数据帧 -- shift
-void MainController::handler_shift(std::vector<bool> shift)
-{
-  sendFrames();
 }
 
 
@@ -467,13 +484,6 @@ void MainController::handler_status(int pgm_, int pvw_)
     }
 }
 
-// 代理键
-void MainController::handle_proxy_keys_status(
-    std::vector<bool>is_on_air0, std::vector<bool>is_tied0, int fill_source_index, 
-    std::vector<bool>is_on_air1, std::vector<bool>is_tied1, int key_source_index){
-    
-}
-
 void MainController::handle_transition_press(const std::string &transition) 
 {
     auto lock = acquire_lock();
@@ -505,39 +515,71 @@ void MainController::handle_transition_press(const std::string &transition)
     lock.unlock();
 }
 
-void MainController::handle_proxy_press(const int proxy_idx, const std::string &proxy_type) {
-    if (!proxy_type.empty()) {
-        if (proxy_type == "key") {
-            
-        }
-
+void MainController::handle_proxy_press(const int proxy_idx_, const int proxy_type_) {
+    if (proxy_type_ != proxy_type) {
+        this->proxy_type = proxy_type_;
+        this->proxy_index = proxy_idx_;
+        switcher->is_proxy_sources_status = true;
     } else {
-        logger->warn("The downstream type incoming type {}, is incorrect", proxy_type);
+        if (proxy_index != proxy_idx_) {
+            this->proxy_index = proxy_idx_;
+            switcher->is_proxy_sources_status = true;
+        } else {
+            this->proxy_index = 0;
+            switcher->is_proxy_sources_status = false;
+        }
+    }
+
+    auto lock = acquire_lock();
+    sendFrames();
+    lock.unlock();
+}
+
+void MainController::handle_proxy_sources_press(std::vector<int> proxy_sources_) {
+    std::cout << "传来的proxy_sources: " << std::endl;
+    for (int elem : proxy_sources_) {
+        std::cout << elem << " ";
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    if (!std::equal(proxy_sources_.begin(), proxy_sources_.end(), last_proxy_sources.begin())) {
+        last_proxy_sources = proxy_sources_;
+        
+        auto lock = acquire_lock();
+        for (int i = 0; i < switcher->proxy_sum && i < proxy_sources_.size(); i++) {
+            handle_proxy_shift_press(proxy_sources_[i], i);
+        }
+        lock.unlock();
+        
+
+        std::cout << "传出的proxy_sources: " << std::endl;
+        for (int elem : this->proxy_sources) {
+            std::cout << elem << " ";
+        }
+        std::cout << std::endl;
+        std::cout << std::endl;
+
+        
+        if (switcher->is_proxy_sources_status) {
+            auto lock = acquire_lock();
+            sendFrames();
+            lock.unlock();
+        }
     }
 }
 
-void MainController::handle_proxy_sources_press(std::vector<int> proxy_sources) {
-    // int i_source = key_each_row_num - 1;
-    // pgm_ += 1; 
-    // pvw_ += 1;
+void MainController::handle_proxy_shift_press(int proxy_source_, int key_index) {
+    int i_source = key_each_row_num - 1;
 
-    // auto lock = acquire_lock();
+    int proxy_offest = proxy_source_ / i_source;
 
-    // int pgm_offset = (pgm_ - 1) / i_source;
-    // int pvw_offset = (pvw_ - 1) / i_source;
-    // lock.unlock();
-    // if ((pgm_offset <= max_source_num) && (pvw_offset <= max_source_num)) {
-    //     if (this->pgm == pgm_ && this->pvw == pvw_) {
-    //         return;
-    //     } else {
-    //         switcher->sw_pgm_pvw_shift_status = {pgm_offset, pvw_offset};
-    //         this->pgm = pgm_ - pgm_offset * i_source;
-    //         this->pvw = pvw_ - pvw_offset * i_source;
-    //         sendFrames();
-    //     }
-    // } else {
-    //     logger->warn("The number of input sources exceeds the configured quantity");
-    // }
+    if ((proxy_offest <= max_source_num) ) {
+        switcher->sw_proxy_source_shift_status[key_index] = proxy_offest;
+        this->proxy_sources[key_index] = proxy_source_ + 1 - proxy_offest * i_source;
+    } else {
+        logger->warn("The number of input sources exceeds the configured quantity");
+    }
 }
 
 void MainController::handle_get_key_status(nlohmann::json param) {

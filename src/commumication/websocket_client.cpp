@@ -73,6 +73,7 @@ void websocket_endpoint::panel_status_handler_message(websocketpp::connection_hd
     panel_status_handler(pgm_index.is_null() ? -1 : pgm_index.get<int>(), pvw_index.is_null() ? -1 : pvw_index.get<int>());
   }
 
+  // 处理proxy sources
   if (proxy_sources_update_handler) {
     std::vector<int> proxy_sources;
     proxy_sources.clear();
@@ -99,10 +100,12 @@ void websocket_endpoint::panel_status_handler_message(websocketpp::connection_hd
     transition_type_handler(activate_transition_type);
   }
 
+  // 处理手动切换推子状态
   if(panel_status_update_handler) {
     panel_status_update_handler(json_data);
   }
 
+  // 获取所有按键的状态
   if (get_key_status_handler) {
     get_key_status_handler(json_data);
   }

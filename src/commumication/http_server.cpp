@@ -15,7 +15,7 @@ HttpServer::~HttpServer() {
 
 void HttpServer::init() {
     http_server->Get("/api/armpanel/poweroff", [this](const httplib::Request& req, httplib::Response& res) {
-        seeder::util::poweroff();
+        seeder::util::restart();
         return 200;
     });
     http_server->Get("/api/armpanel/restart", [this](const httplib::Request& req, httplib::Response& res) {

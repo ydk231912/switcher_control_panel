@@ -110,9 +110,8 @@ public:
 
   std::function<void(const std::string &)> on_transition_press;
   std::function<void(void)> on_shift_press;
-  std::function<void(const int, const std::string &)> on_proxy_press;
-  std::string proxy_type = "";
-  std::string proxy_source = "";
+  std::function<void(void)> on_mode_press;
+  std::function<void(const int, const int)> on_proxy_press;
 
   void handle_panel_status_update(nlohmann::json param);
 
@@ -131,6 +130,9 @@ private:
   int key_difference_value = 0;
   int pgm_pvw_shift_amount = 0;
   int proxy_shift_amount = 0;
+  // int proxy_mode_status = 0;
+  int proxy_type = -1;
+  int proxy_type_idx = -1;
   int pgm_pvw_source_sum = 0;
   int proxy_source_sum = 0;
   int key_source_sum = 0;
@@ -144,26 +146,26 @@ private:
   bool can_start_clipper = false;
   bool is_up_cut = false;
 
-  enum Proxy_Type {
-    KEY,
-    AUX,
-    UTL,
-    MACRO,
-    SNAPSHOT,
-    M_e,
-    UNKNOWN
-  };
-  Proxy_Type proxy_types = KEY;
-  enum Mode_status {
-    InitValue,
-    FirstValue,
-    SecondValue,
-    ThirdValue,
-    FourValue,
-    FiveValue,
-    LongPress
-  };
-  Mode_status mode_status = InitValue;
+  // enum Proxy_Type {
+  //   KEY,
+  //   AUX,
+  //   UTL,
+  //   MACRO,
+  //   SNAPSHOT,
+  //   M_e,
+  //   UNKNOWN
+  // };
+  // Proxy_Type proxy_types = KEY;
+  // enum Mode_status {
+  //   InitValue,
+  //   FirstValue,
+  //   SecondValue,
+  //   ThirdValue,
+  //   FourValue,
+  //   FiveValue,
+  //   LongPress
+  // };
+  // Mode_status proxy_mode_status = InitValue;
 
   void processFrames();
   void processFrame(const can_frame &frame);
@@ -182,15 +184,14 @@ private:
   int handle_pgm_pvw_increment(int pgm_pvw_shift_status);
   void handles_proxy_key_module(int idx, bool is_proxy_type);
   void handle_proxy(int idx, bool is_proxy_type);
-  int handle_proxy_source_increment(int key_source_shift_status);
+  int handle_proxy_source_increment(int proxy_source_shift_status);
   void update_proxy_source_shift_status(int key_each_row_num, bool is_proxy_type);
 
+  void update_mode_status();
   void handles_clipper_key(int idx);
   uint16_t clipper_handle(const can_frame &frame);
   uint16_t convertToPercentage(uint8_t highbyte, uint8_t lowbyte);
   int calculateidex(unsigned char value, int offset);
-  void printCanFrame(const can_frame &frame, const std::string &label);
-  void printFrameData(const can_frame &frame);
 
   KeyPressState main_key_press_states[4];
   KeyPressState slave_key_press_states[6][3];

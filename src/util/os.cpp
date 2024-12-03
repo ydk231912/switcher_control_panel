@@ -18,7 +18,7 @@ void restart() {
     logger->info("restart");
     try {
         std::string std_err;
-        int exit_code = bp::system("restart", bp::std_err > std_err);
+        int exit_code = bp::system("reboot", bp::std_err > std_err);
         if (exit_code) {
             logger->error("restart failed exit_code={} std_err={}", exit_code, std_err);
         }

@@ -7,6 +7,7 @@ public:
     void init() {
         switcher.reset(new Switcher(config_path));
         switcher->init();
+        
         control_panel_config = switcher->control_panel_config;
 
         uart_port1_config.reset(new UARTConfig{control_panel_config->panel_config.uart_port1});
@@ -16,7 +17,17 @@ public:
 
         main_controller.reset(new MainController(*uart_port1_config,*uart_port2_config, control_panel_config ,data_frame, switcher));
 
-        activate_config_update_notify();
+        for (int i = 0; i < 10; ++i) {
+            try {
+                activate_config_update_notify();
+            } catch (std::exception &e) {
+                logger->error("activate_config_update_notify error: {}", e.what());
+                logger->debug("retry");
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            }
+            break;
+        }
 
         can_socket.reset(new CanSocket(control_panel_config->panel_config.can_port));
         can_frame_processor.reset(new CanFrameProcessor(*can_socket, switcher));
@@ -24,6 +35,7 @@ public:
 
     void start() {
         can_frame_processor->start();
+        
         set_canframe_handler();
 
         set_switcher_handler();
@@ -42,11 +54,13 @@ public:
             main_controller->handle_transition_press(transition);
         };
         // 代理键第一行按键功能
-        can_frame_processor->on_proxy_press = [&] (const int proxy_idx, const std::string &proxy_type) {
+        can_frame_processor->on_proxy_press = [&] (const int proxy_idx, const int proxy_type) {
             main_controller->handle_proxy_press(proxy_idx, proxy_type);
-            main_controller->sendFrames();
         };
         can_frame_processor->on_shift_press = [&] {
+            handle_config_update();
+        };
+        can_frame_processor->on_mode_press = [&] {
             handle_config_update();
         };
     }
@@ -82,7 +96,9 @@ public:
     }
 
     void activate_config_update_notify(){
-        switcher->store_screens_config(screen_frame_hex_data, switcher->pgm_commands, switcher->pvw_commands, switcher->proxy_keys_commands);
+        switcher->store_screens_config(
+            screen_frame_hex_data, switcher->pgm_commands, switcher->pvw_commands,
+            switcher->proxy_keys_commands, switcher->proxy_sources_commands);
         main_controller->screen_frame_data = main_controller->data_frame_->construct_frame1(0xA8, 0x01, screen_frame_hex_data);
     }
 

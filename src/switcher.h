@@ -31,17 +31,17 @@ public:
   nlohmann::json get_screens_config(const std::string &screen_path);
   void store_screens_config(
     std::vector<std::vector<std::vector<std::string>>> &screen_data,
-    nlohmann::json &pgm_commands, nlohmann::json &pvw_commands, nlohmann::json &proxy_keys_commands);
+    nlohmann::json &pgm_commands, nlohmann::json &pvw_commands, nlohmann::json &proxy_keys_commands, nlohmann::json &proxy_sources_commands);
   void get_hex_vector(const std::vector<std::string>& names, 
     std::vector<std::vector<std::string>>& hexVector, int shift_status, int panel_config_num);
   void update_oled_display(std::vector<std::vector<std::vector<std::string>>>& data, 
   const std::vector<std::vector<std::vector<std::string>>>& hexVector, int switcher_keyboard_id);
 
   void execute_xpt_command(const nlohmann::json &command);
-  void execute_on_air_command(const nlohmann::json &command);
+  void execute_proxy_command(const nlohmann::json &command);
   void xpt_pgm(int index);
   void xpt_pvw(int index);
-  // void on_air_tie_fill(int index);
+  void proxy_fill(int index);
   
   void cut();
   void auto_();
@@ -86,7 +86,7 @@ public:
   void 
   set_panel_status_update_handler(std::function<void(nlohmann::json)> panel_status_update_handler);
   void 
-  set_get_key_status_handler(std::function<void(nlohmann::json)> get_key_status_handle);
+  set_get_key_status_handler(std::function<void(nlohmann::json)> get_key_status_handler);
   void 
   set_config_update_notify_handler(std::function<void(nlohmann::json)> config_update_notify_handler);
   
@@ -105,6 +105,7 @@ public:
   nlohmann::json pgm_commands;
   nlohmann::json pvw_commands;
   nlohmann::json proxy_keys_commands;
+  nlohmann::json proxy_sources_commands;
   
   int pgm_source_sum = 0;
   int pvw_source_sum = 0;
@@ -113,13 +114,19 @@ public:
 
   int pgm_shift_status = 0;
   int pvw_shift_status = 0;
-  int proxy_source_shift_status = 0;
+  std::vector<int> proxy_source_shift_status = {0,0,0,0};
+  int proxy_mode_status = 0;
+
+  int proxy_type_idx = -1;
   
   std::vector<int> sw_pgm_pvw_shift_status = {0,0};
+  std::vector<int> sw_proxy_source_shift_status = {0,0,0,0};
+
+  bool is_proxy_sources_status = false;
 
 private:
   std::vector<std::string> shift_name = {"1st","2nd","3rd","4ur"};
-  std::vector<std::string> surrogate_key_type_name = {"KEY","AUX","UTL","MACRO","SNAPSHOT","M/E"};
+  std::vector<std::string> proxy_mode_name = {"KEY","AUX","UTL","MACRO","SNAPSHOT","M/E"};
 };
 
 }// namespace seeder

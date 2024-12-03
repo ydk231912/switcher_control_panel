@@ -16,6 +16,8 @@ std::string HttpClient::get(std::string path) {
   auto res = cli_->Get(path);
   if (res && res->status == 200) {
     return res->body;
+  } else if (!res) {
+    logger->warn("http get {} error: {}", path, to_string(res.error()));
   }
   return "";
 }

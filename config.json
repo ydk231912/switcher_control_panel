@@ -1,8 +1,8 @@
 {
     "url_config": {
-        "http_url": "http://192.168.123.206",
-        "ws_url_panel_status": "ws://192.168.123.206/ws/panel_status",
-        "ws_url_config_update": "ws://192.168.123.206/ws/config_update_notify",
+        "http_url": "http://192.168.123.212:12003",
+        "ws_url_panel_status": "ws://192.168.123.212:12003/ws/panel_status",
+        "ws_url_config_update": "ws://192.168.123.212:12003/ws/config_update_notify",
         "screen_path": "/api/panel/config"
     },
     "auto_config": {

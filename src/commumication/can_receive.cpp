@@ -279,54 +279,31 @@ void CanFrameProcessor::handle_panel_status_update(nlohmann::json param) {
 // 处理并发送 CAN 帧数据 -- 从站1
 void CanFrameProcessor::handle_FrameData1(const can_frame &frame)
 {
-    //mode -- 按一次切换到：KEY->AUX->UTL->MACRO->SNAPSHOT->M/E，长按可以对KEY、AUX、UTL、MACRO、SNAPSHOT、M/E进行选择
-    //代理键类型
+    //proxy_type -- 按一次切换到：KEY->AUX->UTL->MACRO->SNAPSHOT->M/E，长按可以对KEY、AUX、UTL、MACRO、SNAPSHOT、M/E进行选择
+    //代理键类型 -- 1-12是第一行按键（自己存储状态）    13-24是第二行按键
     if (slave_key_press_states[0][0].update(frame.data[0] != 0x00 ? 1 : 0) && slave_key_press_states[0][0].value) {
         idx = calculateidex(frame.data[0], 1);
-        // handles_proxy_key(idx);
-        on_proxy_press(idx, "key");
-        proxy_type = "key" + std::to_string(idx);
+        handles_proxy_key_module(idx, true);
     }
     //代理源
     if (slave_key_press_states[0][1].update(frame.data[1] != 0x00 ? 1 : 0) && slave_key_press_states[0][1].value) {
         idx = calculateidex(frame.data[1], 9);
-        if (idx < 12) {
-            // handles_proxy_key(idx);
-            on_proxy_press(idx, "key");
-            proxy_type = "key" + std::to_string(idx);
-        } else if (idx == 12) {
-            on_proxy_press(1, "mode");
+        if (idx <= 12) {
+            handles_proxy_key_module(idx, true);
         } else {
-            //TODO：判断一下是否选择了key
-            if (!proxy_type.empty()) {
-                on_proxy_press(idx-12, "key source");
-                proxy_source = "key source" + std::to_string(idx-12);
-            } else {
-                logger->info("Please select a key");
-            }
+            handles_proxy_key_module(idx, false);
         }
     }
     if (slave_key_press_states[0][2].update(frame.data[2] != 0x00 ? 1 : 0) && slave_key_press_states[0][2].value) {
         idx = calculateidex(frame.data[2], 17);
-        // handles_proxy_key(idx);
-        if (idx < 24) {
-            if (!proxy_type.empty()) {
-                on_proxy_press(idx-12, "key source");
-                proxy_source = "key source" + std::to_string(idx-12);
-            } else {
-                logger->info("Please select a key");
-            }
-        } else {
-            //TODO: 执行downstream_source_shift
-
-        }
+        handles_proxy_key_module(idx, false);
     }
     /*
     //处理mode按键长按状态
     if (frame.data[1] != 0x08) {
         return;
     } else if (frame.data[1] == 0x08) {
-        this->mode_status == LongPress;
+        this->proxy_mode_status == LongPress;
     }*/
     
 }
@@ -480,9 +457,15 @@ void CanFrameProcessor::update_pgm_pvw_shift_status(int key_each_row_num, bool i
         return;
     }
 
-    if (pgm_pvw_source_sum < (key_each_row_num * 2 - 1)) {pgm_pvw_shift_status = (pgm_pvw_shift_status + 1) % 2;} 
-    else if (pgm_pvw_source_sum < (key_each_row_num * 3 - 2)) {pgm_pvw_shift_status = (pgm_pvw_shift_status + 1) % 3;} 
-    else {pgm_pvw_shift_status = (pgm_pvw_shift_status + 1) % 4;}
+    if (pgm_pvw_source_sum < (key_each_row_num * 2 - 1)) {
+        pgm_pvw_shift_status = (pgm_pvw_shift_status + 1) % 2;
+    } 
+    else if (pgm_pvw_source_sum < (key_each_row_num * 3 - 2)) {
+        pgm_pvw_shift_status = (pgm_pvw_shift_status + 1) % 3;
+    } 
+    else {
+        pgm_pvw_shift_status = (pgm_pvw_shift_status + 1) % 4;
+    }
 
     on_shift_press();
 }
@@ -543,7 +526,7 @@ void CanFrameProcessor::handles_proxy_key_module(int idx, bool is_proxy_type) {
         handle_proxy(idx, is_proxy_type);
     } else if (idx == key_each_row_num) {
         //TODO: 判断MODE按键的状态是否是长按
-
+        // update_mode_status();
     } else if (idx > key_each_row_num && idx < key_each_row_num + key_difference_value) {
         handle_proxy(idx, is_proxy_type);
     } else if (idx == key_each_row_num + key_difference_value) {
@@ -553,36 +536,70 @@ void CanFrameProcessor::handles_proxy_key_module(int idx, bool is_proxy_type) {
 }
 
 void CanFrameProcessor::handle_proxy(int idx, bool is_proxy_type) {
-    proxy_shift_amount = handle_proxy_source_increment(switcher->proxy_source_shift_status);
     if (is_proxy_type) {
-        on_proxy_press(idx, "key");
-        logger->info("send can pgm : {}", std::to_string(idx + pgm_pvw_shift_amount));
+        if (idx <= switcher->proxy_sum) {
+            switcher->proxy_type_idx = idx - 1;
+            on_proxy_press(idx, proxy_type);
+            logger->info("send can proxy type : {}", std::to_string(idx + pgm_pvw_shift_amount));
+        } else {
+            logger->warn("There is no matching proxy key, received errot idx is {}",idx);
+        }
     } else {
-        // switcher->xpt_pvw(idx - key_difference_value -1 + pgm_pvw_shift_amount);
-        // TODO: 像switcher接口发送
-        
-        logger->info("send can pvw : {}", std::to_string(idx + pgm_pvw_shift_amount - key_difference_value));
+        proxy_shift_amount = handle_proxy_source_increment(switcher->proxy_source_shift_status[switcher->proxy_type_idx]);
+        if (switcher->is_proxy_sources_status) {
+            if (this->proxy_type_idx != idx - key_difference_value - 1 + proxy_shift_amount) {
+                switcher->proxy_fill(idx - key_difference_value - 1 + proxy_shift_amount);
+                logger->info("send can proxy sources : {}", std::to_string(idx + pgm_pvw_shift_amount - key_difference_value));
+            } else {
+                // 重复按键，不做任何操作
+                logger->info("Repeated key press, the operation is invalid");
+            }
+        } else {
+            logger->warn("The proxy key is not enabled");
+        }
     }
 }
 
 void CanFrameProcessor::update_proxy_source_shift_status(int key_each_row_num, bool is_proxy_type) {
-    int& proxy_source_shift_status = switcher->proxy_source_shift_status;
-    proxy_source_sum = switcher->proxy_sources_sum;
+    if (switcher->is_proxy_sources_status) {
+        int& proxy_source_shift_status = switcher->proxy_source_shift_status[switcher->proxy_type_idx];
+        proxy_source_sum = switcher->proxy_sources_sum;
 
-    if (proxy_source_sum < key_each_row_num) {
-        logger->info("The input source is insufficient, the shift function is disabled procedure");
-        return;
+        if (proxy_source_sum < key_each_row_num) {
+            logger->info("The input source is insufficient, the shift function is disabled procedure");
+            return;
+        }
+
+        if (proxy_source_sum < (key_each_row_num * 2 - 1)) {proxy_source_shift_status = (proxy_source_shift_status + 1) % 2;} 
+        else if (proxy_source_sum < (key_each_row_num * 3 - 2)) {proxy_source_shift_status = (proxy_source_shift_status + 1) % 3;} 
+        else {proxy_source_sum = (proxy_source_shift_status + 1) % 4;}
+
+        on_shift_press();
     }
-
-    if (proxy_source_sum < (key_each_row_num * 2 - 1)) {proxy_source_shift_status = (proxy_source_shift_status + 1) % 2;} 
-    else if (proxy_source_sum < (key_each_row_num * 3 - 2)) {proxy_source_shift_status = (proxy_source_shift_status + 1) % 3;} 
-    else {proxy_source_sum = (proxy_source_shift_status + 1) % 4;}
-
-    on_shift_press();
 }
 
-int CanFrameProcessor::handle_proxy_source_increment(int key_source_shift_status) {
-    return key_source_shift_status * (key_each_row_num - 1);
+void CanFrameProcessor::update_mode_status() {
+    int& proxy_mode_status = switcher->proxy_mode_status;
+    if (proxy_type == 0) {
+        proxy_mode_status = 1;
+    } else if (proxy_type == 1) {
+        proxy_mode_status = 2;
+    } else if (proxy_type == 2) {
+        proxy_mode_status = 3;
+    } else if (proxy_type == 3) {
+        proxy_mode_status = 4;
+    } else if (proxy_type == 4) {
+        proxy_mode_status = 5;
+    } else {
+        proxy_mode_status = 0;
+    }
+    proxy_type = proxy_mode_status;
+
+    on_mode_press();
+}
+
+int CanFrameProcessor::handle_proxy_source_increment(int proxy_source_shift_status) {
+    return proxy_source_shift_status * (key_each_row_num - 1);
 }
 
 
@@ -597,26 +614,4 @@ int CanFrameProcessor::calculateidex(unsigned char value, int offset)
     }
     return -1; // 默认返回值
 }
-
-// 打印 CAN 帧数据
-void CanFrameProcessor::printCanFrame(const can_frame &frame, const std::string &label)
-{
-    logger->info("Frame from {}: ID: {}  DLC: {}  Data: ", label, std::to_string(frame.can_id), std::to_string(static_cast<int>(frame.can_dlc)));
-    for (int i = 0; i < frame.can_dlc; ++i)
-    {
-        logger->info(" {} ", std::to_string(frame.data[i]));
-    }
-    logger->info("\n");
-}
-
-// 打印 CAN 帧数据
-void CanFrameProcessor::printFrameData(const can_frame &frame)
-{
-    logger->info("receive can frame :");
-    for (size_t i = 0; i < frame.can_dlc; i++)
-    {
-        logger->info(" {} ", std::to_string(frame.data[i]));
-    }
-    logger->info("\n");
-}
-};//namespace seeder
+} // namespace seeder

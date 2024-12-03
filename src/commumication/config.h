@@ -53,7 +53,7 @@ struct ScreenConfig{
     std::vector<std::string> pgm_name;
     std::vector<std::string> pvw_name;
 
-    std::vector<std::string> proxy_name;
+    std::vector<std::string> proxy_keys_name;
     std::vector<std::string> proxy_sources_name;
     std::vector<std::string> fill_name;
 };
