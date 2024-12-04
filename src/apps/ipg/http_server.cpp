@@ -241,6 +241,7 @@ private:
   std::shared_ptr<spdlog::logger> logger;
   std::chrono::system_clock::time_point startup_time;
   nmos_node *node;
+  Json::Value lsm_data;
 
   void get_config(const Request &req, Response &res) {
     Json::Value root;
@@ -264,7 +265,7 @@ private:
             .count();
     root["startup_duration"] = startup_duration_count;
     root["rev"] = PROJECT_GIT_HASH;
-    
+
     json_ok(res, root);
   }
 
@@ -331,7 +332,24 @@ private:
     }
     json_ok(res);
   }
-
+  void receive_lsm_data(const Request &req, Response &res) {
+    lsm_data = parse_json_body(req);
+    logger->debug("receive_lsm_data:{}", lsm_data.toStyledString());
+  }
+  void get_lsm_inputs(const Request &req, Response &res) {
+    Json::Value inputs = lsm_data["inputs"];
+    if (!inputs) {
+      inputs = Json::Value(Json::arrayValue);
+    }
+    json_ok(res, inputs);
+  }
+  void get_lsm_outputs(const Request &req, Response &res) {
+    Json::Value outputs = lsm_data["outputs"];
+    if (!outputs) {
+      outputs = Json::Value(Json::arrayValue);
+    }
+    json_ok(res, outputs);
+  }
   void update_session(const Request &req, Response &res) {
     auto root = parse_json_body(req);
     Json::StreamWriterBuilder writer;
@@ -392,7 +410,7 @@ private:
     } catch (std::exception &e) {
       logger->error("http_server update_session nmos error: {}", e.what());
     }
-    
+
     json_ok(res);
   }
 
@@ -404,7 +422,7 @@ private:
     } catch (std::exception &e) {
       logger->error("http_server remove_tx_session nmos error: {}", e.what());
     }
-    
+
     if (tx_source_id.empty()) {
       json_err(res, "tx_source_id empty");
       return;
@@ -431,7 +449,7 @@ private:
     } catch (std::exception &e) {
       logger->error("http_server remove_rx_session nmos error: {}", e.what());
     }
-    
+
     if (rx_output_id.empty()) {
       json_err(res, "rx_output_id empty");
       return;
@@ -464,7 +482,7 @@ private:
     json_ok(res, status);
   }
 
-  /* TODO dlopen 
+  /* TODO dlopen
   void get_ptp_dev_info(const Request &req, Response &res) {
     json_object *tmp_json = nullptr;
     mtl_seeder_get_ptp_dev_info(app_ctx->st, &tmp_json);
@@ -645,6 +663,17 @@ void st_http_server::start() {
 
   server.Post("/api/update_rx_json", [&p](const Request &req, Response &res) {
     p.update_session(req, res);
+  });
+
+  server.Post("/api/receive_lsm_data", [&p](const Request &req, Response &res) {
+    p.receive_lsm_data(req, res);
+  });
+  server.Get("/api/get_lsm_inputs", [&p](const Request &req, Response &res) {
+    p.get_lsm_inputs(req, res);
+  });
+
+  server.Get("/api/get_lsm_outputs", [&p](const Request &req, Response &res) {
+    p.get_lsm_outputs(req, res);
   });
 
   server.Post("/api/remove_rx_json", [&p](const Request &req, Response &res) {

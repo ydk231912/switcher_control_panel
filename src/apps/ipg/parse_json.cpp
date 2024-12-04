@@ -1818,8 +1818,8 @@ Json::Value st_app_get_fmts(st_json_context_t* ctx) {
     root["rx_sessions.audio.redundant.interface"].append(item);
   }
 
-  root["tx_sessions.source.type"].append(make_fmt_item("decklink", "decklink"));
-  root["rx_sessions.output.type"].append(make_fmt_item("decklink", "decklink"));
+  root["tx_sessions.source.type"].append(make_fmt_item("Decklink", "Decklink"));
+  root["rx_sessions.output.type"].append(make_fmt_item("Decklink", "Dwecklink"));
   // root["rx_sessions.output.type"].append(make_fmt_item("decklink", "decklink_async"));
   auto &tx_source_video_format = root["tx_sessions.source.video_format"];
   auto &rx_output_video_format = root["rx_sessions.output.video_format"];
